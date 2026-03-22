@@ -1,18 +1,20 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
+import { Button } from '@/app/components/ui/button';
+import { Input } from '@/app/components/ui/input';
+import { Card } from '@/app/components/ui/card';
 
-export function LoginPage({ onNavigate, onLogin }) {
+export function LoginPage() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onLogin();
-    onNavigate('profile');
+    // Simular login
+    navigate('/profile');
   };
 
   return (
@@ -100,7 +102,7 @@ export function LoginPage({ onNavigate, onLogin }) {
           <p className="text-[#5F5F5F]">
             ¿No tienes cuenta?{' '}
             <button
-              onClick={() => onNavigate('register')}
+              onClick={() => navigate('/register')}
               className="text-[#6B8E23] font-medium hover:text-[#5a7a1e] transition-colors"
             >
               Regístrate aquí

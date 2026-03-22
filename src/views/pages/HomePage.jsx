@@ -1,10 +1,12 @@
+import { useNavigate } from 'react-router-dom';
 import { Search, MapPin, Calendar, Users } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Button } from '@/app/components/ui/button';
+import { Input } from '@/app/components/ui/input';
 import { PropertyCard } from '@/views/components/PropertyCard';
 import { mockFeaturedProperties } from '@/models/propertyModel';
 
-export function HomePage({ onNavigate }) {
+export function HomePage() {
+  const navigate = useNavigate();
   const featuredProperties = mockFeaturedProperties.map(prop => prop.toJSON());
 
   return (
@@ -21,7 +23,7 @@ export function HomePage({ onNavigate }) {
             </p>
             {/* Enlace discreto para anfitriones */}
             <button 
-              onClick={() => onNavigate('register')}
+              onClick={() => navigate('/register')}
               className="text-sm text-[#A67C52] hover:text-[#6B8E23] transition-colors underline decoration-dotted"
             >
               ¿Eres anfitrión? Publica tu espacio
@@ -112,7 +114,7 @@ export function HomePage({ onNavigate }) {
             Únete a miles de viajeros que confían en nosotros para encontrar su hospedaje ideal
           </p>
           <Button 
-            onClick={() => onNavigate('register')}
+            onClick={() => navigate('/register')}
             className="bg-white text-[#6B8E23] hover:bg-[#F2E8CF] shadow-none rounded-xl px-8 h-12"
           >
             Comenzar ahora

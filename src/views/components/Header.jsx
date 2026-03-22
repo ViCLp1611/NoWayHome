@@ -1,16 +1,19 @@
 import { Home, User, LogIn, Menu, X } from 'lucide-react';
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Button } from '@/app/components/ui/button';
 
-export function Header({ onNavigate, currentPage, isLoggedIn }) {
+export function Header() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
-  const handleNavigation = (page) => {
-    onNavigate(page);
+  const handleNavigation = (path) => {
+    navigate(path);
     setIsMobileMenuOpen(false);
   };
 
@@ -29,20 +32,20 @@ export function Header({ onNavigate, currentPage, isLoggedIn }) {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-6">
             <button
-              onClick={() => handleNavigation('home')}
+              onClick={() => handleNavigation('/')}
               className={`flex items-center gap-2 text-[#5F5F5F] hover:text-[#6B8E23] transition-colors ${
-                currentPage === 'home' ? 'text-[#6B8E23] font-medium' : ''
+                location.pathname === '/' ? 'text-[#6B8E23] font-medium' : ''
               }`}
             >
               <Home className="h-5 w-5" />
               Inicio
             </button>
 
-            {isLoggedIn ? (
+            {false ? (
               <button
-                onClick={() => handleNavigation('profile')}
+                onClick={() => handleNavigation('/profile')}
                 className={`flex items-center gap-2 text-[#5F5F5F] hover:text-[#6B8E23] transition-colors ${
-                  currentPage === 'profile' ? 'text-[#6B8E23] font-medium' : ''
+                  location.pathname === '/profile' ? 'text-[#6B8E23] font-medium' : ''
                 }`}
               >
                 <User className="h-5 w-5" />
@@ -51,9 +54,9 @@ export function Header({ onNavigate, currentPage, isLoggedIn }) {
             ) : (
               <>
                 <button
-                  onClick={() => handleNavigation('login')}
+                  onClick={() => handleNavigation('/login')}
                   className={`flex items-center gap-2 text-[#5F5F5F] hover:text-[#6B8E23] transition-colors ${
-                    currentPage === 'login' ? 'text-[#6B8E23] font-medium' : ''
+                    location.pathname === '/login' ? 'text-[#6B8E23] font-medium' : ''
                   }`}
                 >
                   <LogIn className="h-5 w-5" />
@@ -61,7 +64,7 @@ export function Header({ onNavigate, currentPage, isLoggedIn }) {
                 </button>
 
                 <Button
-                  onClick={() => handleNavigation('register')}
+                  onClick={() => handleNavigation('/register')}
                   className="bg-[#6B8E23] text-white hover:bg-[#5a7a1e] shadow-none rounded-xl"
                 >
                   Registrarse
@@ -89,20 +92,20 @@ export function Header({ onNavigate, currentPage, isLoggedIn }) {
           <nav className="md:hidden py-4 border-t border-[#6B8E23]/10">
             <div className="flex flex-col gap-4">
               <button
-                onClick={() => handleNavigation('home')}
+                onClick={() => handleNavigation('/')}
                 className={`flex items-center gap-2 text-[#5F5F5F] hover:text-[#6B8E23] transition-colors py-2 ${
-                  currentPage === 'home' ? 'text-[#6B8E23] font-medium' : ''
+                  location.pathname === '/' ? 'text-[#6B8E23] font-medium' : ''
                 }`}
               >
                 <Home className="h-5 w-5" />
                 Inicio
               </button>
 
-              {isLoggedIn ? (
+              {false ? (
                 <button
-                  onClick={() => handleNavigation('profile')}
+                  onClick={() => handleNavigation('/profile')}
                   className={`flex items-center gap-2 text-[#5F5F5F] hover:text-[#6B8E23] transition-colors py-2 ${
-                    currentPage === 'profile' ? 'text-[#6B8E23] font-medium' : ''
+                    location.pathname === '/profile' ? 'text-[#6B8E23] font-medium' : ''
                   }`}
                 >
                   <User className="h-5 w-5" />
@@ -111,9 +114,9 @@ export function Header({ onNavigate, currentPage, isLoggedIn }) {
               ) : (
                 <>
                   <button
-                    onClick={() => handleNavigation('login')}
+                    onClick={() => handleNavigation('/login')}
                     className={`flex items-center gap-2 text-[#5F5F5F] hover:text-[#6B8E23] transition-colors py-2 ${
-                      currentPage === 'login' ? 'text-[#6B8E23] font-medium' : ''
+                      location.pathname === '/login' ? 'text-[#6B8E23] font-medium' : ''
                     }`}
                   >
                     <LogIn className="h-5 w-5" />
@@ -121,7 +124,7 @@ export function Header({ onNavigate, currentPage, isLoggedIn }) {
                   </button>
 
                   <Button
-                    onClick={() => handleNavigation('register')}
+                    onClick={() => handleNavigation('/register')}
                     className="bg-[#6B8E23] text-white hover:bg-[#5a7a1e] shadow-none rounded-xl w-full"
                   >
                     Registrarse
