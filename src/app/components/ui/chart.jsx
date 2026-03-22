@@ -28,9 +28,6 @@ function ChartContainer({
   children,
   config,
   ...props
-} & {
-  config: ChartConfig;
-  children["children"];
 }) {
   const uniqueId = React.useId();
   const chartId = `chart-${id || uniqueId.replace(/:/g, "")}`;
@@ -104,14 +101,8 @@ function ChartTooltipContent({
   color,
   nameKey,
   labelKey,
-} &
-  React.ComponentProps<"div"> & {
-    hideLabel?: boolean;
-    hideIndicator?: boolean;
-    indicator?: "line" | "dot" | "dashed";
-    nameKey?: string;
-    labelKey?: string;
-  }) {
+  ...props
+}) {
   const { config } = useChart();
 
   const tooltipLabel = React.useMemo(() => {
@@ -242,11 +233,8 @@ function ChartLegendContent({
   payload,
   verticalAlign = "bottom",
   nameKey,
-} &
-  Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign"> & {
-    hideIcon?: boolean;
-    nameKey?: string;
-  }) {
+  ...props
+}) {
   const { config } = useChart();
 
   if (!payload?.length) {

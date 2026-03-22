@@ -1,15 +1,17 @@
+import { useNavigate } from 'react-router-dom';
 import { User, Mail, Phone, MapPin, Calendar, Settings, Heart, Star, LogOut, Edit } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/app/components/ui/button';
+import { Card } from '@/app/components/ui/card';
+import { Avatar, AvatarFallback } from '@/app/components/ui/avatar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { mockUserBookings } from '@/models/bookingModel';
 import { mockFavoriteProperties } from '@/models/propertyModel';
 
-export function ProfilePage({ onNavigate, onLogout }) {
+export function ProfilePage() {
+  const navigate = useNavigate();
   const handleLogout = () => {
-    onLogout();
-    onNavigate('home');
+    // Simular logout
+    navigate('/');
   };
 
   const mockBookings = mockUserBookings.map(booking => ({
@@ -110,7 +112,7 @@ export function ProfilePage({ onNavigate, onLogout }) {
                 Próximas Reservas
               </h2>
               <Button 
-                onClick={() => onNavigate('home')}
+                onClick={() => navigate('/')}
                 className="bg-[#6B8E23] text-white hover:bg-[#5a7a1e] shadow-none rounded-xl"
               >
                 Nueva Reserva

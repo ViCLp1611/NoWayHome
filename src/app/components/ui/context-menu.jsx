@@ -58,8 +58,6 @@ function ContextMenuSubTrigger({
   inset,
   children,
   ...props
-} & {
-  inset?: boolean;
 }) {
   return (
     <ContextMenuPrimitive.SubTrigger
@@ -116,9 +114,6 @@ function ContextMenuItem({
   inset,
   variant = "default",
   ...props
-} & {
-  inset?: boolean;
-  variant?: "default" | "destructive";
 }) {
   return (
     <ContextMenuPrimitive.Item
@@ -188,8 +183,6 @@ function ContextMenuLabel({
   className,
   inset,
   ...props
-} & {
-  inset?: boolean;
 }) {
   return (
     <ContextMenuPrimitive.Label

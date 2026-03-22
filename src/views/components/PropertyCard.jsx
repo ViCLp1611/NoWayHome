@@ -1,5 +1,5 @@
 import { MapPin, Star } from 'lucide-react';
-import { Card } from '@/components/ui/card';
+import { Card } from '@/app/components/ui/card';
 
 export function PropertyCard({ id, image, title, location, price, rating, reviews }) {
   return (

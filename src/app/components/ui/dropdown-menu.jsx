@@ -64,9 +64,6 @@ function DropdownMenuItem({
   inset,
   variant = "default",
   ...props
-} & {
-  inset?: boolean;
-  variant?: "default" | "destructive";
 }) {
   return (
     <DropdownMenuPrimitive.Item
@@ -147,8 +144,6 @@ function DropdownMenuLabel({
   className,
   inset,
   ...props
-} & {
-  inset?: boolean;
 }) {
   return (
     <DropdownMenuPrimitive.Label
@@ -203,8 +198,6 @@ function DropdownMenuSubTrigger({
   inset,
   children,
   ...props
-} & {
-  inset?: boolean;
 }) {
   return (
     <DropdownMenuPrimitive.SubTrigger
