@@ -18,6 +18,14 @@ import {
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/app/components/ui/dialog';
+import { PropertyForm } from './PropertyForm';
+import {
   Search,
   Filter,
   MoreVertical,
@@ -139,6 +147,7 @@ export function PropertyManagement({ onNavigate }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const filteredProperties = mockProperties.filter((property) => {
     const matchesSearch =
@@ -213,9 +222,26 @@ export function PropertyManagement({ onNavigate }) {
             Administra todas las propiedades de la plataforma
           </p>
         </div>
-        <Button className="bg-[#6B8E23] hover:bg-[#5a7a1d] text-white">
-          + Nueva Propiedad
-        </Button>
+        <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-[#6B8E23] hover:bg-[#5a7a1d] text-white">
+              + Nueva Propiedad
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle></DialogTitle>
+            </DialogHeader>
+            <PropertyForm
+              onClose={() => setIsCreateModalOpen(false)}
+              onSubmit={(property) => {
+                // Aquí se podría agregar la propiedad a la lista mock
+                console.log('Propiedad agregada:', property);
+                setIsCreateModalOpen(false);
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Filters and Search */}
