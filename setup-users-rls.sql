@@ -11,10 +11,12 @@ ALTER TABLE public.mensaje ENABLE ROW LEVEL SECURITY;
 
 -- 2) Limpiar politicas previas (evita conflictos de nombres)
 DROP POLICY IF EXISTS "inquilino_select_anon" ON public.inquilino;
+DROP POLICY IF EXISTS "inquilino_insert_anon" ON public.inquilino;
 DROP POLICY IF EXISTS "inquilino_update_anon" ON public.inquilino;
 DROP POLICY IF EXISTS "inquilino_delete_anon" ON public.inquilino;
 
 DROP POLICY IF EXISTS "arrendatario_select_anon" ON public.arrendatario;
+DROP POLICY IF EXISTS "arrendatario_insert_anon" ON public.arrendatario;
 DROP POLICY IF EXISTS "arrendatario_update_anon" ON public.arrendatario;
 DROP POLICY IF EXISTS "arrendatario_delete_anon" ON public.arrendatario;
 
@@ -32,6 +34,10 @@ CREATE POLICY "inquilino_select_anon" ON public.inquilino
 FOR SELECT TO anon
 USING (true);
 
+CREATE POLICY "inquilino_insert_anon" ON public.inquilino
+FOR INSERT TO anon
+WITH CHECK (true);
+
 CREATE POLICY "inquilino_update_anon" ON public.inquilino
 FOR UPDATE TO anon
 USING (true)
@@ -45,6 +51,10 @@ USING (true);
 CREATE POLICY "arrendatario_select_anon" ON public.arrendatario
 FOR SELECT TO anon
 USING (true);
+
+CREATE POLICY "arrendatario_insert_anon" ON public.arrendatario
+FOR INSERT TO anon
+WITH CHECK (true);
 
 CREATE POLICY "arrendatario_update_anon" ON public.arrendatario
 FOR UPDATE TO anon

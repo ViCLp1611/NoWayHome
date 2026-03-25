@@ -11,8 +11,33 @@ import {
   TableHeader,
   TableRow,
 } from '@/app/components/ui/table';
-import { Search, RefreshCw, Users, Home, Calendar } from 'lucide-react';
+import { Search, RefreshCw, Users, Home, Calendar, UserPlus } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import { ConfirmActionModal } from './ConfirmActionModal';
+
+const initialCreateForm = {
+  tipo: 'inquilino',
+  nombre: '',
+  correo: '',
+  telefono: '',
+  contrasena: '',
+  confirmarContrasena: '',
+};
+
+const initialCreateErrors = {
+  tipo: '',
+  nombre: '',
+  correo: '',
+  telefono: '',
+  contrasena: '',
+  confirmarContrasena: '',
+};
+
+const initialEditErrors = {
+  nombre: '',
+  correo: '',
+  telefono: '',
+};
 
 export function UserManagement({ onNavigate }) {
   const [loading, setLoading] = useState(true);
@@ -20,9 +45,17 @@ export function UserManagement({ onNavigate }) {
   const [filterRole, setFilterRole] = useState('all');
   const [users, setUsers] = useState([]);
   const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [editingId, setEditingId] = useState('');
   const [editForm, setEditForm] = useState({ nombre: '', correo: '', telefono: '' });
+  const [editErrors, setEditErrors] = useState(initialEditErrors);
   const [deleteCandidate, setDeleteCandidate] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showCreateConfirmModal, setShowCreateConfirmModal] = useState(false);
+  const [editConfirmCandidate, setEditConfirmCandidate] = useState(null);
+  const [creating, setCreating] = useState(false);
+  const [createForm, setCreateForm] = useState(initialCreateForm);
+  const [createErrors, setCreateErrors] = useState(initialCreateErrors);
 
   // Detecta mensajes de permisos para mostrar una ayuda rápida de RLS.
   const getRlsHint = (message) => {
@@ -55,6 +88,7 @@ export function UserManagement({ onNavigate }) {
   const loadUsers = async () => {
     setLoading(true);
     setErrorMessage('');
+    setSuccessMessage('');
 
     try {
       const [
@@ -181,6 +215,10 @@ export function UserManagement({ onNavigate }) {
   // Inicia modo edición precargando los datos del usuario seleccionado.
   const startEdit = (user) => {
     setEditingId(user.key);
+    setEditConfirmCandidate(null);
+    setErrorMessage('');
+    setSuccessMessage('');
+    setEditErrors(initialEditErrors);
     setEditForm({
       nombre: user.nombre || '',
       correo: user.correo || '',
@@ -191,11 +229,65 @@ export function UserManagement({ onNavigate }) {
   // Cancela la edición y limpia el formulario temporal.
   const cancelEdit = () => {
     setEditingId('');
+    setEditConfirmCandidate(null);
+    setEditErrors(initialEditErrors);
     setEditForm({ nombre: '', correo: '', telefono: '' });
   };
 
+  const validatePersonalData = ({ nombre, correo, telefono }) => {
+    const errors = {
+      nombre: '',
+      correo: '',
+      telefono: '',
+    };
+
+    const safeNombre = String(nombre || '').trim();
+    const safeCorreo = String(correo || '').trim();
+    const safeTelefono = String(telefono || '').trim();
+
+    if (!safeNombre) {
+      errors.nombre = 'El nombre es obligatorio.';
+    } else if (safeNombre.length < 3) {
+      errors.nombre = 'El nombre debe tener al menos 3 caracteres.';
+    }
+
+    if (!safeCorreo) {
+      errors.correo = 'El correo es obligatorio.';
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(safeCorreo)) {
+        errors.correo = 'El formato del correo no es valido.';
+      }
+    }
+
+    if (safeTelefono) {
+      const phoneRegex = /^\+?[\d\s()\-]{7,20}$/;
+      if (!phoneRegex.test(safeTelefono)) {
+        errors.telefono = 'Ingresa un telefono valido (7-20 digitos).';
+      }
+    }
+
+    return errors;
+  };
+
+  const hasErrors = (errors) => Object.values(errors).some(Boolean);
+
   // Guarda cambios del usuario en la tabla correspondiente según su origen.
   const saveEdit = async (user) => {
+    const nextValues = {
+      nombre: editForm.nombre.trim(),
+      correo: editForm.correo.trim(),
+      telefono: editForm.telefono.trim(),
+    };
+
+    const validationErrors = validatePersonalData(nextValues);
+    if (hasErrors(validationErrors)) {
+      setEditErrors(validationErrors);
+      setErrorMessage('Revisa los campos marcados antes de guardar.');
+      setSuccessMessage('');
+      return;
+    }
+
     const table = user.entityType;
     const idField =
       user.entityType === 'arrendatario'
@@ -203,9 +295,9 @@ export function UserManagement({ onNavigate }) {
         : 'id_inquilino';
 
     const payload = {
-      nombre: editForm.nombre,
-      correo: editForm.correo,
-      telefono: editForm.telefono,
+      nombre: nextValues.nombre,
+      correo: nextValues.correo,
+      telefono: nextValues.telefono,
     };
 
     const { error } = await supabase
@@ -215,6 +307,7 @@ export function UserManagement({ onNavigate }) {
 
     if (error) {
       setErrorMessage(`No se pudo actualizar el usuario. ${error.message}`);
+      setSuccessMessage('');
       return;
     }
 
@@ -223,14 +316,36 @@ export function UserManagement({ onNavigate }) {
         item.key === user.key
           ? {
               ...item,
-              nombre: editForm.nombre,
-              correo: editForm.correo,
-              telefono: editForm.telefono,
+              nombre: nextValues.nombre,
+              correo: nextValues.correo,
+              telefono: nextValues.telefono || '-',
             }
           : item
       )
     );
+    setErrorMessage('');
+    setSuccessMessage('Usuario actualizado correctamente.');
     cancelEdit();
+    setEditConfirmCandidate(null);
+  };
+
+  const requestEditConfirmation = (user) => {
+    const nextValues = {
+      nombre: editForm.nombre.trim(),
+      correo: editForm.correo.trim(),
+      telefono: editForm.telefono.trim(),
+    };
+
+    const validationErrors = validatePersonalData(nextValues);
+    if (hasErrors(validationErrors)) {
+      setEditErrors(validationErrors);
+      setErrorMessage('Revisa los campos marcados antes de guardar.');
+      setSuccessMessage('');
+      return;
+    }
+
+    setErrorMessage('');
+    setEditConfirmCandidate(user);
   };
 
   // Elimina el usuario confirmado desde la tabla correspondiente.
@@ -347,6 +462,134 @@ export function UserManagement({ onNavigate }) {
     }
   };
 
+  const closeCreateModal = () => {
+    setShowCreateModal(false);
+    setShowCreateConfirmModal(false);
+    setCreateForm(initialCreateForm);
+    setCreateErrors(initialCreateErrors);
+  };
+
+  const validateCreateForm = (form) => {
+    const errors = { ...initialCreateErrors };
+    const nombre = form.nombre.trim();
+    const correo = form.correo.trim();
+    const telefono = form.telefono.trim();
+
+    if (form.tipo !== 'inquilino' && form.tipo !== 'arrendatario') {
+      errors.tipo = 'Selecciona un tipo de usuario valido.';
+    }
+
+    if (!nombre) {
+      errors.nombre = 'El nombre es obligatorio.';
+    } else if (nombre.length < 3) {
+      errors.nombre = 'El nombre debe tener al menos 3 caracteres.';
+    }
+
+    if (!correo) {
+      errors.correo = 'El correo es obligatorio.';
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(correo)) {
+        errors.correo = 'El formato del correo no es valido.';
+      }
+    }
+
+    if (telefono) {
+      const phoneRegex = /^\+?[\d\s()\-]{7,20}$/;
+      if (!phoneRegex.test(telefono)) {
+        errors.telefono = 'Ingresa un telefono valido (7-20 digitos).';
+      }
+    }
+
+    if (!form.contrasena) {
+      errors.contrasena = 'La contrasena es obligatoria.';
+    } else if (form.contrasena.length < 6) {
+      errors.contrasena = 'La contrasena debe tener al menos 6 caracteres.';
+    }
+
+    if (!form.confirmarContrasena) {
+      errors.confirmarContrasena = 'Confirma la contrasena.';
+    } else if (form.contrasena !== form.confirmarContrasena) {
+      errors.confirmarContrasena = 'Las contrasenas no coinciden.';
+    }
+
+    return errors;
+  };
+
+  const handleCreateFieldChange = (field, value) => {
+    setCreateForm((prev) => ({ ...prev, [field]: value }));
+    setCreateErrors((prev) => ({ ...prev, [field]: '' }));
+    setShowCreateConfirmModal(false);
+  };
+
+  const requestCreateConfirmation = () => {
+    const validationErrors = validateCreateForm(createForm);
+    const hasValidationErrors = Object.values(validationErrors).some(Boolean);
+    if (hasValidationErrors) {
+      setCreateErrors(validationErrors);
+      setErrorMessage('Revisa los campos marcados en el formulario.');
+      setSuccessMessage('');
+      return;
+    }
+
+    setErrorMessage('');
+    setShowCreateConfirmModal(true);
+  };
+
+  // Crea un usuario en inquilino o arrendatario sin datos de actividad relacionados.
+  const createUser = async () => {
+    const nombre = createForm.nombre.trim();
+    const correo = createForm.correo.trim();
+    const telefono = createForm.telefono.trim();
+    const contrasena = createForm.contrasena;
+
+    const table = createForm.tipo === 'arrendatario' ? 'arrendatario' : 'inquilino';
+    const idField = table === 'arrendatario' ? 'id_arrendatario' : 'id_inquilino';
+
+    setCreating(true);
+    setErrorMessage('');
+
+    const { data, error } = await supabase
+      .from(table)
+      .insert({ nombre, correo, telefono: telefono || null, contrasena })
+      .select(idField)
+      .single();
+
+    setCreating(false);
+
+    if (error) {
+      const rlsHint = getRlsHint(error.message);
+      setErrorMessage(
+        `No se pudo crear el usuario. ${error.message}${rlsHint ? ` | ${rlsHint}` : ''}`
+      );
+      setSuccessMessage('');
+      setShowCreateConfirmModal(false);
+      return;
+    }
+
+    const entityId = data?.[idField];
+    const isHost = table === 'arrendatario';
+
+    setUsers((prev) => [
+      {
+        key: `${table}-${entityId}`,
+        entityType: table,
+        entityId,
+        nombre,
+        correo,
+        telefono: telefono || '-',
+        rol: isHost ? 'host' : 'guest',
+        actividad: 0,
+        source: table,
+      },
+      ...prev,
+    ]);
+
+    closeCreateModal();
+    setErrorMessage('');
+    setSuccessMessage('Usuario agregado correctamente.');
+  };
+
   return (
     <div className="p-6 lg:p-8 space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
@@ -354,15 +597,27 @@ export function UserManagement({ onNavigate }) {
           <h1 className="font-['Poppins'] font-semibold text-[#5F5F5F] mb-2">Gestión de Usuarios</h1>
           <p className="text-[#5F5F5F]/70">Inquilinos y arrendatarios cargados desde la base de datos</p>
         </div>
-        <Button onClick={loadUsers} variant="outline" className="border-gray-200" disabled={loading}>
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Actualizar
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setShowCreateModal(true)} className="bg-[#6B8E23] hover:bg-[#5a7a1d] text-white">
+            <UserPlus className="w-4 h-4 mr-2" />
+            Agregar usuario
+          </Button>
+          <Button onClick={loadUsers} variant="outline" className="border-gray-200" disabled={loading}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Actualizar
+          </Button>
+        </div>
       </div>
 
       {errorMessage && (
         <Card className="bg-yellow-50 border-yellow-200">
           <CardContent className="p-4 text-sm text-yellow-800">{errorMessage}</CardContent>
+        </Card>
+      )}
+
+      {successMessage && (
+        <Card className="bg-green-50 border-green-200">
+          <CardContent className="p-4 text-sm text-green-800">{successMessage}</CardContent>
         </Card>
       )}
 
@@ -486,13 +741,27 @@ export function UserManagement({ onNavigate }) {
                       {editingId === user.key ? (
                         <div className="space-y-2">
                           <Input
+                            className={editErrors.nombre ? 'border-red-400 focus-visible:ring-red-300' : ''}
                             value={editForm.nombre}
-                            onChange={(e) => setEditForm((prev) => ({ ...prev, nombre: e.target.value }))}
+                            onChange={(e) => {
+                              setEditForm((prev) => ({ ...prev, nombre: e.target.value }));
+                              setEditErrors((prev) => ({ ...prev, nombre: '' }));
+                            }}
                           />
+                          {editErrors.nombre && (
+                            <p className="text-xs text-red-600">{editErrors.nombre}</p>
+                          )}
                           <Input
+                            className={editErrors.correo ? 'border-red-400 focus-visible:ring-red-300' : ''}
                             value={editForm.correo}
-                            onChange={(e) => setEditForm((prev) => ({ ...prev, correo: e.target.value }))}
+                            onChange={(e) => {
+                              setEditForm((prev) => ({ ...prev, correo: e.target.value }));
+                              setEditErrors((prev) => ({ ...prev, correo: '' }));
+                            }}
                           />
+                          {editErrors.correo && (
+                            <p className="text-xs text-red-600">{editErrors.correo}</p>
+                          )}
                         </div>
                       ) : (
                         <div>
@@ -507,11 +776,18 @@ export function UserManagement({ onNavigate }) {
                     <TableCell>
                       {editingId === user.key ? (
                         <Input
+                          className={editErrors.telefono ? 'border-red-400 focus-visible:ring-red-300' : ''}
                           value={editForm.telefono}
-                          onChange={(e) => setEditForm((prev) => ({ ...prev, telefono: e.target.value }))}
+                          onChange={(e) => {
+                            setEditForm((prev) => ({ ...prev, telefono: e.target.value }));
+                            setEditErrors((prev) => ({ ...prev, telefono: '' }));
+                          }}
                         />
                       ) : (
                         <span className="text-[#5F5F5F]">{user.telefono}</span>
+                      )}
+                      {editingId === user.key && editErrors.telefono && (
+                        <p className="mt-1 text-xs text-red-600">{editErrors.telefono}</p>
                       )}
                     </TableCell>
                     <TableCell className="text-[#5F5F5F]">
@@ -524,7 +800,7 @@ export function UserManagement({ onNavigate }) {
                     <TableCell>
                       {editingId === user.key ? (
                         <div className="flex gap-2">
-                          <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => saveEdit(user)}>
+                          <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => requestEditConfirmation(user)}>
                             Guardar
                           </Button>
                           <Button size="sm" variant="outline" onClick={cancelEdit}>
@@ -554,24 +830,158 @@ export function UserManagement({ onNavigate }) {
         </CardContent>
       </Card>
 
-      {deleteCandidate && (
+      <ConfirmActionModal
+        open={Boolean(deleteCandidate)}
+        title="Confirmar eliminación"
+        description={(
+          <p>
+            ¿Seguro quieres eliminar a <strong>{deleteCandidate?.nombre}</strong>?
+          </p>
+        )}
+        cancelLabel="Cancelar"
+        confirmLabel="Eliminar"
+        confirmButtonClassName="bg-red-600 hover:bg-red-700"
+        onCancel={() => setDeleteCandidate(null)}
+        onConfirm={confirmDelete}
+      />
+
+      <ConfirmActionModal
+        open={Boolean(editConfirmCandidate)}
+        title="Confirmar cambios"
+        description={(
+          <p>
+            ¿Seguro quieres guardar los cambios de <strong>{editConfirmCandidate?.nombre}</strong>?
+          </p>
+        )}
+        cancelLabel="Cancelar"
+        confirmLabel="Confirmar"
+        confirmButtonClassName="bg-[#6B8E23] hover:bg-[#5a7a1d]"
+        onCancel={() => setEditConfirmCandidate(null)}
+        onConfirm={() => saveEdit(editConfirmCandidate)}
+      />
+
+      {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-semibold text-[#333]">Confirmar eliminación</h2>
-            <p className="mt-3 text-sm text-[#555]">
-              ¿Seguro quieres eliminar a <strong>{deleteCandidate.nombre}</strong>?
+            <h2 className="text-lg font-semibold text-[#333]">Agregar usuario</h2>
+            <p className="mt-2 text-sm text-[#555]">
+              Crea un inquilino o arrendatario con datos personales (sin reservas ni propiedades).
             </p>
+
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="mb-1 block text-sm text-[#5F5F5F]">Tipo de usuario</label>
+                <select
+                  className={`w-full rounded-md border bg-[#FAFAFA] px-3 py-2 text-sm text-[#5F5F5F] ${createErrors.tipo ? 'border-red-400' : 'border-gray-200'}`}
+                  value={createForm.tipo}
+                  onChange={(e) => handleCreateFieldChange('tipo', e.target.value)}
+                >
+                  <option value="inquilino">Inquilino</option>
+                  <option value="arrendatario">Arrendatario</option>
+                </select>
+                {createErrors.tipo && (
+                  <p className="mt-1 text-xs text-red-600">{createErrors.tipo}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm text-[#5F5F5F]">Nombre</label>
+                <Input
+                  className={createErrors.nombre ? 'border-red-400 focus-visible:ring-red-300' : ''}
+                  value={createForm.nombre}
+                  onChange={(e) => handleCreateFieldChange('nombre', e.target.value)}
+                  placeholder="Nombre completo"
+                />
+                {createErrors.nombre && (
+                  <p className="mt-1 text-xs text-red-600">{createErrors.nombre}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm text-[#5F5F5F]">Correo</label>
+                <Input
+                  type="email"
+                  className={createErrors.correo ? 'border-red-400 focus-visible:ring-red-300' : ''}
+                  value={createForm.correo}
+                  onChange={(e) => handleCreateFieldChange('correo', e.target.value)}
+                  placeholder="correo@dominio.com"
+                />
+                {createErrors.correo && (
+                  <p className="mt-1 text-xs text-red-600">{createErrors.correo}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm text-[#5F5F5F]">Telefono</label>
+                <Input
+                  className={createErrors.telefono ? 'border-red-400 focus-visible:ring-red-300' : ''}
+                  value={createForm.telefono}
+                  onChange={(e) => handleCreateFieldChange('telefono', e.target.value)}
+                  placeholder="Opcional"
+                />
+                {createErrors.telefono && (
+                  <p className="mt-1 text-xs text-red-600">{createErrors.telefono}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm text-[#5F5F5F]">Contrasena</label>
+                <Input
+                  type="password"
+                  className={createErrors.contrasena ? 'border-red-400 focus-visible:ring-red-300' : ''}
+                  value={createForm.contrasena}
+                  onChange={(e) => handleCreateFieldChange('contrasena', e.target.value)}
+                  placeholder="Minimo 6 caracteres"
+                />
+                {createErrors.contrasena && (
+                  <p className="mt-1 text-xs text-red-600">{createErrors.contrasena}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm text-[#5F5F5F]">Confirmar contrasena</label>
+                <Input
+                  type="password"
+                  className={createErrors.confirmarContrasena ? 'border-red-400 focus-visible:ring-red-300' : ''}
+                  value={createForm.confirmarContrasena}
+                  onChange={(e) => handleCreateFieldChange('confirmarContrasena', e.target.value)}
+                  placeholder="Repite la contrasena"
+                />
+                {createErrors.confirmarContrasena && (
+                  <p className="mt-1 text-xs text-red-600">{createErrors.confirmarContrasena}</p>
+                )}
+              </div>
+            </div>
+
             <div className="mt-5 flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setDeleteCandidate(null)}>
+              <Button variant="outline" onClick={closeCreateModal} disabled={creating}>
                 Cancelar
               </Button>
-              <Button className="bg-red-600 hover:bg-red-700" onClick={confirmDelete}>
-                Eliminar
+              <Button className="bg-[#6B8E23] hover:bg-[#5a7a1d] text-white" onClick={requestCreateConfirmation} disabled={creating}>
+                {creating ? 'Guardando...' : 'Crear usuario'}
               </Button>
             </div>
           </div>
         </div>
       )}
+
+      <ConfirmActionModal
+        open={showCreateConfirmModal}
+        title="Confirmar alta de usuario"
+        description={(
+          <p>
+            ¿Seguro quieres agregar a <strong>{createForm.nombre.trim() || 'este usuario'}</strong> como{' '}
+            <strong>{createForm.tipo === 'arrendatario' ? 'arrendatario' : 'inquilino'}</strong>?
+          </p>
+        )}
+        cancelLabel="Cancelar"
+        confirmLabel={creating ? 'Guardando...' : 'Confirmar'}
+        confirmButtonClassName="bg-[#6B8E23] hover:bg-[#5a7a1d] text-white"
+        disableCancel={creating}
+        disableConfirm={creating}
+        onCancel={() => setShowCreateConfirmModal(false)}
+        onConfirm={createUser}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <button
