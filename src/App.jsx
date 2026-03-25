@@ -5,6 +5,7 @@ import { LoginPage } from '@/views/pages/LoginPage';
 import { RegisterPage } from '@/views/pages/RegisterPage';
 import { ProfilePage } from '@/views/pages/ProfilePage';
 import AdminDashboard from '@/views/admin/AdminDashboard';
+import { AdminLogin } from '@/views/admin/AdminLogin';
 
 export default function App() {
   return (
@@ -35,6 +36,7 @@ export default function App() {
               <ProfilePage />
             </>
           } />
+          <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={<AdminDashboard />} />
         </Routes>
       </div>
