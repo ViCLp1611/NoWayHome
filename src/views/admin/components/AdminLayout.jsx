@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 
-export function AdminLayout({ children, currentPage, onNavigate }) {
+export function AdminLayout({ children, currentPage, onNavigate, onLogout }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navigation = [
@@ -81,6 +81,10 @@ export function AdminLayout({ children, currentPage, onNavigate }) {
 
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
           <button
+            onClick={() => {
+              setIsMobileMenuOpen(false);
+              if (onLogout) onLogout();
+            }}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-[#5F5F5F] hover:bg-[#F2E8CF] transition-colors"
           >
             <LogOut className="w-5 h-5" />

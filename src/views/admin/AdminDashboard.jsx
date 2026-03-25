@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from './components/AdminLayout';
 import { Dashboard } from './components/Dashboard';
 import { UserManagement } from './components/UserManagement';
@@ -6,6 +7,7 @@ import { PropertyManagement } from './components/PropertyManagement';
 import { BookingManagement } from './components/BookingManagement';
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState('dashboard');
 
   console.log('AdminDashboard renderizando, currentPage:', currentPage);
@@ -26,8 +28,14 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('admin');
+    setCurrentPage('dashboard');
+    navigate('/');
+  };
+
   return (
-    <AdminLayout currentPage={currentPage} onNavigate={setCurrentPage}>
+    <AdminLayout currentPage={currentPage} onNavigate={setCurrentPage} onLogout={handleLogout}>
       {renderPage()}
     </AdminLayout>
   );
