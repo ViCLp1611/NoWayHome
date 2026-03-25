@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -12,203 +12,106 @@ import {
   TableRow,
 } from '@/app/components/ui/table';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/app/components/ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/app/components/ui/dialog';
-import { PropertyForm } from './PropertyForm';
-import {
   Search,
   Filter,
-  MoreVertical,
-  Eye,
-  Edit,
-  Trash2,
   MapPin,
-  Star,
+  RefreshCw,
 } from 'lucide-react';
-
-const mockProperties = [
-  {
-    id: '1',
-    title: 'Casa moderna en la playa',
-    type: 'house',
-    location: 'Cancún, México',
-    owner: 'María González',
-    status: 'active',
-    price: 250,
-    rating: 4.8,
-    reviews: 42,
-    bookings: 38,
-    publishedDate: '2024-01-15',
-  },
-  {
-    id: '2',
-    title: 'Apartamento céntrico',
-    type: 'apartment',
-    location: 'Ciudad de México',
-    owner: 'Ana Martínez',
-    status: 'active',
-    price: 120,
-    rating: 4.5,
-    reviews: 67,
-    bookings: 89,
-    publishedDate: '2023-11-10',
-  },
-  {
-    id: '3',
-    title: 'Villa con vista al mar',
-    type: 'villa',
-    location: 'Acapulco, México',
-    owner: 'Roberto Díaz',
-    status: 'active',
-    price: 450,
-    rating: 4.9,
-    reviews: 28,
-    bookings: 24,
-    publishedDate: '2023-09-22',
-  },
-  {
-    id: '4',
-    title: 'Apartamento moderno',
-    type: 'apartment',
-    location: 'Guadalajara, México',
-    owner: 'María González',
-    status: 'pending',
-    price: 95,
-    rating: 0,
-    reviews: 0,
-    bookings: 0,
-    publishedDate: '2024-03-18',
-  },
-  {
-    id: '5',
-    title: 'Casa colonial restaurada',
-    type: 'house',
-    location: 'San Miguel de Allende',
-    owner: 'Ana Martínez',
-    status: 'active',
-    price: 180,
-    rating: 4.7,
-    reviews: 53,
-    bookings: 61,
-    publishedDate: '2023-07-05',
-  },
-  {
-    id: '6',
-    title: 'Apartamento en zona turística',
-    type: 'apartment',
-    location: 'Playa del Carmen',
-    owner: 'Sofia López',
-    status: 'inactive',
-    price: 140,
-    rating: 4.3,
-    reviews: 18,
-    bookings: 12,
-    publishedDate: '2024-01-28',
-  },
-  {
-    id: '7',
-    title: 'Villa de lujo',
-    type: 'villa',
-    location: 'Los Cabos, México',
-    owner: 'Roberto Díaz',
-    status: 'active',
-    price: 680,
-    rating: 5.0,
-    reviews: 15,
-    bookings: 22,
-    publishedDate: '2023-10-12',
-  },
-  {
-    id: '8',
-    title: 'Casa con alberca',
-    type: 'house',
-    location: 'Tulum, México',
-    owner: 'María González',
-    status: 'active',
-    price: 320,
-    rating: 4.6,
-    reviews: 31,
-    bookings: 29,
-    publishedDate: '2024-02-08',
-  },
-];
+import { supabase } from '@/lib/supabaseClient';
 
 export function PropertyManagement({ onNavigate }) {
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [properties, setProperties] = useState([]);
+  const [deleteCandidate, setDeleteCandidate] = useState(null);
 
-  const filteredProperties = mockProperties.filter((property) => {
+  // Carga propiedades y total de reservas por propiedad para construir la vista.
+  const loadProperties = async () => {
+    setLoading(true);
+    setErrorMessage('');
+
+    try {
+      const [propertiesResult, bookingsResult] = await Promise.all([
+        supabase
+          .from('propiedad')
+          .select('id_propiedad,descripcion,direccion,precio,estado,resena,id_arrendatario,arrendatario:arrendatario(nombre)'),
+        supabase.from('reserva').select('id_propiedad'),
+      ]);
+
+      if (propertiesResult.error || bookingsResult.error) {
+        const messages = [propertiesResult.error, bookingsResult.error]
+          .filter(Boolean)
+          .map((item) => item.message)
+          .join(' | ');
+        setErrorMessage(`Carga parcial de propiedades. ${messages}`);
+      }
+
+      const bookingCountMap = (bookingsResult.data || []).reduce((acc, booking) => {
+        const key = String(booking.id_propiedad);
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {});
+
+      const normalizedProperties = (propertiesResult.data || []).map((item) => ({
+        id: item.id_propiedad,
+        descripcion: item.descripcion,
+        direccion: item.direccion,
+        precio: Number(item.precio || 0),
+        estado: item.estado || 'sin_estado',
+        resena: item.resena || 'Sin reseña',
+        arrendatario: item.arrendatario?.nombre || `Arrendatario #${item.id_arrendatario}`,
+        reservas: bookingCountMap[String(item.id_propiedad)] || 0,
+      }));
+
+      setProperties(normalizedProperties);
+    } catch (error) {
+      setErrorMessage(error.message || 'No se pudieron cargar las propiedades.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadProperties();
+  }, []);
+
+  // Filtra propiedades por texto y por estado seleccionado en la UI.
+  const filteredProperties = useMemo(() => properties.filter((property) => {
     const matchesSearch =
-      property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      property.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      property.owner.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = filterType === 'all' || property.type === filterType;
-    const matchesStatus = filterStatus === 'all' || property.status === filterStatus;
-    return matchesSearch && matchesType && matchesStatus;
-  });
+      property.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      property.direccion.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      property.arrendatario.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus =
+      filterStatus === 'all' || property.estado.toLowerCase().includes(filterStatus.toLowerCase());
+    return matchesSearch && matchesStatus;
+  }), [properties, searchTerm, filterStatus]);
 
-  const getTypeBadgeColor = (type) => {
-    switch (type) {
-      case 'house':
-        return 'bg-[#6B8E23] text-white';
-      case 'apartment':
-        return 'bg-[#A67C52] text-white';
-      case 'villa':
-        return 'bg-purple-500 text-white';
-      default:
-        return 'bg-gray-200 text-[#5F5F5F]';
-    }
-  };
-
+  // Asigna el color del badge según el estado de la propiedad.
   const getStatusBadgeColor = (status) => {
-    switch (status) {
-      case 'active':
-        return 'bg-green-100 text-green-700';
-      case 'inactive':
-        return 'bg-gray-200 text-gray-700';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-700';
-      default:
-        return 'bg-gray-100 text-gray-700';
-    }
+    if (status.toLowerCase().includes('disponible')) return 'bg-green-100 text-green-700';
+    if (status.toLowerCase().includes('ocup')) return 'bg-yellow-100 text-yellow-700';
+    if (status.toLowerCase().includes('inact')) return 'bg-gray-200 text-gray-700';
+    return 'bg-gray-100 text-gray-700';
   };
 
-  const getTypeLabel = (type) => {
-    switch (type) {
-      case 'house':
-        return 'Casa';
-      case 'apartment':
-        return 'Apartamento';
-      case 'villa':
-        return 'Villa';
-      default:
-        return type;
-    }
-  };
+  // Elimina la propiedad seleccionada y actualiza el listado local.
+  const deleteProperty = async () => {
+    if (!deleteCandidate) return;
+    const { error } = await supabase
+      .from('propiedad')
+      .delete()
+      .eq('id_propiedad', deleteCandidate.id);
 
-  const getStatusLabel = (status) => {
-    switch (status) {
-      case 'active':
-        return 'Activa';
-      case 'inactive':
-        return 'Inactiva';
-      case 'pending':
-        return 'Pendiente';
-      default:
-        return status;
+    if (error) {
+      setErrorMessage(`No se pudo eliminar la propiedad. ${error.message}`);
+      setDeleteCandidate(null);
+      return;
     }
+
+    setProperties((prev) => prev.filter((item) => item.id !== deleteCandidate.id));
+    setDeleteCandidate(null);
   };
 
   return (
@@ -219,30 +122,20 @@ export function PropertyManagement({ onNavigate }) {
             Gestión de Propiedades
           </h1>
           <p className="text-[#5F5F5F]/70">
-            Administra todas las propiedades de la plataforma
+            Propiedades reales desde la tabla propiedad
           </p>
         </div>
-        <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-[#6B8E23] hover:bg-[#5a7a1d] text-white">
-              + Nueva Propiedad
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle></DialogTitle>
-            </DialogHeader>
-            <PropertyForm
-              onClose={() => setIsCreateModalOpen(false)}
-              onSubmit={(property) => {
-                // Aquí se podría agregar la propiedad a la lista mock
-                console.log('Propiedad agregada:', property);
-                setIsCreateModalOpen(false);
-              }}
-            />
-          </DialogContent>
-        </Dialog>
+        <Button onClick={loadProperties} variant="outline" className="border-gray-200" disabled={loading}>
+          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Actualizar
+        </Button>
       </div>
+
+      {errorMessage && (
+        <Card className="bg-yellow-50 border-yellow-200">
+          <CardContent className="p-4 text-sm text-yellow-800">{errorMessage}</CardContent>
+        </Card>
+      )}
 
       {/* Filters and Search */}
       <Card className="bg-white border-gray-200">
@@ -258,51 +151,28 @@ export function PropertyManagement({ onNavigate }) {
               />
             </div>
             <div className="flex gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="border-gray-200">
-                    <Filter className="w-4 h-4 mr-2" />
-                    Tipo: {filterType === 'all' ? 'Todos' : getTypeLabel(filterType)}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => setFilterType('all')}>
-                    Todos
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setFilterType('house')}>
-                    Casa
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setFilterType('apartment')}>
-                    Apartamento
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setFilterType('villa')}>
-                    Villa
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="border-gray-200">
-                    <Filter className="w-4 h-4 mr-2" />
-                    Estado: {filterStatus === 'all' ? 'Todos' : getStatusLabel(filterStatus)}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => setFilterStatus('all')}>
-                    Todos
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setFilterStatus('active')}>
-                    Activa
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setFilterStatus('pending')}>
-                    Pendiente
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setFilterStatus('inactive')}>
-                    Inactiva
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Button
+                variant={filterStatus === 'all' ? 'default' : 'outline'}
+                className={filterStatus === 'all' ? 'bg-[#6B8E23] text-white' : 'border-gray-200'}
+                onClick={() => setFilterStatus('all')}
+              >
+                <Filter className="w-4 h-4 mr-2" />
+                Todos
+              </Button>
+              <Button
+                variant={filterStatus === 'disponible' ? 'default' : 'outline'}
+                className={filterStatus === 'disponible' ? 'bg-[#6B8E23] text-white' : 'border-gray-200'}
+                onClick={() => setFilterStatus('disponible')}
+              >
+                Disponible
+              </Button>
+              <Button
+                variant={filterStatus === 'ocupada' ? 'default' : 'outline'}
+                className={filterStatus === 'ocupada' ? 'bg-[#6B8E23] text-white' : 'border-gray-200'}
+                onClick={() => setFilterStatus('ocupada')}
+              >
+                Ocupada
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -321,12 +191,11 @@ export function PropertyManagement({ onNavigate }) {
               <TableHeader>
                 <TableRow className="bg-[#F2E8CF]/30">
                   <TableHead className="text-[#5F5F5F]">Propiedad</TableHead>
-                  <TableHead className="text-[#5F5F5F]">Tipo</TableHead>
-                  <TableHead className="text-[#5F5F5F]">Propietario</TableHead>
+                  <TableHead className="text-[#5F5F5F]">Arrendatario</TableHead>
                   <TableHead className="text-[#5F5F5F]">Estado</TableHead>
-                  <TableHead className="text-[#5F5F5F]">Precio/noche</TableHead>
-                  <TableHead className="text-[#5F5F5F]">Valoración</TableHead>
+                  <TableHead className="text-[#5F5F5F]">Precio</TableHead>
                   <TableHead className="text-[#5F5F5F]">Reservas</TableHead>
+                  <TableHead className="text-[#5F5F5F]">Reseña</TableHead>
                   <TableHead className="text-[#5F5F5F]">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -335,62 +204,32 @@ export function PropertyManagement({ onNavigate }) {
                   <TableRow key={property.id} className="hover:bg-[#F2E8CF]/20">
                     <TableCell>
                       <div>
-                        <p className="text-[#5F5F5F]">{property.title}</p>
+                        <p className="text-[#5F5F5F]">{property.descripcion}</p>
                         <p className="text-sm text-[#5F5F5F]/60 flex items-center gap-1">
                           <MapPin className="w-3 h-3" />
-                          {property.location}
+                          {property.direccion}
                         </p>
                       </div>
                     </TableCell>
+                    <TableCell className="text-[#5F5F5F]">{property.arrendatario}</TableCell>
                     <TableCell>
-                      <Badge className={getTypeBadgeColor(property.type)}>
-                        {getTypeLabel(property.type)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-[#5F5F5F]">{property.owner}</TableCell>
-                    <TableCell>
-                      <Badge className={getStatusBadgeColor(property.status)}>
-                        {getStatusLabel(property.status)}
+                      <Badge className={getStatusBadgeColor(property.estado)}>
+                        {property.estado}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-[#5F5F5F]">
-                      ${property.price}
+                      ${property.precio.toLocaleString('es-MX')}
                     </TableCell>
+                    <TableCell className="text-[#5F5F5F]">{property.reservas}</TableCell>
+                    <TableCell className="text-[#5F5F5F]">{property.resena}</TableCell>
                     <TableCell>
-                      {property.rating > 0 ? (
-                        <div className="flex items-center gap-1">
-                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                          <span className="text-[#5F5F5F]">
-                            {property.rating} ({property.reviews})
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-[#5F5F5F]/60">Sin valoraciones</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-[#5F5F5F]">{property.bookings}</TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Eye className="w-4 h-4 mr-2" />
-                            Ver detalles
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Edit className="w-4 h-4 mr-2" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600">
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Eliminar
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <Button
+                        size="sm"
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                        onClick={() => setDeleteCandidate(property)}
+                      >
+                        Eliminar
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -399,6 +238,25 @@ export function PropertyManagement({ onNavigate }) {
           </div>
         </CardContent>
       </Card>
+
+      {deleteCandidate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <h2 className="text-lg font-semibold text-[#333]">Confirmar eliminación</h2>
+            <p className="mt-3 text-sm text-[#555]">
+              ¿Seguro quieres eliminar la propiedad <strong>{deleteCandidate.descripcion}</strong>?
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDeleteCandidate(null)}>
+                Cancelar
+              </Button>
+              <Button className="bg-red-600 hover:bg-red-700" onClick={deleteProperty}>
+                Eliminar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Quick Navigation */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

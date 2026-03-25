@@ -8,7 +8,10 @@ import { BookingManagement } from './components/BookingManagement';
 export default function AdminDashboard() {
   const [currentPage, setCurrentPage] = useState('dashboard');
 
+  console.log('AdminDashboard renderizando, currentPage:', currentPage);
+
   const renderPage = () => {
+    console.log('Renderizando página:', currentPage);
     switch (currentPage) {
       case 'dashboard':
         return <Dashboard onNavigate={setCurrentPage} />;

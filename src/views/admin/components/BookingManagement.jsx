@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -12,208 +12,120 @@ import {
   TableRow,
 } from '@/app/components/ui/table';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/app/components/ui/dropdown-menu';
-import {
   Search,
   Filter,
-  MoreVertical,
-  Eye,
   CheckCircle,
   XCircle,
   Calendar,
   DollarSign,
+  RefreshCw,
 } from 'lucide-react';
-
-const mockBookings = [
-  {
-    id: '1',
-    bookingNumber: 'BK-2024-001',
-    property: 'Casa moderna en la playa',
-    guest: 'Carlos Ruiz',
-    host: 'María González',
-    checkIn: '2024-04-15',
-    checkOut: '2024-04-20',
-    status: 'confirmed',
-    totalAmount: 1250,
-    paymentStatus: 'paid',
-    createdDate: '2024-03-10',
-  },
-  {
-    id: '2',
-    bookingNumber: 'BK-2024-002',
-    property: 'Apartamento céntrico',
-    guest: 'Laura Torres',
-    host: 'Ana Martínez',
-    checkIn: '2024-03-28',
-    checkOut: '2024-04-02',
-    status: 'completed',
-    totalAmount: 600,
-    paymentStatus: 'paid',
-    createdDate: '2024-02-20',
-  },
-  {
-    id: '3',
-    bookingNumber: 'BK-2024-003',
-    property: 'Villa con vista al mar',
-    guest: 'Carlos Ruiz',
-    host: 'Roberto Díaz',
-    checkIn: '2024-05-10',
-    checkOut: '2024-05-15',
-    status: 'pending',
-    totalAmount: 2250,
-    paymentStatus: 'pending',
-    createdDate: '2024-03-18',
-  },
-  {
-    id: '4',
-    bookingNumber: 'BK-2024-004',
-    property: 'Casa colonial restaurada',
-    guest: 'Luis Pérez',
-    host: 'Ana Martínez',
-    checkIn: '2024-04-05',
-    checkOut: '2024-04-08',
-    status: 'cancelled',
-    totalAmount: 540,
-    paymentStatus: 'refunded',
-    createdDate: '2024-03-01',
-  },
-  {
-    id: '5',
-    bookingNumber: 'BK-2024-005',
-    property: 'Villa de lujo',
-    guest: 'Laura Torres',
-    host: 'Roberto Díaz',
-    checkIn: '2024-06-01',
-    checkOut: '2024-06-07',
-    status: 'confirmed',
-    totalAmount: 4080,
-    paymentStatus: 'paid',
-    createdDate: '2024-03-20',
-  },
-  {
-    id: '6',
-    bookingNumber: 'BK-2024-006',
-    property: 'Casa con alberca',
-    guest: 'Carlos Ruiz',
-    host: 'María González',
-    checkIn: '2024-04-22',
-    checkOut: '2024-04-25',
-    status: 'confirmed',
-    totalAmount: 960,
-    paymentStatus: 'paid',
-    createdDate: '2024-03-15',
-  },
-  {
-    id: '7',
-    bookingNumber: 'BK-2024-007',
-    property: 'Apartamento céntrico',
-    guest: 'Sofia López',
-    host: 'Ana Martínez',
-    checkIn: '2024-05-20',
-    checkOut: '2024-05-23',
-    status: 'pending',
-    totalAmount: 360,
-    paymentStatus: 'pending',
-    createdDate: '2024-03-22',
-  },
-  {
-    id: '8',
-    bookingNumber: 'BK-2024-008',
-    property: 'Casa moderna en la playa',
-    guest: 'Luis Pérez',
-    host: 'María González',
-    checkIn: '2024-03-15',
-    checkOut: '2024-03-18',
-    status: 'completed',
-    totalAmount: 750,
-    paymentStatus: 'paid',
-    createdDate: '2024-02-28',
-  },
-];
+import { supabase } from '@/lib/supabaseClient';
 
 export function BookingManagement({ onNavigate }) {
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [filterPayment, setFilterPayment] = useState('all');
+  const [bookings, setBookings] = useState([]);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const filteredBookings = mockBookings.filter((booking) => {
+  // Obtiene reservas y relaciones (propiedad/inquilino) para mostrar datos completos.
+  const loadBookings = async () => {
+    setLoading(true);
+    setErrorMessage('');
+
+    try {
+      const { data, error } = await supabase
+        .from('reserva')
+        .select('id_propiedad,id_inquilino,fecha_inicio,fecha_fin,estado,pago,propiedad:propiedad(descripcion,id_arrendatario,arrendatario:arrendatario(nombre)),inquilino:inquilino(nombre)');
+
+      if (error) {
+        setErrorMessage(`No se pudieron cargar las reservas. ${error.message}`);
+        setBookings([]);
+        return;
+      }
+
+      const normalized = (data || []).map((item) => ({
+        key: `${item.id_propiedad}-${item.id_inquilino}-${item.fecha_inicio}`,
+        id_propiedad: item.id_propiedad,
+        id_inquilino: item.id_inquilino,
+        fecha_inicio: item.fecha_inicio,
+        fecha_fin: item.fecha_fin,
+        estado: item.estado || 'pendiente',
+        pago: Number(item.pago || 0),
+        propiedad: item.propiedad?.descripcion || `Propiedad #${item.id_propiedad}`,
+        inquilino: item.inquilino?.nombre || `Inquilino #${item.id_inquilino}`,
+        arrendatario:
+          item.propiedad?.arrendatario?.nombre ||
+          (item.propiedad?.id_arrendatario ? `Arrendatario #${item.propiedad.id_arrendatario}` : 'Sin arrendatario'),
+      }));
+
+      setBookings(normalized);
+    } catch (error) {
+      setErrorMessage(error.message || 'No se pudieron cargar las reservas.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadBookings();
+  }, []);
+
+  // Filtra reservas por texto libre y estado.
+  const filteredBookings = useMemo(() => bookings.filter((booking) => {
     const matchesSearch =
-      booking.bookingNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.property.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.guest.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.host.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || booking.status === filterStatus;
-    const matchesPayment =
-      filterPayment === 'all' || booking.paymentStatus === filterPayment;
-    return matchesSearch && matchesStatus && matchesPayment;
-  });
+      booking.key.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      booking.propiedad.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      booking.inquilino.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      booking.arrendatario.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus =
+      filterStatus === 'all' || booking.estado.toLowerCase().includes(filterStatus.toLowerCase());
+    return matchesSearch && matchesStatus;
+  }), [bookings, searchTerm, filterStatus]);
 
+  // Determina colores del badge de estado según el valor textual.
   const getStatusBadgeColor = (status) => {
-    switch (status) {
-      case 'confirmed':
-        return 'bg-[#6B8E23] text-white';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-700';
-      case 'cancelled':
-        return 'bg-red-100 text-red-700';
-      case 'completed':
-        return 'bg-blue-100 text-blue-700';
-      default:
-        return 'bg-gray-100 text-gray-700';
-    }
+    if (status.toLowerCase().includes('confirm')) return 'bg-[#6B8E23] text-white';
+    if (status.toLowerCase().includes('pend')) return 'bg-yellow-100 text-yellow-700';
+    if (status.toLowerCase().includes('cancel')) return 'bg-red-100 text-red-700';
+    if (status.toLowerCase().includes('complet')) return 'bg-blue-100 text-blue-700';
+    return 'bg-gray-100 text-gray-700';
   };
 
-  const getPaymentBadgeColor = (status) => {
-    switch (status) {
-      case 'paid':
-        return 'bg-green-100 text-green-700';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-700';
-      case 'refunded':
-        return 'bg-gray-100 text-gray-700';
-      default:
-        return 'bg-gray-100 text-gray-700';
-    }
-  };
-
+  // Retorna el estado tal cual para mantener coherencia con la base de datos.
   const getStatusLabel = (status) => {
-    switch (status) {
-      case 'confirmed':
-        return 'Confirmada';
-      case 'pending':
-        return 'Pendiente';
-      case 'cancelled':
-        return 'Cancelada';
-      case 'completed':
-        return 'Completada';
-      default:
-        return status;
-    }
+    return status;
   };
 
-  const getPaymentLabel = (status) => {
-    switch (status) {
-      case 'paid':
-        return 'Pagado';
-      case 'pending':
-        return 'Pendiente';
-      case 'refunded':
-        return 'Reembolsado';
-      default:
-        return status;
-    }
-  };
-
+  // Calcula cantidad de noches entre fecha de inicio y fecha de fin.
   const calculateNights = (checkIn, checkOut) => {
     const start = new Date(checkIn);
     const end = new Date(checkOut);
     const diffTime = Math.abs(end.getTime() - start.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
+  };
+
+  // Actualiza el estado de una reserva usando su clave compuesta.
+  const updateBookingStatus = async (booking, nextStatus) => {
+    const { error } = await supabase
+      .from('reserva')
+      .update({ estado: nextStatus })
+      .eq('id_propiedad', booking.id_propiedad)
+      .eq('id_inquilino', booking.id_inquilino)
+      .eq('fecha_inicio', booking.fecha_inicio);
+
+    if (error) {
+      setErrorMessage(`No se pudo actualizar la reserva. ${error.message}`);
+      return;
+    }
+
+    setBookings((prev) =>
+      prev.map((item) =>
+        item.key === booking.key ? { ...item, estado: nextStatus } : item
+      )
+    );
   };
 
   return (
@@ -223,9 +135,22 @@ export function BookingManagement({ onNavigate }) {
           Gestión de Reservas
         </h1>
         <p className="text-[#5F5F5F]/70">
-          Administra todas las reservas de la plataforma
+          Administra la tabla reserva con datos reales
         </p>
       </div>
+
+      <div className="flex justify-end">
+        <Button onClick={loadBookings} variant="outline" className="border-gray-200" disabled={loading}>
+          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Actualizar
+        </Button>
+      </div>
+
+      {errorMessage && (
+        <Card className="bg-yellow-50 border-yellow-200">
+          <CardContent className="p-4 text-sm text-yellow-800">{errorMessage}</CardContent>
+        </Card>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -235,7 +160,7 @@ export function BookingManagement({ onNavigate }) {
               <div>
                 <p className="text-sm text-[#5F5F5F]/70">Total</p>
                 <p className="text-2xl font-['Poppins'] font-semibold text-[#5F5F5F]">
-                  {mockBookings.length}
+                  {bookings.length}
                 </p>
               </div>
               <Calendar className="w-8 h-8 text-[#A67C52]" />
@@ -249,7 +174,7 @@ export function BookingManagement({ onNavigate }) {
               <div>
                 <p className="text-sm text-[#5F5F5F]/70">Confirmadas</p>
                 <p className="text-2xl font-['Poppins'] font-semibold text-[#5F5F5F]">
-                  {mockBookings.filter((b) => b.status === 'confirmed').length}
+                  {bookings.filter((b) => b.estado.toLowerCase().includes('confirm')).length}
                 </p>
               </div>
               <CheckCircle className="w-8 h-8 text-[#6B8E23]" />
@@ -263,7 +188,7 @@ export function BookingManagement({ onNavigate }) {
               <div>
                 <p className="text-sm text-[#5F5F5F]/70">Pendientes</p>
                 <p className="text-2xl font-['Poppins'] font-semibold text-[#5F5F5F]">
-                  {mockBookings.filter((b) => b.status === 'pending').length}
+                  {bookings.filter((b) => b.estado.toLowerCase().includes('pend')).length}
                 </p>
               </div>
               <Calendar className="w-8 h-8 text-yellow-500" />
@@ -277,7 +202,7 @@ export function BookingManagement({ onNavigate }) {
               <div>
                 <p className="text-sm text-[#5F5F5F]/70">Ingresos</p>
                 <p className="text-2xl font-['Poppins'] font-semibold text-[#5F5F5F]">
-                  ${mockBookings.reduce((sum, b) => sum + b.totalAmount, 0).toLocaleString()}
+                  ${bookings.reduce((sum, b) => sum + b.pago, 0).toLocaleString('es-MX')}
                 </p>
               </div>
               <DollarSign className="w-8 h-8 text-[#A67C52]" />
@@ -300,54 +225,28 @@ export function BookingManagement({ onNavigate }) {
               />
             </div>
             <div className="flex gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="border-gray-200">
-                    <Filter className="w-4 h-4 mr-2" />
-                    Estado: {filterStatus === 'all' ? 'Todos' : getStatusLabel(filterStatus)}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => setFilterStatus('all')}>
-                    Todos
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setFilterStatus('confirmed')}>
-                    Confirmada
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setFilterStatus('pending')}>
-                    Pendiente
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setFilterStatus('completed')}>
-                    Completada
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setFilterStatus('cancelled')}>
-                    Cancelada
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="border-gray-200">
-                    <Filter className="w-4 h-4 mr-2" />
-                    Pago: {filterPayment === 'all' ? 'Todos' : getPaymentLabel(filterPayment)}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => setFilterPayment('all')}>
-                    Todos
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setFilterPayment('paid')}>
-                    Pagado
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setFilterPayment('pending')}>
-                    Pendiente
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setFilterPayment('refunded')}>
-                    Reembolsado
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Button
+                variant={filterStatus === 'all' ? 'default' : 'outline'}
+                className={filterStatus === 'all' ? 'bg-[#6B8E23] text-white' : 'border-gray-200'}
+                onClick={() => setFilterStatus('all')}
+              >
+                <Filter className="w-4 h-4 mr-2" />
+                Todos
+              </Button>
+              <Button
+                variant={filterStatus === 'confirmada' ? 'default' : 'outline'}
+                className={filterStatus === 'confirmada' ? 'bg-[#6B8E23] text-white' : 'border-gray-200'}
+                onClick={() => setFilterStatus('confirmada')}
+              >
+                Confirmadas
+              </Button>
+              <Button
+                variant={filterStatus === 'pendiente' ? 'default' : 'outline'}
+                className={filterStatus === 'pendiente' ? 'bg-[#6B8E23] text-white' : 'border-gray-200'}
+                onClick={() => setFilterStatus('pendiente')}
+              >
+                Pendientes
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -371,77 +270,64 @@ export function BookingManagement({ onNavigate }) {
                   <TableHead className="text-[#5F5F5F]">Fechas</TableHead>
                   <TableHead className="text-[#5F5F5F]">Noches</TableHead>
                   <TableHead className="text-[#5F5F5F]">Estado</TableHead>
-                  <TableHead className="text-[#5F5F5F]">Pago</TableHead>
                   <TableHead className="text-[#5F5F5F]">Total</TableHead>
                   <TableHead className="text-[#5F5F5F]">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredBookings.map((booking) => (
-                  <TableRow key={booking.id} className="hover:bg-[#F2E8CF]/20">
+                  <TableRow key={booking.key} className="hover:bg-[#F2E8CF]/20">
                     <TableCell>
-                      <p className="text-[#5F5F5F] font-medium">{booking.bookingNumber}</p>
-                      <p className="text-xs text-[#5F5F5F]/60">
-                        {new Date(booking.createdDate).toLocaleDateString('es-ES')}
-                      </p>
+                      <p className="text-[#5F5F5F] font-medium">RSV-{booking.id_propiedad}-{booking.id_inquilino}</p>
+                      <p className="text-xs text-[#5F5F5F]/60">Inicio: {booking.fecha_inicio}</p>
                     </TableCell>
                     <TableCell>
-                      <p className="text-[#5F5F5F]">{booking.property}</p>
-                      <p className="text-sm text-[#5F5F5F]/60">Anfitrión: {booking.host}</p>
+                      <p className="text-[#5F5F5F]">{booking.propiedad}</p>
+                      <p className="text-sm text-[#5F5F5F]/60">Arrendatario: {booking.arrendatario}</p>
                     </TableCell>
-                    <TableCell className="text-[#5F5F5F]">{booking.guest}</TableCell>
+                    <TableCell className="text-[#5F5F5F]">{booking.inquilino}</TableCell>
                     <TableCell>
                       <p className="text-[#5F5F5F] text-sm">
-                        {new Date(booking.checkIn).toLocaleDateString('es-ES', {
+                        {new Date(booking.fecha_inicio).toLocaleDateString('es-ES', {
                           day: '2-digit',
                           month: 'short',
                         })}
                       </p>
                       <p className="text-[#5F5F5F] text-sm">
-                        {new Date(booking.checkOut).toLocaleDateString('es-ES', {
+                        {new Date(booking.fecha_fin).toLocaleDateString('es-ES', {
                           day: '2-digit',
                           month: 'short',
                         })}
                       </p>
                     </TableCell>
                     <TableCell className="text-[#5F5F5F]">
-                      {calculateNights(booking.checkIn, booking.checkOut)}
+                      {calculateNights(booking.fecha_inicio, booking.fecha_fin)}
                     </TableCell>
                     <TableCell>
-                      <Badge className={getStatusBadgeColor(booking.status)}>
-                        {getStatusLabel(booking.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getPaymentBadgeColor(booking.paymentStatus)}>
-                        {getPaymentLabel(booking.paymentStatus)}
+                      <Badge className={getStatusBadgeColor(booking.estado)}>
+                        {getStatusLabel(booking.estado)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-[#5F5F5F] font-medium">
-                      ${booking.totalAmount.toLocaleString()}
+                      ${booking.pago.toLocaleString('es-MX')}
                     </TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Eye className="w-4 h-4 mr-2" />
-                            Ver detalles
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            Confirmar reserva
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600">
-                            <XCircle className="w-4 h-4 mr-2" />
-                            Cancelar reserva
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          className="bg-[#6B8E23] hover:bg-[#5a7a1d] text-white"
+                          onClick={() => updateBookingStatus(booking, 'confirmada')}
+                        >
+                          Confirmar
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                          onClick={() => updateBookingStatus(booking, 'cancelada')}
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
