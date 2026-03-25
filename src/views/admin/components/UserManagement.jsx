@@ -11,9 +11,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/app/components/ui/table';
-import { Search, RefreshCw, Users, Home, Calendar, UserPlus } from 'lucide-react';
+import { Search, RefreshCw, Users, Home, Calendar, UserPlus, Pencil } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { ConfirmActionModal } from './ConfirmActionModal';
+import { recordAdminActivity } from '@/views/admin/utils/adminActivity';
 
 const initialCreateForm = {
   tipo: 'inquilino',
@@ -325,6 +326,12 @@ export function UserManagement({ onNavigate }) {
     );
     setErrorMessage('');
     setSuccessMessage('Usuario actualizado correctamente.');
+    recordAdminActivity({
+      type: 'Usuario actualizado',
+      user: `${nextValues.nombre} · ${nextValues.correo}`,
+      status: 'success',
+      source: 'usuarios',
+    });
     cancelEdit();
     setEditConfirmCandidate(null);
   };
@@ -351,6 +358,8 @@ export function UserManagement({ onNavigate }) {
   // Elimina el usuario confirmado desde la tabla correspondiente.
   const confirmDelete = async () => {
     if (!deleteCandidate) return;
+
+    const deletedUser = deleteCandidate;
 
     setErrorMessage('');
 
@@ -453,7 +462,13 @@ export function UserManagement({ onNavigate }) {
         throw new Error('Tipo de usuario no soportado para eliminación.');
       }
 
-      setUsers((prev) => prev.filter((user) => user.key !== deleteCandidate.key));
+      setUsers((prev) => prev.filter((user) => user.key !== deletedUser.key));
+      recordAdminActivity({
+        type: 'Usuario eliminado',
+        user: `${deletedUser.nombre} · ${deletedUser.correo}`,
+        status: 'warning',
+        source: 'usuarios',
+      });
       setDeleteCandidate(null);
     } catch (error) {
       const hint = getDeleteHint(error?.message);
@@ -588,6 +603,12 @@ export function UserManagement({ onNavigate }) {
     closeCreateModal();
     setErrorMessage('');
     setSuccessMessage('Usuario agregado correctamente.');
+    recordAdminActivity({
+      type: 'Usuario agregado',
+      user: `${nombre} · ${correo}`,
+      status: 'success',
+      source: 'usuarios',
+    });
   };
 
   return (
@@ -809,7 +830,8 @@ export function UserManagement({ onNavigate }) {
                         </div>
                       ) : (
                         <div className="flex gap-2">
-                          <Button size="sm" variant="outline" onClick={() => startEdit(user)}>
+                          <Button size="sm" variant="outline" className="border-gray-200" onClick={() => startEdit(user)}>
+                            <Pencil className="mr-2 h-4 w-4" />
                             Editar
                           </Button>
                           <Button

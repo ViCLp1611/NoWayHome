@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
+import { Textarea } from '@/app/components/ui/textarea';
 import { Badge } from '@/app/components/ui/badge';
 import {
   Table,
@@ -16,8 +17,23 @@ import {
   Filter,
   MapPin,
   RefreshCw,
+  Pencil,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import { recordAdminActivity } from '@/views/admin/utils/adminActivity';
+
+const DEFAULT_STATUS_OPTIONS = ['Disponible', 'Ocupado', 'Mantenimiento', 'Inactiva'];
+
+const normalizeStatusValue = (status) => {
+  const trimmedStatus = String(status || '').trim().toLowerCase();
+
+  if (trimmedStatus === 'disponible') return 'Disponible';
+  if (trimmedStatus === 'ocupado' || trimmedStatus === 'ocupada') return 'Ocupado';
+  if (trimmedStatus === 'mantenimiento') return 'Mantenimiento';
+  if (trimmedStatus === 'inactiva' || trimmedStatus === 'inactivo') return 'Inactiva';
+
+  return trimmedStatus;
+};
 
 export function PropertyManagement({ onNavigate }) {
   const [loading, setLoading] = useState(true);
@@ -26,6 +42,10 @@ export function PropertyManagement({ onNavigate }) {
   const [errorMessage, setErrorMessage] = useState('');
   const [properties, setProperties] = useState([]);
   const [deleteCandidate, setDeleteCandidate] = useState(null);
+  const [editCandidate, setEditCandidate] = useState(null);
+  const [editForm, setEditForm] = useState({ descripcion: '', direccion: '', estado: '' });
+  const [editErrors, setEditErrors] = useState({});
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // Carga propiedades y total de reservas por propiedad para construir la vista.
   const loadProperties = async () => {
@@ -84,9 +104,27 @@ export function PropertyManagement({ onNavigate }) {
       property.direccion.toLowerCase().includes(searchTerm.toLowerCase()) ||
       property.arrendatario.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus =
-      filterStatus === 'all' || property.estado.toLowerCase().includes(filterStatus.toLowerCase());
+      filterStatus === 'all'
+      || normalizeStatusValue(property.estado).toLowerCase() === normalizeStatusValue(filterStatus).toLowerCase();
     return matchesSearch && matchesStatus;
   }), [properties, searchTerm, filterStatus]);
+
+  const statusOptions = useMemo(() => {
+    const allStatuses = [
+      ...DEFAULT_STATUS_OPTIONS,
+      ...properties.map((property) => normalizeStatusValue(property.estado)),
+    ].filter(Boolean);
+
+    return allStatuses.reduce((acc, status) => {
+      const normalizedStatus = normalizeStatusValue(status);
+
+      if (!acc.some((item) => normalizeStatusValue(item) === normalizedStatus)) {
+        acc.push(normalizedStatus);
+      }
+
+      return acc;
+    }, []);
+  }, [properties]);
 
   // Asigna el color del badge según el estado de la propiedad.
   const getStatusBadgeColor = (status) => {
@@ -99,10 +137,12 @@ export function PropertyManagement({ onNavigate }) {
   // Elimina la propiedad seleccionada y actualiza el listado local.
   const deleteProperty = async () => {
     if (!deleteCandidate) return;
+    const propertyToDelete = deleteCandidate;
+
     const { error } = await supabase
       .from('propiedad')
       .delete()
-      .eq('id_propiedad', deleteCandidate.id);
+      .eq('id_propiedad', propertyToDelete.id);
 
     if (error) {
       setErrorMessage(`No se pudo eliminar la propiedad. ${error.message}`);
@@ -110,8 +150,137 @@ export function PropertyManagement({ onNavigate }) {
       return;
     }
 
-    setProperties((prev) => prev.filter((item) => item.id !== deleteCandidate.id));
+    setProperties((prev) => prev.filter((item) => item.id !== propertyToDelete.id));
+    recordAdminActivity({
+      type: 'Propiedad eliminada',
+      user: `${propertyToDelete.descripcion} · ${propertyToDelete.direccion}`,
+      status: 'warning',
+      source: 'propiedades',
+    });
     setDeleteCandidate(null);
+  };
+
+  const openEditModal = (property) => {
+    setEditCandidate(property);
+    setEditForm({
+      descripcion: property.descripcion || '',
+      direccion: property.direccion || '',
+      estado: property.estado || '',
+    });
+    setEditErrors({});
+  };
+
+  const closeEditModal = (force = false) => {
+    if (isSavingEdit && !force) return;
+    setEditCandidate(null);
+    setEditErrors({});
+  };
+
+  const handleEditChange = (field, value) => {
+    setEditForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+
+    if (editErrors[field] || editErrors.form) {
+      setEditErrors((prev) => ({
+        ...prev,
+        [field]: '',
+        form: '',
+      }));
+    }
+  };
+
+  const validateEditForm = () => {
+    const nextErrors = {};
+
+    if (!editForm.descripcion.trim()) {
+      nextErrors.descripcion = 'La descripción es obligatoria.';
+    }
+
+    if (!editForm.direccion.trim()) {
+      nextErrors.direccion = 'La dirección es obligatoria.';
+    }
+
+    if (!editForm.estado.trim()) {
+      nextErrors.estado = 'Seleccione un estado.';
+    }
+
+    setEditErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const savePropertyChanges = async () => {
+    if (!editCandidate || !validateEditForm()) return;
+
+    const propertyId = editCandidate.id;
+    const payload = {
+      descripcion: editForm.descripcion.trim(),
+      direccion: editForm.direccion.trim(),
+      estado: normalizeStatusValue(editForm.estado),
+    };
+
+    setIsSavingEdit(true);
+
+    const { data: updatedRows, error } = await supabase
+      .from('propiedad')
+      .update(payload)
+      .eq('id_propiedad', propertyId)
+      .select('id_propiedad,descripcion,direccion,estado');
+
+    if (error) {
+      setEditErrors((prev) => ({
+        ...prev,
+        form: `No se pudo actualizar la propiedad. ${error.message}`,
+      }));
+      setIsSavingEdit(false);
+      return;
+    }
+
+    if (!updatedRows || updatedRows.length === 0) {
+      const { data: existingProperty, error: checkError } = await supabase
+        .from('propiedad')
+        .select('id_propiedad')
+        .eq('id_propiedad', propertyId)
+        .maybeSingle();
+
+      const saveErrorMessage = checkError
+        ? `No se guardaron cambios en la base de datos. ${checkError.message}`
+        : existingProperty
+          ? 'No se guardaron cambios porque tu rol no tiene permiso UPDATE en RLS para la tabla propiedad.'
+          : 'No se guardaron cambios porque la propiedad no existe o cambió su identificador.';
+
+      setEditErrors((prev) => ({
+        ...prev,
+        form: saveErrorMessage,
+      }));
+      setIsSavingEdit(false);
+      return;
+    }
+
+    const updatedProperty = updatedRows[0];
+
+    setProperties((prev) => prev.map((item) => (
+      item.id === propertyId
+        ? {
+          ...item,
+          descripcion: updatedProperty.descripcion,
+          direccion: updatedProperty.direccion,
+          estado: updatedProperty.estado,
+        }
+        : item
+    )));
+
+    recordAdminActivity({
+      type: 'Propiedad actualizada',
+      user: `${updatedProperty.descripcion} · ${updatedProperty.direccion}`,
+      status: 'success',
+      source: 'propiedades',
+    });
+
+    await loadProperties();
+    setIsSavingEdit(false);
+    closeEditModal(true);
   };
 
   return (
@@ -167,11 +336,11 @@ export function PropertyManagement({ onNavigate }) {
                 Disponible
               </Button>
               <Button
-                variant={filterStatus === 'ocupada' ? 'default' : 'outline'}
-                className={filterStatus === 'ocupada' ? 'bg-[#6B8E23] text-white' : 'border-gray-200'}
-                onClick={() => setFilterStatus('ocupada')}
+                variant={filterStatus === 'ocupado' ? 'default' : 'outline'}
+                className={filterStatus === 'ocupado' ? 'bg-[#6B8E23] text-white' : 'border-gray-200'}
+                onClick={() => setFilterStatus('ocupado')}
               >
-                Ocupada
+                Ocupado
               </Button>
             </div>
           </div>
@@ -223,13 +392,24 @@ export function PropertyManagement({ onNavigate }) {
                     <TableCell className="text-[#5F5F5F]">{property.reservas}</TableCell>
                     <TableCell className="text-[#5F5F5F]">{property.resena}</TableCell>
                     <TableCell>
-                      <Button
-                        size="sm"
-                        className="bg-red-600 hover:bg-red-700 text-white"
-                        onClick={() => setDeleteCandidate(property)}
-                      >
-                        Eliminar
-                      </Button>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-gray-200"
+                          onClick={() => openEditModal(property)}
+                        >
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Editar
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                          onClick={() => setDeleteCandidate(property)}
+                        >
+                          Eliminar
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -252,6 +432,91 @@ export function PropertyManagement({ onNavigate }) {
               </Button>
               <Button className="bg-red-600 hover:bg-red-700" onClick={deleteProperty}>
                 Eliminar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editCandidate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl">
+            <h2 className="text-lg font-semibold text-[#333]">Editar propiedad</h2>
+            <p className="mt-2 text-sm text-[#555]">
+              Solo se pueden modificar la descripción, la dirección y el estado.
+            </p>
+
+            <div className="mt-5 space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[#5F5F5F]" htmlFor="property-description">
+                  Descripción
+                </label>
+                <Textarea
+                  id="property-description"
+                  value={editForm.descripcion}
+                  onChange={(event) => handleEditChange('descripcion', event.target.value)}
+                  className="min-h-[120px] bg-[#FAFAFA] border-gray-200"
+                  placeholder="Describe la propiedad"
+                  disabled={isSavingEdit}
+                />
+                {editErrors.descripcion && (
+                  <p className="text-sm text-red-600">{editErrors.descripcion}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[#5F5F5F]" htmlFor="property-address">
+                  Dirección
+                </label>
+                <Input
+                  id="property-address"
+                  value={editForm.direccion}
+                  onChange={(event) => handleEditChange('direccion', event.target.value)}
+                  className="bg-[#FAFAFA] border-gray-200"
+                  placeholder="Dirección completa"
+                  disabled={isSavingEdit}
+                />
+                {editErrors.direccion && (
+                  <p className="text-sm text-red-600">{editErrors.direccion}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[#5F5F5F]" htmlFor="property-status">
+                  Estado
+                </label>
+                <select
+                  id="property-status"
+                  value={editForm.estado}
+                  onChange={(event) => handleEditChange('estado', event.target.value)}
+                  className="flex h-10 w-full rounded-md border border-gray-200 bg-[#FAFAFA] px-3 py-2 text-sm text-[#5F5F5F]"
+                  disabled={isSavingEdit}
+                >
+                  <option value="">Seleccione un estado</option>
+                  {statusOptions.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+                {editErrors.estado && (
+                  <p className="text-sm text-red-600">{editErrors.estado}</p>
+                )}
+              </div>
+
+              {editErrors.form && (
+                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {editErrors.form}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <Button variant="outline" onClick={closeEditModal} disabled={isSavingEdit}>
+                Cancelar
+              </Button>
+              <Button className="bg-[#6B8E23] hover:bg-[#5a7a1d]" onClick={savePropertyChanges} disabled={isSavingEdit}>
+                {isSavingEdit ? 'Guardando...' : 'Guardar cambios'}
               </Button>
             </div>
           </div>
