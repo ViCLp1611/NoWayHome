@@ -34,9 +34,6 @@ function CommandDialog({
   description = "Search for a command to run...",
   children,
   ...props
-} & {
-  title?: string;
-  description?: string;
 }) {
   return (
     <Dialog {...props}>

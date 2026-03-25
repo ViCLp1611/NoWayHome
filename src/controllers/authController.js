@@ -163,5 +163,61 @@ export class AuthController {
   }
 }
 
+// Función para login de administrador (separada del controlador de usuarios)
+import { authService } from '../services/authService.js';
+
+export const handleAdminLogin = async (correo, contrasena) => {
+  try {
+    // Validación básica de campos vacíos
+    if (!correo || !correo.trim()) {
+      return {
+        success: false,
+        message: 'El correo electrónico es requerido'
+      };
+    }
+
+    if (!contrasena || !contrasena.trim()) {
+      return {
+        success: false,
+        message: 'La contraseña es requerida'
+      };
+    }
+
+    // Validación básica de formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(correo.trim())) {
+      return {
+        success: false,
+        message: 'El formato del correo electrónico no es válido'
+      };
+    }
+
+    // Llamar al servicio de autenticación
+    const result = await authService.loginAdmin(correo.trim(), contrasena);
+
+    if (result.success) {
+      // Aquí podríamos almacenar el admin en localStorage o sessionStorage si fuera necesario
+      // Por ahora, solo retornamos el resultado exitoso
+      return {
+        success: true,
+        admin: result.admin,
+        message: result.message
+      };
+    } else {
+      return {
+        success: false,
+        message: result.message
+      };
+    }
+
+  } catch (error) {
+    console.error('Error en handleAdminLogin:', error);
+    return {
+      success: false,
+      message: error.message || 'Error desconocido en la autenticación'
+    };
+  }
+};
+
 // Instancia singleton del controlador de autenticación
 export const authController = new AuthController();

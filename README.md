@@ -88,10 +88,18 @@ src/
    - Preferencias de notificaciones
    - Configuración de seguridad
 
+5. **Panel Administrador** (AdminLogin + AdminDashboard)
+   - Login seguro para administradores (`/admin/login`)
+   - Dashboard con gestión de usuarios (`/admin/dashboard`)
+   - CRUD completo de usuarios (crear, leer, actualizar, eliminar)
+   - Autenticación directa con tabla "administrador" en Supabase
+   - Interfaz responsive con confirmaciones de seguridad
+
 ### Roles de Usuario
 
 - **Huésped**: Buscar y reservar alojamiento
 - **Anfitrión**: Publicar y gestionar propiedades
+- **Administrador**: Gestionar usuarios y plataforma
 - **Cambio de rol**: Disponible desde el perfil
 
 ## 🚀 Tecnologías
@@ -109,12 +117,57 @@ src/
 # Instalar dependencias
 npm install
 
+# Configurar variables de entorno
+cp .env.example .env
+# Editar .env con tus credenciales de Supabase
+
 # Modo desarrollo
 npm run dev
 
 # Build para producción
 npm run build
 ```
+
+### 🔧 Configuración de Supabase
+
+1. **Crear archivo `.env`** basado en `.env.example`
+2. **Agregar credenciales reales**:
+   ```bash
+   VITE_SUPABASE_URL=https://tu-proyecto.supabase.co
+   VITE_SUPABASE_ANON_KEY=tu_clave_anonima
+   ```
+
+3. **Crear tabla administrador** en Supabase SQL Editor:
+   ```sql
+   CREATE TABLE IF NOT EXISTS public.administrador (
+       id_admin INTEGER GENERATED ALWAYS AS IDENTITY,
+       nombre VARCHAR(100) NOT NULL,
+       correo VARCHAR(100) NOT NULL UNIQUE,
+       contrasena VARCHAR(100) NOT NULL,
+       PRIMARY KEY (id_admin)
+   );
+
+   -- Insertar admin de prueba
+   INSERT INTO public.administrador (nombre, correo, contrasena)
+   VALUES ('Administrador Principal', 'admin@nowayhome.com', 'admin123')
+   ON CONFLICT (correo) DO NOTHING;
+   ```
+
+4. **Configurar políticas RLS** (IMPORTANTE - Ejecutar después del paso 3):
+   ```sql
+   -- Habilitar RLS en la tabla administrador
+   ALTER TABLE public.administrador ENABLE ROW LEVEL SECURITY;
+
+   -- Crear política para permitir consultas de autenticación
+   CREATE POLICY "Permitir consulta de administradores" ON public.administrador
+       FOR SELECT
+       TO anon
+       USING (true);
+   ```
+
+5. **Verificar conexión** (opcional):
+   - Abrir `http://localhost:5186/` en el navegador
+   - Ejecutar en consola: `import('./diagnose-supabase.js')`
 
 ## 🏛️ Patrón MVC
 

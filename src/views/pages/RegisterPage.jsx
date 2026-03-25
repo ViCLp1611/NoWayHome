@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, Phone, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
+import { Button } from '@/app/components/ui/button';
+import { Input } from '@/app/components/ui/input';
+import { Card } from '@/app/components/ui/card';
 
-export function RegisterPage({ onNavigate, onLogin }) {
+export function RegisterPage() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -25,8 +27,8 @@ export function RegisterPage({ onNavigate, onLogin }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onLogin();
-    onNavigate('profile');
+    // Simular registro
+    navigate('/profile');
   };
 
   return (
@@ -212,7 +214,7 @@ export function RegisterPage({ onNavigate, onLogin }) {
           <p className="text-[#5F5F5F]">
             ¿Ya tienes cuenta?{' '}
             <button
-              onClick={() => onNavigate('login')}
+              onClick={() => navigate('/login')}
               className="text-[#6B8E23] font-medium hover:text-[#5a7a1e] transition-colors"
             >
               Inicia sesión
