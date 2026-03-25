@@ -37,6 +37,20 @@ export function UserManagement({ onNavigate }) {
     return '';
   };
 
+  const getDeleteHint = (message) => {
+    const text = String(message || '').toLowerCase();
+
+    if (
+      text.includes('violates foreign key constraint') ||
+      text.includes('foreign key') ||
+      text.includes('is still referenced')
+    ) {
+      return 'Este usuario tiene relaciones activas (mensajes, contratos, propiedades o reservas). Se deben eliminar primero para completar el borrado.';
+    }
+
+    return getRlsHint(message);
+  };
+
   // Carga usuarios y actividad relacionada desde Supabase, unificando fuentes en una lista.
   const loadUsers = async () => {
     setLoading(true);
@@ -46,13 +60,11 @@ export function UserManagement({ onNavigate }) {
       const [
         inquilinosResult,
         arrendatariosResult,
-        legacyUsersResult,
         propertiesResult,
         bookingsResult,
       ] = await Promise.all([
         supabase.from('inquilino').select('id_inquilino,nombre,correo,telefono'),
         supabase.from('arrendatario').select('id_arrendatario,nombre,correo,telefono'),
-        supabase.from('users').select('*'),
         supabase.from('propiedad').select('id_propiedad,id_arrendatario'),
         supabase.from('reserva').select('id_propiedad,id_inquilino,fecha_inicio'),
       ]);
@@ -116,26 +128,7 @@ export function UserManagement({ onNavigate }) {
         source: 'arrendatario',
       }));
 
-      const legacyUsers = (legacyUsersResult.data || []).map((item) => {
-        const rawRole = String(item.role || item.tipo || 'guest').toLowerCase();
-        const normalizedRole = rawRole.includes('host') ? 'host' : rawRole.includes('admin') ? 'admin' : 'guest';
-
-        return {
-          key: `users-${item.id}`,
-          entityType: 'users',
-          entityId: item.id,
-          nombre: item.name || item.nombre || 'Sin nombre',
-          correo: item.email || item.correo || 'Sin correo',
-          telefono: item.phone || item.telefono || '-',
-          rol: normalizedRole,
-          actividad: 0,
-          source: 'users',
-        };
-      });
-
-      const legacyUsersWithoutAdmins = legacyUsers.filter((item) => item.rol !== 'admin');
-
-      setUsers([...arrendatarios, ...inquilinos, ...legacyUsersWithoutAdmins]);
+      setUsers([...arrendatarios, ...inquilinos]);
     } catch (error) {
       setErrorMessage(error.message || 'No se pudieron cargar los usuarios.');
     } finally {
@@ -207,22 +200,13 @@ export function UserManagement({ onNavigate }) {
     const idField =
       user.entityType === 'arrendatario'
         ? 'id_arrendatario'
-        : user.entityType === 'inquilino'
-        ? 'id_inquilino'
-        : 'id';
+        : 'id_inquilino';
 
-    const payload =
-      user.entityType === 'users'
-        ? {
-            name: editForm.nombre,
-            email: editForm.correo,
-            phone: editForm.telefono,
-          }
-        : {
-            nombre: editForm.nombre,
-            correo: editForm.correo,
-            telefono: editForm.telefono,
-          };
+    const payload = {
+      nombre: editForm.nombre,
+      correo: editForm.correo,
+      telefono: editForm.telefono,
+    };
 
     const { error } = await supabase
       .from(table)
@@ -253,23 +237,114 @@ export function UserManagement({ onNavigate }) {
   const confirmDelete = async () => {
     if (!deleteCandidate) return;
 
-    const table = deleteCandidate.entityType;
-    const idField =
-      deleteCandidate.entityType === 'arrendatario'
-        ? 'id_arrendatario'
-        : deleteCandidate.entityType === 'inquilino'
-        ? 'id_inquilino'
-        : 'id';
+    setErrorMessage('');
 
-    const { error } = await supabase.from(table).delete().eq(idField, deleteCandidate.entityId);
-    if (error) {
-      setErrorMessage(`No se pudo eliminar el usuario. ${error.message}`);
+    try {
+      if (deleteCandidate.entityType === 'inquilino') {
+        const { error: deleteMessagesError } = await supabase
+          .from('mensaje')
+          .delete()
+          .eq('id_inquilino', deleteCandidate.entityId);
+
+        if (deleteMessagesError) {
+          throw deleteMessagesError;
+        }
+
+        const { error: deleteContractsError } = await supabase
+          .from('contrato')
+          .delete()
+          .eq('id_inquilino', deleteCandidate.entityId);
+
+        if (deleteContractsError) {
+          throw deleteContractsError;
+        }
+
+        const { error: deleteBookingsError } = await supabase
+          .from('reserva')
+          .delete()
+          .eq('id_inquilino', deleteCandidate.entityId);
+
+        if (deleteBookingsError) {
+          throw deleteBookingsError;
+        }
+
+        const { error: deleteTenantError } = await supabase
+          .from('inquilino')
+          .delete()
+          .eq('id_inquilino', deleteCandidate.entityId);
+
+        if (deleteTenantError) {
+          throw deleteTenantError;
+        }
+      } else if (deleteCandidate.entityType === 'arrendatario') {
+        const { data: ownedProperties, error: ownedPropertiesError } = await supabase
+          .from('propiedad')
+          .select('id_propiedad')
+          .eq('id_arrendatario', deleteCandidate.entityId);
+
+        if (ownedPropertiesError) {
+          throw ownedPropertiesError;
+        }
+
+        const propertyIds = (ownedProperties || []).map((item) => item.id_propiedad);
+
+        if (propertyIds.length > 0) {
+          const { error: deleteRelatedMessagesError } = await supabase
+            .from('mensaje')
+            .delete()
+            .in('id_propiedad', propertyIds);
+
+          if (deleteRelatedMessagesError) {
+            throw deleteRelatedMessagesError;
+          }
+
+          const { error: deleteRelatedContractsError } = await supabase
+            .from('contrato')
+            .delete()
+            .in('id_propiedad', propertyIds);
+
+          if (deleteRelatedContractsError) {
+            throw deleteRelatedContractsError;
+          }
+
+          const { error: deleteRelatedBookingsError } = await supabase
+            .from('reserva')
+            .delete()
+            .in('id_propiedad', propertyIds);
+
+          if (deleteRelatedBookingsError) {
+            throw deleteRelatedBookingsError;
+          }
+        }
+
+        const { error: deletePropertiesError } = await supabase
+          .from('propiedad')
+          .delete()
+          .eq('id_arrendatario', deleteCandidate.entityId);
+
+        if (deletePropertiesError) {
+          throw deletePropertiesError;
+        }
+
+        const { error: deleteHostError } = await supabase
+          .from('arrendatario')
+          .delete()
+          .eq('id_arrendatario', deleteCandidate.entityId);
+
+        if (deleteHostError) {
+          throw deleteHostError;
+        }
+      } else {
+        throw new Error('Tipo de usuario no soportado para eliminación.');
+      }
+
+      setUsers((prev) => prev.filter((user) => user.key !== deleteCandidate.key));
       setDeleteCandidate(null);
-      return;
+    } catch (error) {
+      const hint = getDeleteHint(error?.message);
+      setErrorMessage(`No se pudo eliminar el usuario. ${error?.message || 'Error desconocido.'}${hint ? ` | ${hint}` : ''}`);
+      setDeleteCandidate(null);
     }
-
-    setUsers((prev) => prev.filter((user) => user.key !== deleteCandidate.key));
-    setDeleteCandidate(null);
   };
 
   return (
