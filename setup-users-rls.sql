@@ -21,8 +21,10 @@ DROP POLICY IF EXISTS "arrendatario_update_anon" ON public.arrendatario;
 DROP POLICY IF EXISTS "arrendatario_delete_anon" ON public.arrendatario;
 
 DROP POLICY IF EXISTS "propiedad_select_anon" ON public.propiedad;
+DROP POLICY IF EXISTS "propiedad_update_anon" ON public.propiedad;
 DROP POLICY IF EXISTS "propiedad_delete_anon" ON public.propiedad;
 DROP POLICY IF EXISTS "reserva_select_anon" ON public.reserva;
+DROP POLICY IF EXISTS "reserva_update_anon" ON public.reserva;
 DROP POLICY IF EXISTS "reserva_delete_anon" ON public.reserva;
 DROP POLICY IF EXISTS "contrato_select_anon" ON public.contrato;
 DROP POLICY IF EXISTS "contrato_delete_anon" ON public.contrato;
@@ -70,6 +72,11 @@ CREATE POLICY "propiedad_select_anon" ON public.propiedad
 FOR SELECT TO anon
 USING (true);
 
+CREATE POLICY "propiedad_update_anon" ON public.propiedad
+FOR UPDATE TO anon
+USING (true)
+WITH CHECK (true);
+
 CREATE POLICY "propiedad_delete_anon" ON public.propiedad
 FOR DELETE TO anon
 USING (true);
@@ -77,6 +84,11 @@ USING (true);
 CREATE POLICY "reserva_select_anon" ON public.reserva
 FOR SELECT TO anon
 USING (true);
+
+CREATE POLICY "reserva_update_anon" ON public.reserva
+FOR UPDATE TO anon
+USING (true)
+WITH CHECK (true);
 
 CREATE POLICY "reserva_delete_anon" ON public.reserva
 FOR DELETE TO anon

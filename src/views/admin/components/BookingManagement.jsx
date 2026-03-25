@@ -15,24 +15,30 @@ import {
   Search,
   Filter,
   CheckCircle,
-  XCircle,
   Calendar,
   DollarSign,
   RefreshCw,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import { ConfirmActionModal } from './ConfirmActionModal';
+import { recordAdminActivity } from '@/views/admin/utils/adminActivity';
 
 export function BookingManagement({ onNavigate }) {
+  const FINAL_STATUSES = ['cancelada', 'rechazada', 'finalizada'];
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [bookings, setBookings] = useState([]);
   const [errorMessage, setErrorMessage] = useState('');
+  const [actionMessage, setActionMessage] = useState({ type: '', text: '' });
+  const [confirmAction, setConfirmAction] = useState({ open: false, bookingId: '', actionId: '' });
+  const [isApplyingAction, setIsApplyingAction] = useState(false);
 
   // Obtiene reservas y relaciones (propiedad/inquilino) para mostrar datos completos.
   const loadBookings = async () => {
     setLoading(true);
     setErrorMessage('');
+    setActionMessage({ type: '', text: '' });
 
     try {
       const { data, error } = await supabase
@@ -107,18 +113,85 @@ export function BookingManagement({ onNavigate }) {
     return diffDays;
   };
 
+  const normalizeStatus = (status) => String(status || '').trim().toLowerCase();
+
+  const showActionMessage = (type, text) => {
+    setActionMessage({ type, text });
+  };
+
+  const findBookingById = (id) => bookings.find((item) => item.key === id);
+
+  const openActionConfirmation = (bookingId, actionId) => {
+    setConfirmAction({ open: true, bookingId, actionId });
+  };
+
+  const closeActionConfirmation = () => {
+    if (isApplyingAction) return;
+    setConfirmAction({ open: false, bookingId: '', actionId: '' });
+  };
+
+  const isFinalStatus = (status) => FINAL_STATUSES.includes(normalizeStatus(status));
+
+  // Devuelve las acciones permitidas según el estado actual de la reserva.
+  const getAccionesPorEstado = (estado) => {
+    const currentStatus = normalizeStatus(estado);
+
+    if (isFinalStatus(currentStatus)) return [];
+    if (currentStatus.includes('confirm')) {
+      return [
+        { id: 'finalizar', label: 'Finalizar', variant: 'blue' },
+        { id: 'cancelar', label: 'Cancelar', variant: 'red' },
+      ];
+    }
+
+    return [
+      { id: 'confirmar', label: 'Confirmar', variant: 'green' },
+      { id: 'cancelar', label: 'Cancelar', variant: 'red' },
+      { id: 'rechazar', label: 'Rechazar', variant: 'slate' },
+    ];
+  };
+
+  const getActionClassName = (variant) => {
+    const baseClassName = 'h-8 w-full rounded-md px-2';
+
+    if (variant === 'green') return `${baseClassName} bg-[#6B8E23] hover:bg-[#5a7a1d] text-white`;
+    if (variant === 'red') return `${baseClassName} bg-red-600 hover:bg-red-700 text-white`;
+    if (variant === 'blue') return `${baseClassName} bg-blue-600 hover:bg-blue-700 text-white`;
+    if (variant === 'slate') return `${baseClassName} bg-slate-600 hover:bg-slate-700 text-white`;
+    return `${baseClassName} bg-gray-200 text-[#5F5F5F]`;
+  };
+
   // Actualiza el estado de una reserva usando su clave compuesta.
   const updateBookingStatus = async (booking, nextStatus) => {
-    const { error } = await supabase
+    const normalizedCurrent = normalizeStatus(booking.estado);
+    const normalizedNext = normalizeStatus(nextStatus);
+
+    if (isFinalStatus(normalizedCurrent)) {
+      showActionMessage('error', `Acción inválida: la reserva ya está ${booking.estado}.`);
+      return false;
+    }
+
+    if (normalizedCurrent === normalizedNext) {
+      showActionMessage('error', `La reserva ya está en estado ${booking.estado}.`);
+      return false;
+    }
+
+    const { data: updatedRows, error } = await supabase
       .from('reserva')
       .update({ estado: nextStatus })
       .eq('id_propiedad', booking.id_propiedad)
       .eq('id_inquilino', booking.id_inquilino)
-      .eq('fecha_inicio', booking.fecha_inicio);
+      .eq('fecha_inicio', booking.fecha_inicio)
+      .select('id_propiedad,id_inquilino,fecha_inicio,estado');
 
     if (error) {
       setErrorMessage(`No se pudo actualizar la reserva. ${error.message}`);
-      return;
+      return false;
+    }
+
+    if (!updatedRows || updatedRows.length === 0) {
+      showActionMessage('error', 'No se actualizó la reserva en la base de datos. Revisa permisos RLS de UPDATE en tabla reserva.');
+      return false;
     }
 
     setBookings((prev) =>
@@ -126,7 +199,208 @@ export function BookingManagement({ onNavigate }) {
         item.key === booking.key ? { ...item, estado: nextStatus } : item
       )
     );
+
+    return true;
   };
+
+  const confirmarReserva = async (id) => {
+    const booking = findBookingById(id);
+    if (!booking) {
+      showActionMessage('error', 'No se encontró la reserva seleccionada.');
+      return;
+    }
+
+    const updated = await updateBookingStatus(booking, 'confirmada');
+    if (updated) {
+      showActionMessage('success', 'Reserva confirmada correctamente.');
+      recordAdminActivity({
+        type: 'Reserva confirmada',
+        user: `RSV-${booking.id_propiedad}-${booking.id_inquilino} · ${booking.propiedad}`,
+        status: 'success',
+        source: 'reservas',
+      });
+    }
+  };
+
+  const cancelarReserva = async (id) => {
+    const booking = findBookingById(id);
+    if (!booking) {
+      showActionMessage('error', 'No se encontró la reserva seleccionada.');
+      return;
+    }
+
+    const updated = await updateBookingStatus(booking, 'cancelada');
+    if (updated) {
+      showActionMessage('success', 'Reserva cancelada correctamente.');
+      recordAdminActivity({
+        type: 'Reserva cancelada',
+        user: `RSV-${booking.id_propiedad}-${booking.id_inquilino} · ${booking.propiedad}`,
+        status: 'warning',
+        source: 'reservas',
+      });
+    }
+  };
+
+  const rechazarReserva = async (id) => {
+    const booking = findBookingById(id);
+    if (!booking) {
+      showActionMessage('error', 'No se encontró la reserva seleccionada.');
+      return;
+    }
+
+    const updated = await updateBookingStatus(booking, 'rechazada');
+    if (updated) {
+      showActionMessage('success', 'Reserva rechazada correctamente.');
+      recordAdminActivity({
+        type: 'Reserva rechazada',
+        user: `RSV-${booking.id_propiedad}-${booking.id_inquilino} · ${booking.propiedad}`,
+        status: 'warning',
+        source: 'reservas',
+      });
+    }
+  };
+
+  const finalizarReserva = async (id) => {
+    const booking = findBookingById(id);
+    if (!booking) {
+      showActionMessage('error', 'No se encontró la reserva seleccionada.');
+      return;
+    }
+
+    const updated = await updateBookingStatus(booking, 'finalizada');
+    if (updated) {
+      showActionMessage('success', 'Reserva finalizada correctamente.');
+      recordAdminActivity({
+        type: 'Reserva finalizada',
+        user: `RSV-${booking.id_propiedad}-${booking.id_inquilino} · ${booking.propiedad}`,
+        status: 'success',
+        source: 'reservas',
+      });
+    }
+  };
+
+  const eliminarReserva = async (id) => {
+    const booking = findBookingById(id);
+    if (!booking) {
+      showActionMessage('error', 'No se encontró la reserva seleccionada.');
+      return;
+    }
+
+    const { error } = await supabase
+      .from('reserva')
+      .delete()
+      .eq('id_propiedad', booking.id_propiedad)
+      .eq('id_inquilino', booking.id_inquilino)
+      .eq('fecha_inicio', booking.fecha_inicio);
+
+    if (error) {
+      setErrorMessage(`No se pudo eliminar la reserva. ${error.message}`);
+      return;
+    }
+
+    setBookings((prev) => prev.filter((item) => item.key !== booking.key));
+    showActionMessage('success', 'Reserva eliminada correctamente.');
+    recordAdminActivity({
+      type: 'Reserva eliminada',
+      user: `RSV-${booking.id_propiedad}-${booking.id_inquilino} · ${booking.propiedad}`,
+      status: 'warning',
+      source: 'reservas',
+    });
+  };
+
+  const actionHandlers = {
+    confirmar: confirmarReserva,
+    cancelar: cancelarReserva,
+    rechazar: rechazarReserva,
+    finalizar: finalizarReserva,
+    eliminar: eliminarReserva,
+  };
+
+  const getActionModalConfig = () => {
+    const booking = findBookingById(confirmAction.bookingId);
+    const bookingLabel = booking
+      ? `RSV-${booking.id_propiedad}-${booking.id_inquilino}`
+      : 'esta reserva';
+
+    if (confirmAction.actionId === 'eliminar') {
+      return {
+        title: 'Confirmar eliminación',
+        description: (
+          <p>
+            ¿Seguro quieres eliminar la reserva <strong>{bookingLabel}</strong>? Esta acción no se puede deshacer.
+          </p>
+        ),
+        confirmLabel: 'Eliminar',
+        confirmButtonClassName: 'bg-red-600 hover:bg-red-700 text-white',
+      };
+    }
+
+    if (confirmAction.actionId === 'cancelar') {
+      return {
+        title: 'Confirmar cancelación',
+        description: (
+          <p>
+            ¿Seguro quieres cancelar la reserva <strong>{bookingLabel}</strong>?
+          </p>
+        ),
+        confirmLabel: 'Cancelar reserva',
+        confirmButtonClassName: 'bg-red-600 hover:bg-red-700 text-white',
+      };
+    }
+
+    if (confirmAction.actionId === 'rechazar') {
+      return {
+        title: 'Confirmar rechazo',
+        description: (
+          <p>
+            ¿Seguro quieres rechazar la reserva <strong>{bookingLabel}</strong>?
+          </p>
+        ),
+        confirmLabel: 'Rechazar reserva',
+        confirmButtonClassName: 'bg-slate-600 hover:bg-slate-700 text-white',
+      };
+    }
+
+    if (confirmAction.actionId === 'finalizar') {
+      return {
+        title: 'Confirmar finalización',
+        description: (
+          <p>
+            ¿Seguro quieres finalizar la reserva <strong>{bookingLabel}</strong>?
+          </p>
+        ),
+        confirmLabel: 'Finalizar reserva',
+        confirmButtonClassName: 'bg-blue-600 hover:bg-blue-700 text-white',
+      };
+    }
+
+    return {
+      title: 'Confirmar reserva',
+      description: (
+        <p>
+          ¿Seguro quieres confirmar la reserva <strong>{bookingLabel}</strong>?
+        </p>
+      ),
+      confirmLabel: 'Confirmar reserva',
+      confirmButtonClassName: 'bg-[#6B8E23] hover:bg-[#5a7a1d] text-white',
+    };
+  };
+
+  const confirmAndExecuteAction = async () => {
+    const handler = actionHandlers[confirmAction.actionId];
+    if (!handler) {
+      showActionMessage('error', 'Acción no disponible.');
+      closeActionConfirmation();
+      return;
+    }
+
+    setIsApplyingAction(true);
+    await handler(confirmAction.bookingId);
+    setIsApplyingAction(false);
+    setConfirmAction({ open: false, bookingId: '', actionId: '' });
+  };
+
+  const actionModalConfig = getActionModalConfig();
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
@@ -149,6 +423,14 @@ export function BookingManagement({ onNavigate }) {
       {errorMessage && (
         <Card className="bg-yellow-50 border-yellow-200">
           <CardContent className="p-4 text-sm text-yellow-800">{errorMessage}</CardContent>
+        </Card>
+      )}
+
+      {actionMessage.text && (
+        <Card className={actionMessage.type === 'success' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}>
+          <CardContent className={actionMessage.type === 'success' ? 'p-4 text-sm text-green-800' : 'p-4 text-sm text-red-800'}>
+            {actionMessage.text}
+          </CardContent>
         </Card>
       )}
 
@@ -271,7 +553,7 @@ export function BookingManagement({ onNavigate }) {
                   <TableHead className="text-[#5F5F5F]">Noches</TableHead>
                   <TableHead className="text-[#5F5F5F]">Estado</TableHead>
                   <TableHead className="text-[#5F5F5F]">Total</TableHead>
-                  <TableHead className="text-[#5F5F5F]">Acciones</TableHead>
+                  <TableHead className="text-[#5F5F5F] w-[260px]">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -311,21 +593,25 @@ export function BookingManagement({ onNavigate }) {
                     <TableCell className="text-[#5F5F5F] font-medium">
                       ${booking.pago.toLocaleString('es-MX')}
                     </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
+                    <TableCell className="w-[260px]">
+                      <div className="grid grid-cols-2 gap-2">
+                        {getAccionesPorEstado(booking.estado).map((action) => (
+                          <Button
+                            key={`${booking.key}-${action.id}`}
+                            size="sm"
+                            className={getActionClassName(action.variant)}
+                            onClick={() => openActionConfirmation(booking.key, action.id)}
+                          >
+                            {action.label}
+                          </Button>
+                        ))}
                         <Button
                           size="sm"
-                          className="bg-[#6B8E23] hover:bg-[#5a7a1d] text-white"
-                          onClick={() => updateBookingStatus(booking, 'confirmada')}
+                          variant="outline"
+                          className="col-span-2 h-8 w-full rounded-md border-gray-300 px-2 text-[#5F5F5F] hover:bg-[#F2E8CF]/30"
+                          onClick={() => openActionConfirmation(booking.key, 'eliminar')}
                         >
-                          Confirmar
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="bg-red-600 hover:bg-red-700 text-white"
-                          onClick={() => updateBookingStatus(booking, 'cancelada')}
-                        >
-                          Cancelar
+                          Eliminar
                         </Button>
                       </div>
                     </TableCell>
@@ -336,6 +622,19 @@ export function BookingManagement({ onNavigate }) {
           </div>
         </CardContent>
       </Card>
+
+      <ConfirmActionModal
+        open={confirmAction.open}
+        title={actionModalConfig.title}
+        description={actionModalConfig.description}
+        cancelLabel="Cancelar"
+        confirmLabel={isApplyingAction ? 'Procesando...' : actionModalConfig.confirmLabel}
+        confirmButtonClassName={actionModalConfig.confirmButtonClassName}
+        onCancel={closeActionConfirmation}
+        onConfirm={confirmAndExecuteAction}
+        disableCancel={isApplyingAction}
+        disableConfirm={isApplyingAction}
+      />
 
       {/* Quick Navigation */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

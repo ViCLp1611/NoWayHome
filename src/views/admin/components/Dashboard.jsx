@@ -23,6 +23,7 @@ import {
   Bar,
 } from 'recharts';
 import { supabase } from '@/lib/supabaseClient';
+import { getAdminActivityLog } from '@/views/admin/utils/adminActivity';
 
 const MONTHS_ES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
@@ -76,6 +77,20 @@ const getMonthBuckets = (months = 6) => {
   }
 
   return buckets;
+};
+
+const toRecentActivityRow = (item) => {
+  const safeDate = item?.timeISO ? new Date(item.timeISO) : null;
+  const date = safeDate && !Number.isNaN(safeDate.getTime()) ? safeDate : new Date();
+
+  return {
+    id: item.id,
+    type: item.type,
+    user: item.user,
+    status: item.status,
+    timeISO: date.toISOString(),
+    time: date.toLocaleString('es-MX'),
+  };
 };
 
 export function Dashboard({ onNavigate }) {
@@ -231,12 +246,23 @@ export function Dashboard({ onNavigate }) {
             id: `${booking.id_propiedad || 'p'}-${booking.id_inquilino || 'i'}-${booking.fecha_inicio || index}`,
             type: `Reserva ${statusRaw}`,
             user: `${String(propertyName)} · ${String(tenantName)}`,
-            time: timeDate ? timeDate.toLocaleDateString('es-MX') : 'Sin fecha',
+            timeISO: timeDate ? timeDate.toISOString() : new Date(0).toISOString(),
             status,
           };
         });
 
-      setRecentActivity(latestBookings);
+      const adminLocalActivity = getAdminActivityLog(20).map((item) => toRecentActivityRow(item));
+      const bookingActivity = latestBookings.map((item) => toRecentActivityRow(item));
+
+      const mergedRecentActivity = [...adminLocalActivity, ...bookingActivity]
+        .sort((a, b) => {
+          const aTime = new Date(a.timeISO).getTime();
+          const bTime = new Date(b.timeISO).getTime();
+          return bTime - aTime;
+        })
+        .slice(0, 6);
+
+      setRecentActivity(mergedRecentActivity);
     } catch (error) {
       console.error('Error cargando dashboard:', error);
       setErrorMessage(error.message || 'No fue posible cargar los datos del dashboard.');
@@ -247,6 +273,15 @@ export function Dashboard({ onNavigate }) {
 
   useEffect(() => {
     loadDashboardData();
+  }, []);
+
+  useEffect(() => {
+    const onActivityUpdated = () => {
+      loadDashboardData();
+    };
+
+    window.addEventListener('admin-activity-updated', onActivityUpdated);
+    return () => window.removeEventListener('admin-activity-updated', onActivityUpdated);
   }, []);
 
   return (
