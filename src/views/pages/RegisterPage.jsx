@@ -5,6 +5,8 @@ import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Card } from '@/app/components/ui/card';
 
+// El componente RegisterPage es la pantalla de registro para nuevos usuarios, que permite ingresar información personal y seleccionar un rol para crear una cuenta en la plataforma. 
+// Utiliza un formulario controlado con estados locales para manejar los valores de entrada, y una función de manejo de envío que simula el proceso de registro y redirige al perfil del usuario después de completar el formulario, proporcionando una experiencia de usuario clara y funcional para crear una nueva cuenta en la plataforma.
 export function RegisterPage() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({

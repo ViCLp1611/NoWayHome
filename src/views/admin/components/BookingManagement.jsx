@@ -1,4 +1,7 @@
+// ================= IMPORTACIONES =================
 import React, { useEffect, useMemo, useState } from 'react';
+
+// Componentes UI reutilizables los sacamos desde la carpeta app/components/ui
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -11,6 +14,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/app/components/ui/table';
+
+// Iconos para los estados y acciones 
 import {
   Search,
   Filter,
@@ -19,18 +24,31 @@ import {
   DollarSign,
   RefreshCw,
 } from 'lucide-react';
+
+// Cliente de Supabase para poder interactuar con la base de datos  
 import { supabase } from '@/lib/supabaseClient';
+
+// Modal de confirmación para las acciones (confirmar, cancelar, rechazar, finalizar, eliminar)
 import { ConfirmActionModal } from './ConfirmActionModal';
+
+// Utilidad para registrar actividad del admin (logs) por si queremos mostrar un historial de acciones realizadas en el futuro
 import { recordAdminActivity } from '@/views/admin/utils/adminActivity';
 
+// ================= COMPONENTE PRINCIPAL =================
 export function BookingManagement({ onNavigate }) {
+
+  // Estados finales (no se pueden modificar después)para que las reservas ya no cambien de estado si ya están canceladas, rechazadas o finalizadas.
   const FINAL_STATUSES = ['cancelada', 'rechazada', 'finalizada'];
+
+    // ================= ESTADOS =================
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [bookings, setBookings] = useState([]);
   const [errorMessage, setErrorMessage] = useState('');
   const [actionMessage, setActionMessage] = useState({ type: '', text: '' });
+
+  // Control de confirmación para los estados
   const [confirmAction, setConfirmAction] = useState({ open: false, bookingId: '', actionId: '' });
   const [isApplyingAction, setIsApplyingAction] = useState(false);
 
@@ -51,6 +69,7 @@ export function BookingManagement({ onNavigate }) {
         return;
       }
 
+      // Normalización de datos porque la tabla reserva tiene claves compuestas y necesitamos una clave única para cada fila, además de extraer datos relacionados para mostrar información completa en la tabla.
       const normalized = (data || []).map((item) => ({
         key: `${item.id_propiedad}-${item.id_inquilino}-${item.fecha_inicio}`,
         id_propiedad: item.id_propiedad,
@@ -59,6 +78,9 @@ export function BookingManagement({ onNavigate }) {
         fecha_fin: item.fecha_fin,
         estado: item.estado || 'pendiente',
         pago: Number(item.pago || 0),
+
+
+        // Datos derivados para mostrar en la tabla, con mensaje de error por si no hay datos relacionados (aunque deberían existir por las relaciones definidas)
         propiedad: item.propiedad?.descripcion || `Propiedad #${item.id_propiedad}`,
         inquilino: item.inquilino?.nombre || `Inquilino #${item.id_inquilino}`,
         arrendatario:
@@ -80,17 +102,21 @@ export function BookingManagement({ onNavigate }) {
 
   // Filtra reservas por texto libre y estado.
   const filteredBookings = useMemo(() => bookings.filter((booking) => {
+
+     // Búsqueda por texto se puede buscar por numero de reserva, propiedad, inquilino o arrendatario.
     const matchesSearch =
       booking.key.toLowerCase().includes(searchTerm.toLowerCase()) ||
       booking.propiedad.toLowerCase().includes(searchTerm.toLowerCase()) ||
       booking.inquilino.toLowerCase().includes(searchTerm.toLowerCase()) ||
       booking.arrendatario.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus =
+   
+   // Filtro por estado se puede filtrar por estado de reserva
+      const matchesStatus =
       filterStatus === 'all' || booking.estado.toLowerCase().includes(filterStatus.toLowerCase());
     return matchesSearch && matchesStatus;
   }), [bookings, searchTerm, filterStatus]);
 
-  // Determina colores del badge de estado según el valor textual.
+  // Determina colores de estado según el valor (cancelada, confirmada, pendiente, rechazada, finalizada).
   const getStatusBadgeColor = (status) => {
     if (status.toLowerCase().includes('confirm')) return 'bg-[#6B8E23] text-white';
     if (status.toLowerCase().includes('pend')) return 'bg-yellow-100 text-yellow-700';
@@ -112,24 +138,27 @@ export function BookingManagement({ onNavigate }) {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
   };
-
+  // Normalizar estado para comparaciones para evitar errores por espacios o mayúsculas.
   const normalizeStatus = (status) => String(status || '').trim().toLowerCase();
 
+// muestra el mensaje de acción después de realizar una operación
   const showActionMessage = (type, text) => {
     setActionMessage({ type, text });
   };
-
+ // Encuentra una reserva por su clave compuesta (id_propiedad-id_inquilino-fecha_inicio) para poder realizar acciones sobre ella.
   const findBookingById = (id) => bookings.find((item) => item.key === id);
 
+// confirma la acción que se va a realizar  mostrando un modal de confirmación para evitar errores por clicks accidentales. Solo se puede confirmar una acción a la vez y mientras se aplica la acción el modal no se puede cerrar para evitar inconsistencias.
   const openActionConfirmation = (bookingId, actionId) => {
     setConfirmAction({ open: true, bookingId, actionId });
   };
 
+// cierra el modal de confirmación y resetea su estado.
   const closeActionConfirmation = () => {
     if (isApplyingAction) return;
     setConfirmAction({ open: false, bookingId: '', actionId: '' });
   };
-
+ // verifica el estado de la reserva para determinar si se pueden realizar acciones adicionales o si ya está en un estado final y ya no se realizan mas cambios
   const isFinalStatus = (status) => FINAL_STATUSES.includes(normalizeStatus(status));
 
   // Devuelve las acciones permitidas según el estado actual de la reserva.
@@ -150,7 +179,7 @@ export function BookingManagement({ onNavigate }) {
       { id: 'rechazar', label: 'Rechazar', variant: 'slate' },
     ];
   };
-
+// Devuelve la clase CSS para el botón de acción según su color.
   const getActionClassName = (variant) => {
     const baseClassName = 'h-8 w-full rounded-md px-2';
 
@@ -176,6 +205,7 @@ export function BookingManagement({ onNavigate }) {
       return false;
     }
 
+// Actualiza el estado de la reserva en la base de datos usando su clave compuesta
     const { data: updatedRows, error } = await supabase
       .from('reserva')
       .update({ estado: nextStatus })
@@ -203,6 +233,7 @@ export function BookingManagement({ onNavigate }) {
     return true;
   };
 
+// Funciones para cada acción de reserva que actualizan el estado y registran la actividad del admin usando la función recordAdminActivity para mantener un historial de acciones realizadas. Cada función verifica que la reserva exista antes de intentar actualizarla y muestra mensajes de éxito o error según corresponda.
   const confirmarReserva = async (id) => {
     const booking = findBookingById(id);
     if (!booking) {
@@ -210,6 +241,7 @@ export function BookingManagement({ onNavigate }) {
       return;
     }
 
+// Actualiza el estado de la reserva a confirmada y registra la actividad del admin.
     const updated = await updateBookingStatus(booking, 'confirmada');
     if (updated) {
       showActionMessage('success', 'Reserva confirmada correctamente.');
@@ -222,13 +254,14 @@ export function BookingManagement({ onNavigate }) {
     }
   };
 
+// Función para cancelar una reserva, actualiza el estado a cancelada y registra la actividad del admin.
   const cancelarReserva = async (id) => {
     const booking = findBookingById(id);
     if (!booking) {
       showActionMessage('error', 'No se encontró la reserva seleccionada.');
       return;
     }
-
+// Actualiza el estado de la reserva a cancelada y registra la actividad del admin.
     const updated = await updateBookingStatus(booking, 'cancelada');
     if (updated) {
       showActionMessage('success', 'Reserva cancelada correctamente.');
@@ -241,13 +274,14 @@ export function BookingManagement({ onNavigate }) {
     }
   };
 
+  // Función para rechazar una reserva, actualiza el estado a rechazada y registra la actividad del admin.
   const rechazarReserva = async (id) => {
     const booking = findBookingById(id);
     if (!booking) {
       showActionMessage('error', 'No se encontró la reserva seleccionada.');
       return;
     }
-
+// Actualiza el estado de la reserva a rechazada y registra la actividad del admin.
     const updated = await updateBookingStatus(booking, 'rechazada');
     if (updated) {
       showActionMessage('success', 'Reserva rechazada correctamente.');
@@ -259,14 +293,14 @@ export function BookingManagement({ onNavigate }) {
       });
     }
   };
-
+// Función para finalizar una reserva, actualiza el estado a finalizada y registra la actividad del admin.
   const finalizarReserva = async (id) => {
     const booking = findBookingById(id);
     if (!booking) {
       showActionMessage('error', 'No se encontró la reserva seleccionada.');
       return;
     }
-
+// Actualiza el estado de la reserva a finalizada y registra la actividad del admin.
     const updated = await updateBookingStatus(booking, 'finalizada');
     if (updated) {
       showActionMessage('success', 'Reserva finalizada correctamente.');
@@ -278,14 +312,14 @@ export function BookingManagement({ onNavigate }) {
       });
     }
   };
-
+// Función para eliminar una reserva, elimina la reserva de la base de datos usando su clave compuesta y registra la actividad del admin. Esta acción es irreversible y se muestra un mensaje de confirmación antes de ejecutarla.
   const eliminarReserva = async (id) => {
     const booking = findBookingById(id);
     if (!booking) {
       showActionMessage('error', 'No se encontró la reserva seleccionada.');
       return;
     }
-
+// Elimina la reserva de la base de datos usando su clave compuesta
     const { error } = await supabase
       .from('reserva')
       .delete()
@@ -297,7 +331,7 @@ export function BookingManagement({ onNavigate }) {
       setErrorMessage(`No se pudo eliminar la reserva. ${error.message}`);
       return;
     }
-
+// Actualiza el estado local eliminando la reserva
     setBookings((prev) => prev.filter((item) => item.key !== booking.key));
     showActionMessage('success', 'Reserva eliminada correctamente.');
     recordAdminActivity({
@@ -307,7 +341,7 @@ export function BookingManagement({ onNavigate }) {
       source: 'reservas',
     });
   };
-
+// Mapeo de acciones a sus respectivos handlers para facilitar la ejecución de la acción seleccionada en el modal de confirmación.
   const actionHandlers = {
     confirmar: confirmarReserva,
     cancelar: cancelarReserva,
@@ -315,13 +349,13 @@ export function BookingManagement({ onNavigate }) {
     finalizar: finalizarReserva,
     eliminar: eliminarReserva,
   };
-
+// Configuración del modal de confirmación según la acción que se va a realizar, muestra un mensaje específico para cada tipo de acción (confirmar, cancelar, rechazar, finalizar, eliminar) y utiliza los datos de la reserva para mostrar información relevante en el mensaje.
   const getActionModalConfig = () => {
     const booking = findBookingById(confirmAction.bookingId);
     const bookingLabel = booking
       ? `RSV-${booking.id_propiedad}-${booking.id_inquilino}`
       : 'esta reserva';
-
+// Configuración específica para cada tipo de acción con mensajes personalizados y estilos de botón.
     if (confirmAction.actionId === 'eliminar') {
       return {
         title: 'Confirmar eliminación',
@@ -334,7 +368,7 @@ export function BookingManagement({ onNavigate }) {
         confirmButtonClassName: 'bg-red-600 hover:bg-red-700 text-white',
       };
     }
-
+// Configuración para la acción de cancelar reserva con mensaje específico y estilo de botón rojo.
     if (confirmAction.actionId === 'cancelar') {
       return {
         title: 'Confirmar cancelación',
@@ -347,7 +381,7 @@ export function BookingManagement({ onNavigate }) {
         confirmButtonClassName: 'bg-red-600 hover:bg-red-700 text-white',
       };
     }
-
+// Configuración para la acción de rechazar reserva con mensaje específico y estilo de botón gris oscuro.
     if (confirmAction.actionId === 'rechazar') {
       return {
         title: 'Confirmar rechazo',
@@ -360,7 +394,7 @@ export function BookingManagement({ onNavigate }) {
         confirmButtonClassName: 'bg-slate-600 hover:bg-slate-700 text-white',
       };
     }
-
+// Configuración para la acción de finalizar reserva con mensaje específico y estilo de botón azul.
     if (confirmAction.actionId === 'finalizar') {
       return {
         title: 'Confirmar finalización',
@@ -373,7 +407,7 @@ export function BookingManagement({ onNavigate }) {
         confirmButtonClassName: 'bg-blue-600 hover:bg-blue-700 text-white',
       };
     }
-
+// Configuración para la acción de confirmar reserva con mensaje específico y estilo de botón verde.
     return {
       title: 'Confirmar reserva',
       description: (
@@ -385,7 +419,7 @@ export function BookingManagement({ onNavigate }) {
       confirmButtonClassName: 'bg-[#6B8E23] hover:bg-[#5a7a1d] text-white',
     };
   };
-
+// Función que se ejecuta al confirmar la acción en el modal, llama al handler correspondiente según la acción seleccionada y muestra mensajes de éxito o error según corresponda.
   const confirmAndExecuteAction = async () => {
     const handler = actionHandlers[confirmAction.actionId];
     if (!handler) {
@@ -399,7 +433,7 @@ export function BookingManagement({ onNavigate }) {
     setIsApplyingAction(false);
     setConfirmAction({ open: false, bookingId: '', actionId: '' });
   };
-
+// Obtiene la configuración del modal de confirmación para la acción que se va a realizar, esta configuración se utiliza para mostrar el título, descripción y estilo del botón de confirmación en el modal.
   const actionModalConfig = getActionModalConfig();
 
   return (
@@ -435,6 +469,7 @@ export function BookingManagement({ onNavigate }) {
       )}
 
       {/* Stats Cards */}
+      {/* Tarjetas con resumen de reservas e ingresos. */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="bg-[#F2E8CF] border-none">
           <CardContent className="p-4">
@@ -449,7 +484,7 @@ export function BookingManagement({ onNavigate }) {
             </div>
           </CardContent>
         </Card>
-
+          {/* Tarjeta de reservas confirmadas. */}
         <Card className="bg-[#F2E8CF] border-none">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -463,7 +498,7 @@ export function BookingManagement({ onNavigate }) {
             </div>
           </CardContent>
         </Card>
-
+          {/* Tarjeta de reservas pendientes. */}
         <Card className="bg-[#F2E8CF] border-none">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -477,7 +512,7 @@ export function BookingManagement({ onNavigate }) {
             </div>
           </CardContent>
         </Card>
-
+          {/* Tarjeta de ingresos totales. */}
         <Card className="bg-[#F2E8CF] border-none">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -494,6 +529,7 @@ export function BookingManagement({ onNavigate }) {
       </div>
 
       {/* Filters and Search */}
+      {/* Sección de búsqueda y filtros por estado. */}
       <Card className="bg-white border-gray-200">
         <CardContent className="p-6">
           <div className="flex flex-col lg:flex-row gap-4">
@@ -535,6 +571,7 @@ export function BookingManagement({ onNavigate }) {
       </Card>
 
       {/* Bookings Table */}
+      {/* Tabla detallada de reservas y acciones disponibles. */}
       <Card className="bg-white border-gray-200">
         <CardHeader>
           <CardTitle className="font-['Poppins'] text-[#5F5F5F]">
@@ -556,6 +593,7 @@ export function BookingManagement({ onNavigate }) {
                   <TableHead className="text-[#5F5F5F] w-[260px]">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
+              {/* Filas generadas desde las reservas filtradas. */}
               <TableBody>
                 {filteredBookings.map((booking) => (
                   <TableRow key={booking.key} className="hover:bg-[#F2E8CF]/20">
@@ -622,7 +660,7 @@ export function BookingManagement({ onNavigate }) {
           </div>
         </CardContent>
       </Card>
-
+      {/* Modal de confirmación para ejecutar acciones sobre una reserva. */}
       <ConfirmActionModal
         open={confirmAction.open}
         title={actionModalConfig.title}
@@ -637,6 +675,7 @@ export function BookingManagement({ onNavigate }) {
       />
 
       {/* Quick Navigation */}
+      {/* Navegación rápida a otras vistas del panel. */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <button
           onClick={() => onNavigate('dashboard')}
