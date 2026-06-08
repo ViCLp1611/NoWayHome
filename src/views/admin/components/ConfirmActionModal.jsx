@@ -13,13 +13,17 @@ export function ConfirmActionModal({
   disableCancel = false,
   disableConfirm = false,
 }) {
+  // Si el modal no está abierto, no renderiza nada en el DOM.
   if (!open) return null;
 
+  // Si el modal está abierto, renderiza un overlay centrado.
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      {/* Contenedor principal del modal con título, descripción y acciones. */}
       <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
         <h2 className="text-lg font-semibold text-[#333]">{title}</h2>
         <div className="mt-3 text-sm text-[#555]">{description}</div>
+        {/* Botonera de acciones con estados deshabilitados opcionales. */}
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="outline" onClick={onCancel} disabled={disableCancel}>
             {cancelLabel}

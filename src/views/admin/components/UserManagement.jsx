@@ -1,8 +1,14 @@
+// Este componente es el núcleo de la gestión de usuarios en el panel de administración,
+//  permitiendo visualizar, buscar, filtrar, editar, eliminar y crear usuarios inquilinos y arrendatarios, 
+// con manejo de errores y feedback para el administrador.
+
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Badge } from '@/app/components/ui/badge';
+
+// Iconos para la interfaz de usuario
 import {
   Table,
   TableBody,
@@ -11,11 +17,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/app/components/ui/table';
+// Importamos iconos para acciones de usuario
 import { Search, RefreshCw, Users, Home, Calendar, UserPlus, Pencil } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { ConfirmActionModal } from './ConfirmActionModal';
 import { recordAdminActivity } from '@/views/admin/utils/adminActivity';
 
+// Estados iniciales para formularios de creación y edición de usuarios, así como para manejo de errores en ambos casos, para mantener el código organizado y facilitar el reseteo de formularios después de cada acción.
 const initialCreateForm = {
   tipo: 'inquilino',
   nombre: '',
@@ -25,6 +33,7 @@ const initialCreateForm = {
   confirmarContrasena: '',
 };
 
+// Errores iniciales para el formulario de creación de usuarios, con campos específicos para cada dato requerido, para mostrar mensajes de error claros.
 const initialCreateErrors = {
   tipo: '',
   nombre: '',
@@ -34,12 +43,13 @@ const initialCreateErrors = {
   confirmarContrasena: '',
 };
 
+// Errores iniciales para el formulario de edición de usuarios, con campos específicos para cada dato editable, para mostrar mensajes de error claros durante la edición.
 const initialEditErrors = {
   nombre: '',
   correo: '',
   telefono: '',
 };
-
+// Componente principal de gestión de usuarios, que maneja la lógica de carga, visualización, búsqueda, filtrado, edición, eliminación y creación de usuarios, con manejo de errores y feedback para el administrador.
 export function UserManagement({ onNavigate }) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -71,9 +81,11 @@ export function UserManagement({ onNavigate }) {
     return '';
   };
 
+  // Detecta mensajes de error relacionados con restricciones de clave foránea para mostrar una ayuda específica sobre relaciones activas que impiden la eliminación de un usuario.
   const getDeleteHint = (message) => {
     const text = String(message || '').toLowerCase();
 
+    // Si el mensaje de error indica que la eliminación falló por una restricción de clave foránea, se muestra un mensaje específico indicando que el usuario tiene relaciones activas que deben eliminarse primero.
     if (
       text.includes('violates foreign key constraint') ||
       text.includes('foreign key') ||
@@ -91,6 +103,7 @@ export function UserManagement({ onNavigate }) {
     setErrorMessage('');
     setSuccessMessage('');
 
+    // Realizamos consultas paralelas para obtener inquilinos, arrendatarios, propiedades y reservas, y luego unificamos la información para mostrarla en la tabla de usuarios, manejando errores específicos para cada consulta y mostrando mensajes claros en caso de fallos.
     try {
       const [
         inquilinosResult,
@@ -103,7 +116,7 @@ export function UserManagement({ onNavigate }) {
         supabase.from('propiedad').select('id_propiedad,id_arrendatario'),
         supabase.from('reserva').select('id_propiedad,id_inquilino,fecha_inicio'),
       ]);
-
+// Verificamos si alguna de las consultas tuvo un error, y si es así, construimos un mensaje de error específico para cada una y lo mostramos al usuario, incluyendo una posible ayuda sobre RLS si el error está relacionado con permisos.
       const hardErrors = [
         inquilinosResult.error,
         arrendatariosResult.error,
@@ -111,6 +124,7 @@ export function UserManagement({ onNavigate }) {
         bookingsResult.error,
       ].some(Boolean);
 
+      // Si hubo errores en las consultas, construimos un mensaje de error específico para cada una y lo mostramos al usuario, incluyendo una posible ayuda sobre RLS si el error está relacionado con permisos.
       if (hardErrors) {
         const messages = [
           inquilinosResult.error,
@@ -118,6 +132,7 @@ export function UserManagement({ onNavigate }) {
           propertiesResult.error,
           bookingsResult.error,
         ]
+        // Filtramos los errores para quedarnos solo con los que existen, extraemos sus mensajes y los unimos en un solo string para mostrar al usuario, junto con una posible ayuda sobre RLS si el error está relacionado con permisos.
           .filter(Boolean)
           .map((item) => item.message)
           .join(' | ');
@@ -127,18 +142,21 @@ export function UserManagement({ onNavigate }) {
         );
       }
 
+// Construimos mapas de conteo de propiedades por arrendatario y reservas por inquilino para calcular la actividad de cada usuario, y luego unificamos la información de inquilinos y arrendatarios en una sola lista de usuarios con su actividad correspondiente, para mostrarla en la tabla de usuarios.
       const propertyCountMap = (propertiesResult.data || []).reduce((acc, property) => {
         const key = String(property.id_arrendatario);
         acc[key] = (acc[key] || 0) + 1;
         return acc;
       }, {});
 
+// Mapeamos las reservas para contar cuántas tiene cada inquilino, creando un mapa de conteo de reservas por inquilino, que luego se utiliza para calcular la actividad de cada inquilino en la lista unificada de usuarios.
       const bookingCountMap = (bookingsResult.data || []).reduce((acc, booking) => {
         const key = String(booking.id_inquilino);
         acc[key] = (acc[key] || 0) + 1;
         return acc;
       }, {});
 
+// Mapeamos los inquilinos y arrendatarios para unificarlos en una sola lista de usuarios, asignando su actividad correspondiente según el conteo de reservas para inquilinos y propiedades para arrendatarios, y luego actualizamos el estado con la lista unificada de usuarios para mostrarla en la tabla.
       const inquilinos = (inquilinosResult.data || []).map((item) => ({
         key: `inquilino-${item.id_inquilino}`,
         entityType: 'inquilino',
@@ -150,7 +168,7 @@ export function UserManagement({ onNavigate }) {
         actividad: bookingCountMap[String(item.id_inquilino)] || 0,
         source: 'inquilino',
       }));
-
+// Mapeamos los arrendatarios para unificarlos en una sola lista de usuarios, asignando su actividad correspondiente según el conteo de propiedades que tienen, y luego actualizamos el estado con la lista unificada de usuarios para mostrarla en la tabla.
       const arrendatarios = (arrendatariosResult.data || []).map((item) => ({
         key: `arrendatario-${item.id_arrendatario}`,
         entityType: 'arrendatario',
@@ -162,7 +180,7 @@ export function UserManagement({ onNavigate }) {
         actividad: propertyCountMap[String(item.id_arrendatario)] || 0,
         source: 'arrendatario',
       }));
-
+// Unificamos la información de inquilinos y arrendatarios en una sola lista de usuarios, asignando su actividad correspondiente, y luego actualizamos el estado con la lista unificada de usuarios para mostrarla en la tabla.
       setUsers([...arrendatarios, ...inquilinos]);
     } catch (error) {
       setErrorMessage(error.message || 'No se pudieron cargar los usuarios.');
@@ -170,7 +188,7 @@ export function UserManagement({ onNavigate }) {
       setLoading(false);
     }
   };
-
+// Cargamos los usuarios al montar el componente, y también configuramos un listener para recargar los usuarios cuando se actualice la actividad administrativa desde otras vistas, asegurando que la información mostrada esté siempre actualizada.
   useEffect(() => {
     loadUsers();
   }, []);
@@ -234,14 +252,14 @@ export function UserManagement({ onNavigate }) {
     setEditErrors(initialEditErrors);
     setEditForm({ nombre: '', correo: '', telefono: '' });
   };
-
+// Función de validación del formulario de edición que verifica que el nombre y correo no estén vacíos, que el correo tenga un formato válido y que el teléfono, si se ingresa, también tenga un formato válido, mostrando mensajes de error específicos para cada campo si la validación falla.
   const validatePersonalData = ({ nombre, correo, telefono }) => {
     const errors = {
       nombre: '',
       correo: '',
       telefono: '',
     };
-
+// Normalizamos los valores para evitar errores de validación por espacios o valores nulos, y luego aplicamos las reglas de validación para cada campo, asignando mensajes de error específicos si la validación falla.
     const safeNombre = String(nombre || '').trim();
     const safeCorreo = String(correo || '').trim();
     const safeTelefono = String(telefono || '').trim();
@@ -270,7 +288,7 @@ export function UserManagement({ onNavigate }) {
 
     return errors;
   };
-
+// Función auxiliar para verificar si hay errores en un objeto de errores, utilizada para determinar si se deben mostrar mensajes de error y evitar guardar cambios si la validación falla.
   const hasErrors = (errors) => Object.values(errors).some(Boolean);
 
   // Guarda cambios del usuario en la tabla correspondiente según su origen.
@@ -280,7 +298,7 @@ export function UserManagement({ onNavigate }) {
       correo: editForm.correo.trim(),
       telefono: editForm.telefono.trim(),
     };
-
+// Validamos los datos ingresados en el formulario de edición, y si hay errores, mostramos mensajes específicos para cada campo y no procedemos a guardar los cambios, permitiendo al usuario corregir los errores antes de intentar guardar nuevamente.
     const validationErrors = validatePersonalData(nextValues);
     if (hasErrors(validationErrors)) {
       setEditErrors(validationErrors);
@@ -288,30 +306,30 @@ export function UserManagement({ onNavigate }) {
       setSuccessMessage('');
       return;
     }
-
+// Si la validación es exitosa, procedemos a actualizar el usuario en el backend, manejando errores específicos para mostrar mensajes claros al usuario en caso de que la actualización falle por permisos, existencia del usuario o problemas de conexión.
     const table = user.entityType;
     const idField =
       user.entityType === 'arrendatario'
         ? 'id_arrendatario'
         : 'id_inquilino';
-
+// Construimos el payload con los datos a actualizar, y luego intentamos actualizar el usuario en la tabla correspondiente según su tipo, manejando errores específicos para mostrar mensajes claros al usuario en caso de que la actualización falle por permisos, existencia del usuario o problemas de conexión.
     const payload = {
       nombre: nextValues.nombre,
       correo: nextValues.correo,
       telefono: nextValues.telefono,
     };
-
+// Intentamos actualizar el usuario en el backend, manejando errores específicos para mostrar mensajes claros al usuario en caso de que la actualización falle por permisos, existencia del usuario o problemas de conexión.
     const { error } = await supabase
       .from(table)
       .update(payload)
       .eq(idField, user.entityId);
-
+// Si hay un error en la actualización, mostramos un mensaje de error específico y no cerramos el modo edición para que el usuario pueda intentar corregirlo o reintentar guardar.
     if (error) {
       setErrorMessage(`No se pudo actualizar el usuario. ${error.message}`);
       setSuccessMessage('');
       return;
     }
-
+// Si la actualización fue exitosa, actualizamos el usuario en el estado local para reflejar los cambios en la UI, mostramos un mensaje de éxito y registramos la actividad administrativa correspondiente, luego cerramos el modo edición.
     setUsers((prev) =>
       prev.map((item) =>
         item.key === user.key
@@ -324,6 +342,7 @@ export function UserManagement({ onNavigate }) {
           : item
       )
     );
+// Limpiamos mensajes de error, mostramos un mensaje de éxito, registramos la actividad administrativa correspondiente y cerramos el modo edición.
     setErrorMessage('');
     setSuccessMessage('Usuario actualizado correctamente.');
     recordAdminActivity({
@@ -335,14 +354,14 @@ export function UserManagement({ onNavigate }) {
     cancelEdit();
     setEditConfirmCandidate(null);
   };
-
+// Función para solicitar confirmación antes de guardar los cambios realizados en la propiedad editada, que incluye validación de los datos ingresados y manejo de errores específicos para mostrar mensajes claros al usuario en caso de que la validación falle.
   const requestEditConfirmation = (user) => {
     const nextValues = {
       nombre: editForm.nombre.trim(),
       correo: editForm.correo.trim(),
       telefono: editForm.telefono.trim(),
     };
-
+// Validamos los datos ingresados en el formulario de edición, y si hay errores, mostramos mensajes específicos para cada campo y no procedemos a solicitar la confirmación de guardado, permitiendo al usuario corregir los errores antes de intentar guardar nuevamente.
     const validationErrors = validatePersonalData(nextValues);
     if (hasErrors(validationErrors)) {
       setEditErrors(validationErrors);
@@ -360,7 +379,7 @@ export function UserManagement({ onNavigate }) {
     if (!deleteCandidate) return;
 
     const deletedUser = deleteCandidate;
-
+// Limpiamos mensajes de error antes de intentar eliminar, para mostrar solo el mensaje relacionado con la eliminación si ocurre un error durante este proceso.
     setErrorMessage('');
 
     try {
@@ -373,7 +392,7 @@ export function UserManagement({ onNavigate }) {
         if (deleteMessagesError) {
           throw deleteMessagesError;
         }
-
+// Para eliminar un inquilino, primero eliminamos los mensajes relacionados, luego los contratos y reservas asociados a ese inquilino, y finalmente el registro del inquilino en sí, manejando errores específicos para cada paso y mostrando mensajes claros al usuario en caso de que la eliminación falle por permisos, existencia del usuario o problemas de conexión.
         const { error: deleteContractsError } = await supabase
           .from('contrato')
           .delete()
@@ -382,7 +401,7 @@ export function UserManagement({ onNavigate }) {
         if (deleteContractsError) {
           throw deleteContractsError;
         }
-
+// Eliminamos las reservas asociadas al inquilino antes de eliminar el registro del inquilino, para evitar errores de restricción de clave foránea, manejando errores específicos para mostrar mensajes claros al usuario en caso de que la eliminación falle por permisos, existencia del usuario o problemas de conexión.
         const { error: deleteBookingsError } = await supabase
           .from('reserva')
           .delete()
@@ -391,7 +410,7 @@ export function UserManagement({ onNavigate }) {
         if (deleteBookingsError) {
           throw deleteBookingsError;
         }
-
+// Finalmente, eliminamos el registro del inquilino después de eliminar todas las relaciones asociadas, para evitar errores de restricción de clave foránea, manejando errores específicos para mostrar mensajes claros al usuario en caso de que la eliminación falle por permisos, existencia del usuario o problemas de conexión.
         const { error: deleteTenantError } = await supabase
           .from('inquilino')
           .delete()
@@ -409,7 +428,7 @@ export function UserManagement({ onNavigate }) {
         if (ownedPropertiesError) {
           throw ownedPropertiesError;
         }
-
+// Para eliminar un arrendatario, primero obtenemos las propiedades que tiene asociadas, luego eliminamos los mensajes, contratos y reservas relacionados con esas propiedades, después eliminamos las propiedades y finalmente el registro del arrendatario en sí, manejando errores específicos para cada paso y mostrando mensajes claros al usuario en caso de que la eliminación falle por permisos, existencia del usuario o problemas de conexión.
         const propertyIds = (ownedProperties || []).map((item) => item.id_propiedad);
 
         if (propertyIds.length > 0) {
@@ -421,7 +440,7 @@ export function UserManagement({ onNavigate }) {
           if (deleteRelatedMessagesError) {
             throw deleteRelatedMessagesError;
           }
-
+// Eliminamos los contratos relacionados con las propiedades del arrendatario antes de eliminar las propiedades, para evitar errores de restricción de clave foránea, manejando errores específicos para mostrar mensajes claros al usuario en caso de que la eliminación falle por permisos, existencia del usuario o problemas de conexión.
           const { error: deleteRelatedContractsError } = await supabase
             .from('contrato')
             .delete()
@@ -430,7 +449,7 @@ export function UserManagement({ onNavigate }) {
           if (deleteRelatedContractsError) {
             throw deleteRelatedContractsError;
           }
-
+// Eliminamos las reservas relacionadas con las propiedades del arrendatario antes de eliminar las propiedades, para evitar errores de restricción de clave foránea, manejando errores específicos para mostrar mensajes claros al usuario en caso de que la eliminación falle por permisos, existencia del usuario o problemas de conexión.
           const { error: deleteRelatedBookingsError } = await supabase
             .from('reserva')
             .delete()
@@ -440,7 +459,7 @@ export function UserManagement({ onNavigate }) {
             throw deleteRelatedBookingsError;
           }
         }
-
+// Finalmente, eliminamos las propiedades del arrendatario y luego el registro del arrendatario después de eliminar todas las relaciones asociadas, para evitar errores de restricción de clave foránea, manejando errores específicos para mostrar mensajes claros al usuario en caso de que la eliminación falle por permisos, existencia del usuario o problemas de conexión.
         const { error: deletePropertiesError } = await supabase
           .from('propiedad')
           .delete()
@@ -449,7 +468,7 @@ export function UserManagement({ onNavigate }) {
         if (deletePropertiesError) {
           throw deletePropertiesError;
         }
-
+// Finalmente, eliminamos el registro del arrendatario después de eliminar todas las relaciones asociadas, para evitar errores de restricción de clave foránea, manejando errores específicos para mostrar mensajes claros al usuario en caso de que la eliminación falle por permisos, existencia del usuario o problemas de conexión.
         const { error: deleteHostError } = await supabase
           .from('arrendatario')
           .delete()
@@ -461,7 +480,7 @@ export function UserManagement({ onNavigate }) {
       } else {
         throw new Error('Tipo de usuario no soportado para eliminación.');
       }
-
+// Si la eliminación fue exitosa, actualizamos el estado para remover el usuario eliminado de la lista, mostramos un mensaje de éxito y registramos la actividad administrativa correspondiente.
       setUsers((prev) => prev.filter((user) => user.key !== deletedUser.key));
       recordAdminActivity({
         type: 'Usuario eliminado',
@@ -469,6 +488,7 @@ export function UserManagement({ onNavigate }) {
         status: 'warning',
         source: 'usuarios',
       });
+  // Limpiamos mensajes de error, mostramos un mensaje de éxito y cerramos el modal de confirmación de eliminación.
       setDeleteCandidate(null);
     } catch (error) {
       const hint = getDeleteHint(error?.message);
@@ -476,14 +496,14 @@ export function UserManagement({ onNavigate }) {
       setDeleteCandidate(null);
     }
   };
-
+// Cierra el modal de creación y resetea el formulario y los errores relacionados, para limpiar el estado y preparar el formulario para una nueva creación si el administrador decide crear otro usuario después de cerrar el modal.
   const closeCreateModal = () => {
     setShowCreateModal(false);
     setShowCreateConfirmModal(false);
     setCreateForm(initialCreateForm);
     setCreateErrors(initialCreateErrors);
   };
-
+// Función de validación del formulario de creación que verifica que el tipo de usuario sea válido, que el nombre y correo no estén vacíos, que el correo tenga un formato válido, que el teléfono, si se ingresa, también tenga un formato válido, y que la contraseña y su confirmación sean válidas y coincidan, mostrando mensajes de error específicos para cada campo si la validación falla.
   const validateCreateForm = (form) => {
     const errors = { ...initialCreateErrors };
     const nombre = form.nombre.trim();
@@ -530,13 +550,13 @@ export function UserManagement({ onNavigate }) {
 
     return errors;
   };
-
+// Maneja cambios en los campos del formulario de creación, actualizando el estado del formulario y reseteando los errores relacionados, para proporcionar feedback inmediato al administrador mientras completa el formulario de creación.
   const handleCreateFieldChange = (field, value) => {
     setCreateForm((prev) => ({ ...prev, [field]: value }));
     setCreateErrors((prev) => ({ ...prev, [field]: '' }));
     setShowCreateConfirmModal(false);
   };
-
+// Función para solicitar confirmación antes de crear un nuevo usuario, que incluye validación de los datos ingresados en el formulario de creación y manejo de errores específicos para mostrar mensajes claros al usuario en caso de que la validación falle, evitando mostrar el modal de confirmación si hay errores en el formulario.
   const requestCreateConfirmation = () => {
     const validationErrors = validateCreateForm(createForm);
     const hasValidationErrors = Object.values(validationErrors).some(Boolean);
@@ -563,7 +583,7 @@ export function UserManagement({ onNavigate }) {
 
     setCreating(true);
     setErrorMessage('');
-
+// Intentamos crear el nuevo usuario en la tabla correspondiente según el tipo seleccionado, manejando errores específicos para mostrar mensajes claros al usuario en caso de que la creación falle por permisos, existencia del usuario o problemas de conexión.
     const { data, error } = await supabase
       .from(table)
       .insert({ nombre, correo, telefono: telefono || null, contrasena })
@@ -610,7 +630,7 @@ export function UserManagement({ onNavigate }) {
       source: 'usuarios',
     });
   };
-
+  // Renderiza toda la vista de gestión de usuarios.
   return (
     <div className="p-6 lg:p-8 space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
@@ -629,19 +649,19 @@ export function UserManagement({ onNavigate }) {
           </Button>
         </div>
       </div>
-
+      {/* Mensaje de error de carga/operación. */}
       {errorMessage && (
         <Card className="bg-yellow-50 border-yellow-200">
           <CardContent className="p-4 text-sm text-yellow-800">{errorMessage}</CardContent>
         </Card>
       )}
-
+      {/* Mensaje de éxito para acciones completadas. */}
       {successMessage && (
         <Card className="bg-green-50 border-green-200">
           <CardContent className="p-4 text-sm text-green-800">{successMessage}</CardContent>
         </Card>
       )}
-
+      {/* Tarjetas de métricas principales. */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="bg-[#F2E8CF] border-none">
           <CardContent className="p-4">
@@ -656,7 +676,7 @@ export function UserManagement({ onNavigate }) {
             </div>
           </CardContent>
         </Card>
-
+          {/* Métrica de arrendatarios. */}
         <Card className="bg-[#F2E8CF] border-none">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -670,7 +690,7 @@ export function UserManagement({ onNavigate }) {
             </div>
           </CardContent>
         </Card>
-
+          {/* Métrica de inquilinos. */}
         <Card className="bg-[#F2E8CF] border-none">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -684,7 +704,7 @@ export function UserManagement({ onNavigate }) {
             </div>
           </CardContent>
         </Card>
-
+          {/* Métrica de actividad total. */}
         <Card className="bg-[#F2E8CF] border-none">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -699,7 +719,7 @@ export function UserManagement({ onNavigate }) {
           </CardContent>
         </Card>
       </div>
-
+          {/* Barra de búsqueda y filtros por rol. */}
       <Card className="bg-white border-gray-200">
         <CardContent className="p-6">
           <div className="flex flex-col lg:flex-row gap-4">
@@ -738,7 +758,7 @@ export function UserManagement({ onNavigate }) {
           </div>
         </CardContent>
       </Card>
-
+        {/* Tabla de usuarios con edición y eliminación. */}
       <Card className="bg-white border-gray-200">
         <CardHeader>
           <CardTitle className="font-['Poppins'] text-[#5F5F5F]">Lista de Usuarios ({filteredUsers.length})</CardTitle>
@@ -756,6 +776,7 @@ export function UserManagement({ onNavigate }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {/* Filas construidas desde usuarios filtrados. */}
                 {filteredUsers.map((user) => (
                   <TableRow key={user.key} className="hover:bg-[#F2E8CF]/20">
                     <TableCell>
@@ -851,7 +872,7 @@ export function UserManagement({ onNavigate }) {
           </div>
         </CardContent>
       </Card>
-
+        {/* Modal de confirmación para eliminar usuario. */}
       <ConfirmActionModal
         open={Boolean(deleteCandidate)}
         title="Confirmar eliminación"
@@ -881,7 +902,7 @@ export function UserManagement({ onNavigate }) {
         onCancel={() => setEditConfirmCandidate(null)}
         onConfirm={() => saveEdit(editConfirmCandidate)}
       />
-
+        {/* Modal de creación de usuario. */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
@@ -889,7 +910,7 @@ export function UserManagement({ onNavigate }) {
             <p className="mt-2 text-sm text-[#555]">
               Crea un inquilino o arrendatario con datos personales (sin reservas ni propiedades).
             </p>
-
+            {/* Formulario de alta con validaciones por campo. */}
             <div className="mt-4 space-y-3">
               <div>
                 <label className="mb-1 block text-sm text-[#5F5F5F]">Tipo de usuario</label>
@@ -905,7 +926,6 @@ export function UserManagement({ onNavigate }) {
                   <p className="mt-1 text-xs text-red-600">{createErrors.tipo}</p>
                 )}
               </div>
-
               <div>
                 <label className="mb-1 block text-sm text-[#5F5F5F]">Nombre</label>
                 <Input
@@ -918,7 +938,6 @@ export function UserManagement({ onNavigate }) {
                   <p className="mt-1 text-xs text-red-600">{createErrors.nombre}</p>
                 )}
               </div>
-
               <div>
                 <label className="mb-1 block text-sm text-[#5F5F5F]">Correo</label>
                 <Input
@@ -932,7 +951,6 @@ export function UserManagement({ onNavigate }) {
                   <p className="mt-1 text-xs text-red-600">{createErrors.correo}</p>
                 )}
               </div>
-
               <div>
                 <label className="mb-1 block text-sm text-[#5F5F5F]">Telefono</label>
                 <Input
@@ -945,7 +963,6 @@ export function UserManagement({ onNavigate }) {
                   <p className="mt-1 text-xs text-red-600">{createErrors.telefono}</p>
                 )}
               </div>
-
               <div>
                 <label className="mb-1 block text-sm text-[#5F5F5F]">Contrasena</label>
                 <Input
@@ -959,7 +976,6 @@ export function UserManagement({ onNavigate }) {
                   <p className="mt-1 text-xs text-red-600">{createErrors.contrasena}</p>
                 )}
               </div>
-
               <div>
                 <label className="mb-1 block text-sm text-[#5F5F5F]">Confirmar contrasena</label>
                 <Input
@@ -986,7 +1002,7 @@ export function UserManagement({ onNavigate }) {
           </div>
         </div>
       )}
-
+          {/* Confirmación final antes de crear usuario. */}
       <ConfirmActionModal
         open={showCreateConfirmModal}
         title="Confirmar alta de usuario"
@@ -1004,7 +1020,7 @@ export function UserManagement({ onNavigate }) {
         onCancel={() => setShowCreateConfirmModal(false)}
         onConfirm={createUser}
       />
-
+        {/* Navegación rápida entre módulos de administración. */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <button
           onClick={() => onNavigate('dashboard')}

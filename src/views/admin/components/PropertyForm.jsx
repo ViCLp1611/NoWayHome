@@ -1,3 +1,8 @@
+// Este componente es un formulario para registrar nuevas propiedades en el sistema de administración. 
+// Permite ingresar detalles como arrendatario, descripción, dirección, precio, estado y una reseña opcional. 
+// Incluye validación de campos y muestra errores si la información ingresada no es válida. 
+// Al enviar el formulario, se crea un nuevo objeto de propiedad con la información proporcionada y se puede llamar a una función de callback para guardar en el backend o actualizar el estado del dashboard. 
+// El diseño utiliza componentes reutilizables de la interfaz de usuario para mantener la consistencia visual.
 import React, { useState } from 'react';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -14,7 +19,7 @@ const mockArrendatarios = [
   { id: 4, nombre: 'Sofia López' },
   { id: 5, nombre: 'Carlos Ramírez' },
 ];
-
+// Componente principal del formulario de propiedad
 export function PropertyForm({ onClose, onSubmit }) {
   const [formData, setFormData] = useState({
     id_arrendatario: '',
@@ -24,7 +29,7 @@ export function PropertyForm({ onClose, onSubmit }) {
     estado: '',
     resena: '',
   });
-
+// Estado para manejar errores de validación
   const [errors, setErrors] = useState({});
 
   const handleChange = (field, value) => {
@@ -40,7 +45,7 @@ export function PropertyForm({ onClose, onSubmit }) {
       }));
     }
   };
-
+// Función de validación del formulario que verifica que los campos obligatorios estén completos y que el precio sea un número válido.
   const validateForm = () => {
     const newErrors = {};
     if (!formData.id_arrendatario) newErrors.id_arrendatario = 'Seleccione un arrendatario';
@@ -52,7 +57,7 @@ export function PropertyForm({ onClose, onSubmit }) {
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
+// Función de manejo del envío del formulario que crea un nuevo objeto de propiedad con la información ingresada, llama a una función de callback para guardar en el backend y resetea el formulario.
   const handleSubmit = (e) => {
     e.preventDefault();
     if (validateForm()) {
@@ -87,7 +92,7 @@ export function PropertyForm({ onClose, onSubmit }) {
       if (onClose) onClose();
     }
   };
-
+// Renderizamos el formulario dentro de una tarjeta con campos para cada dato de la propiedad, mostrando errores de validación debajo de cada campo si es necesario.
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>

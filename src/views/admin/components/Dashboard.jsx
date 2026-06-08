@@ -1,7 +1,9 @@
+// Dashboard.jsx - Componente principal del dashboard administrativo
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
+// Importamos iconos para las tarjetas de estadísticas
 import {
   ArrowDown,
   ArrowUp,
@@ -11,6 +13,7 @@ import {
   Users,
   RefreshCw,
 } from 'lucide-react';
+// Importamos funciones para interactuar con Supabase y obtener el log de actividad administrativa
 import {
   ResponsiveContainer,
   LineChart,
@@ -22,11 +25,13 @@ import {
   BarChart,
   Bar,
 } from 'recharts';
+// Importamos cliente de Supabase para consultas a la base de datos
 import { supabase } from '@/lib/supabaseClient';
 import { getAdminActivityLog } from '@/views/admin/utils/adminActivity';
 
+// Definimos constantes para mapear posibles nombres de campos en la base de datos
 const MONTHS_ES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-
+// Listas de posibles llaves para extraer datos numéricos, fechas, estados y nombres de propiedades.
 const numberKeys = ['pago', 'total_amount', 'totalAmount', 'amount', 'price', 'total', 'monto_total', 'monto'];
 const bookingDateKeys = ['fecha_inicio', 'created_at', 'createdAt', 'check_in', 'checkIn', 'date', 'booking_date', 'fecha_reserva'];
 const propertyStatusKeys = ['estado', 'status'];
@@ -66,6 +71,7 @@ const getMonthBuckets = (months = 6) => {
   const now = new Date();
   const buckets = [];
 
+// Crea un bucket para cada mes desde el actual hacia atrás, con formato "YYYY-MM".
   for (let i = months - 1; i >= 0; i -= 1) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     buckets.push({
@@ -79,10 +85,12 @@ const getMonthBuckets = (months = 6) => {
   return buckets;
 };
 
+// Normaliza una actividad para garantizar fecha válida y formato legible.
 const toRecentActivityRow = (item) => {
   const safeDate = item?.timeISO ? new Date(item.timeISO) : null;
   const date = safeDate && !Number.isNaN(safeDate.getTime()) ? safeDate : new Date();
 
+// El ID se construye para garantizar unicidad incluso con datos faltantes.
   return {
     id: item.id,
     type: item.type,
@@ -93,6 +101,7 @@ const toRecentActivityRow = (item) => {
   };
 };
 
+// Componente principal del dashboard administrativo.
 export function Dashboard({ onNavigate }) {
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
@@ -102,6 +111,8 @@ export function Dashboard({ onNavigate }) {
     totalBookings: 0,
     totalRevenue: 0,
   });
+
+  // Estados para datos de gráficos y actividad reciente.
   const [monthlyBookingsData, setMonthlyBookingsData] = useState([]);
   const [propertyTypesData, setPropertyTypesData] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
@@ -159,7 +170,7 @@ export function Dashboard({ onNavigate }) {
           .from('reserva')
           .select('id_propiedad,id_inquilino,fecha_inicio,fecha_fin,estado,pago,propiedad:propiedad(descripcion),inquilino:inquilino(nombre)'),
       ]);
-
+// Extraemos datos o asignamos arrays vacíos para evitar errores de acceso.
       const tenants = tenantsResult.data || [];
       const landlords = landlordsResult.data || [];
       const properties = propertiesResult.data || [];
@@ -172,6 +183,7 @@ export function Dashboard({ onNavigate }) {
         bookingsResult.error,
       ].some(Boolean);
 
+// Si hubo errores en alguna consulta, construimos un mensaje detallado para el usuario.
       if (hasSupabaseErrors) {
         const messages = [
           tenantsResult.error,
@@ -183,19 +195,19 @@ export function Dashboard({ onNavigate }) {
           .map((err) => err.message);
         setErrorMessage(`Se cargó el dashboard parcialmente. ${messages.join(' | ')}`);
       }
-
+// Calculamos métricas principales a mostrar en tarjetas.
       const totalRevenue = bookings.reduce((sum, booking) => sum + parseAmount(booking), 0);
-
+      // Actualizamos el estado de métricas para renderizar tarjetas.
       setStats({
         totalUsers: tenants.length + landlords.length,
         totalProperties: properties.length,
         totalBookings: bookings.length,
         totalRevenue,
       });
-
+// Preparamos datos para gráfico de reservas mensuales.
       const monthBuckets = getMonthBuckets(6);
       const monthMap = new Map(monthBuckets.map((bucket) => [bucket.key, { ...bucket }]));
-
+// Iteramos sobre reservas para contar cuántas caen en cada bucket mensual.
       bookings.forEach((booking) => {
         const date = parseDate(booking, bookingDateKeys);
         if (!date) return;
@@ -206,28 +218,29 @@ export function Dashboard({ onNavigate }) {
           monthMap.set(key, bucket);
         }
       });
-
+// Actualizamos el estado con la serie de reservas mensuales para el gráfico.
       setMonthlyBookingsData(Array.from(monthMap.values()));
-
+// Preparamos datos para gráfico de estado de propiedades.
       const statusCounter = properties.reduce((acc, property) => {
         const statusRaw = getFirstValue(property, propertyStatusKeys, 'sin_estado');
         const statusLabel = String(statusRaw).trim() || 'sin_estado';
         acc[statusLabel] = (acc[statusLabel] || 0) + 1;
         return acc;
       }, {});
-
+// Convertimos el conteo de estados en un formato adecuado para el gráfico de barras.
       const normalizedTypes = Object.entries(statusCounter).map(([tipo, cantidad]) => ({
         tipo: tipo.replaceAll('_', ' '),
         cantidad,
       }));
       setPropertyTypesData(normalizedTypes);
-
+// Preparamos datos de actividad reciente combinando reservas recientes y log administrativo.
       const latestBookings = [...bookings]
         .sort((a, b) => {
           const aDate = parseDate(a, bookingDateKeys)?.getTime() || 0;
           const bDate = parseDate(b, bookingDateKeys)?.getTime() || 0;
           return bDate - aDate;
         })
+        // Tomamos solo las 6 reservas más recientes para mostrar en actividad reciente.
         .slice(0, 6)
         .map((booking, index) => {
           const statusRaw = String(getFirstValue(booking, statusKeys, 'pendiente')).toLowerCase();
@@ -235,13 +248,14 @@ export function Dashboard({ onNavigate }) {
             statusRaw.includes('cancel') ||
             statusRaw.includes('rechaz') ||
             statusRaw.includes('suspend');
+        // Clasificamos la reserva como 'warning' o 'success' según su estado para mostrar en actividad reciente.
           const status = isWarning ? 'warning' : 'success';
           const propertyName =
             getFirstValue(booking.propiedad, propertyNameKeys, null) ||
             `Propiedad #${booking.id_propiedad || index + 1}`;
           const tenantName = getFirstValue(booking.inquilino, ['nombre'], `Inquilino #${booking.id_inquilino || '-'}`);
           const timeDate = parseDate(booking, bookingDateKeys);
-
+// Construimos un objeto de actividad reciente con información relevante de la reserva para mostrar en el feed de actividad.
           return {
             id: `${booking.id_propiedad || 'p'}-${booking.id_inquilino || 'i'}-${booking.fecha_inicio || index}`,
             type: `Reserva ${statusRaw}`,
@@ -250,10 +264,10 @@ export function Dashboard({ onNavigate }) {
             status,
           };
         });
-
+// Obtenemos las últimas actividades administrativas desde el log y las normalizamos para mostrar en el feed de actividad reciente.
       const adminLocalActivity = getAdminActivityLog(20).map((item) => toRecentActivityRow(item));
       const bookingActivity = latestBookings.map((item) => toRecentActivityRow(item));
-
+// Combinamos ambas fuentes de actividad, ordenamos por fecha y limitamos a las 6 más recientes para mostrar en el feed de actividad reciente.
       const mergedRecentActivity = [...adminLocalActivity, ...bookingActivity]
         .sort((a, b) => {
           const aTime = new Date(a.timeISO).getTime();
@@ -261,7 +275,7 @@ export function Dashboard({ onNavigate }) {
           return bTime - aTime;
         })
         .slice(0, 6);
-
+// Actualizamos el estado de actividad reciente para renderizar el feed en el dashboard.
       setRecentActivity(mergedRecentActivity);
     } catch (error) {
       console.error('Error cargando dashboard:', error);
@@ -272,18 +286,20 @@ export function Dashboard({ onNavigate }) {
   };
 
   useEffect(() => {
+    // Carga inicial del dashboard al montar el componente.
     loadDashboardData();
   }, []);
 
   useEffect(() => {
+    // Recarga métricas cuando otras vistas registran nueva actividad administrativa.
     const onActivityUpdated = () => {
       loadDashboardData();
     };
-
+// Escuchamos el evento personalizado 'admin-activity-updated' para recargar datos del dashboard cuando se actualice la actividad administrativa desde otras vistas.
     window.addEventListener('admin-activity-updated', onActivityUpdated);
     return () => window.removeEventListener('admin-activity-updated', onActivityUpdated);
   }, []);
-
+// Renderizamos el dashboard con tarjetas de métricas, gráficos y actividad reciente, además de botones para navegar a otras secciones de administración.
   return (
     <div className="p-6 lg:p-8 space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">

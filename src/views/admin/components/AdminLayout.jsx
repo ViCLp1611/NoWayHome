@@ -1,4 +1,6 @@
+// Importamos React y el hook useState para manejar estado interno
 import React, { useState } from 'react';
+// Importamos iconos (solo UI)
 import { 
   LayoutDashboard, 
   Users, 
@@ -8,18 +10,24 @@ import {
   X,
   LogOut
 } from 'lucide-react';
+
+// Importamos un componente Button reutilizable
 import { Button } from '@/app/components/ui/button';
 
+// Componente principal del layout del administrador
 export function AdminLayout({ children, currentPage, onNavigate, onLogout }) {
+ 
+ // Estado para controlar si el menú móvil está abierto o cerrado movil (obviamente no se muestra en desktop)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // Configuración de navegación (menú lateral) todo esta madre es solo para movil 
   const navigation = [
     { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard },
     { id: 'users', name: 'Usuarios', icon: Users },
     { id: 'properties', name: 'Propiedades', icon: Home },
     { id: 'bookings', name: 'Reservas', icon: Calendar },
   ];
-
+  // Función para alternar (abrir/cerrar) el menú móvil
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
   return (
