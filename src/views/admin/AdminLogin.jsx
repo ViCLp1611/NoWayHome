@@ -1,3 +1,4 @@
+// Pantalla de acceso para administradores del sistema.
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, ArrowRight, Shield } from 'lucide-react';
@@ -6,13 +7,16 @@ import { Input } from '@/app/components/ui/input';
 import { Card } from '@/app/components/ui/card';
 import { handleAdminLogin } from '@/controllers/authController.js';
 
+// Componente principal de login admin: controla formulario, carga y errores.
 export function AdminLogin() {
   const navigate = useNavigate();
+  // Estados del formulario y del flujo de autenticación.
   const [correo, setCorreo] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  // Envía credenciales al controlador y gestiona éxito/error del inicio de sesión.
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -22,27 +26,30 @@ export function AdminLogin() {
       const result = await handleAdminLogin(correo, contrasena);
 
       if (result.success) {
-        // Login exitoso - guardar información del admin
+        // Persiste la sesión admin y redirige al panel.
         console.log('Login exitoso:', result.admin);
         localStorage.setItem('admin', JSON.stringify(result.admin));
-        
-        // Redirigir al dashboard de admin
+
         navigate('/admin');
       } else {
-        // Mostrar mensaje de error
+        // Muestra el mensaje de validación devuelto por el backend/controlador.
         setErrorMessage(result.message);
       }
     } catch (error) {
+      // Captura fallos inesperados de red o ejecución.
       console.error('Error en login de admin:', error);
       setErrorMessage('Error inesperado. Inténtalo de nuevo.');
     } finally {
+      // Restablece el estado de carga al terminar cualquier resultado.
       setIsLoading(false);
     }
   };
 
   return (
+    // Layout centrado para mostrar la tarjeta de acceso.
     <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-[#FAFAFA]">
       <Card className="w-full max-w-md p-8 md:p-10 bg-white border border-[#6B8E23]/10 shadow-sm rounded-2xl">
+        {/* Encabezado del módulo de autenticación administrativa. */}
         <div className="text-center mb-10">
           <div className="flex justify-center mb-4">
             <div className="p-3 bg-[#6B8E23]/10 rounded-full">
@@ -57,6 +64,7 @@ export function AdminLogin() {
           </p>
         </div>
 
+        {/* Formulario controlado: correo + contraseña. */}
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <label htmlFor="correo" className="text-[#5F5F5F] font-medium">
@@ -77,6 +85,7 @@ export function AdminLogin() {
             </div>
           </div>
 
+          {/* Campo de contraseña de administrador. */}
           <div className="space-y-2">
             <label htmlFor="contrasena" className="text-[#5F5F5F] font-medium">
               Contraseña
@@ -96,6 +105,7 @@ export function AdminLogin() {
             </div>
           </div>
 
+          {/* Mensaje de error visible cuando la autenticación falla. */}
           {errorMessage && (
             <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
               <p className="text-red-700 text-sm font-medium">
@@ -104,6 +114,7 @@ export function AdminLogin() {
             </div>
           )}
 
+          {/* Botón de envío con estado de carga y spinner durante la petición. */}
           <Button
             type="submit"
             className="w-full h-12 bg-[#6B8E23] hover:bg-[#5a7a1f] text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2"

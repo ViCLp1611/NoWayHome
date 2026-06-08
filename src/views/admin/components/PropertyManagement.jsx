@@ -1,9 +1,11 @@
+// Este componente es la vista principal para la gestión de propiedades en el panel de administración.
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Textarea } from '@/app/components/ui/textarea';
 import { Badge } from '@/app/components/ui/badge';
+// Componentes de tabla reutilizables para mostrar la lista de propiedades.
 import {
   Table,
   TableBody,
@@ -12,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/app/components/ui/table';
+// Iconos para la interfaz de usuario.
 import {
   Search,
   Filter,
@@ -19,11 +22,14 @@ import {
   RefreshCw,
   Pencil,
 } from 'lucide-react';
+// Utilidades para interactuar con Supabase y registrar actividad administrativa.
 import { supabase } from '@/lib/supabaseClient';
 import { recordAdminActivity } from '@/views/admin/utils/adminActivity';
 
+// Componente principal de la gestión de propiedades, que incluye funcionalidades para listar, buscar, filtrar, editar y eliminar propiedades.
 const DEFAULT_STATUS_OPTIONS = ['Disponible', 'Ocupado', 'Mantenimiento', 'Inactiva'];
 
+// Función para normalizar los valores de estado, asegurando que diferentes variantes de texto se muestren de manera consistente en la interfaz.
 const normalizeStatusValue = (status) => {
   const trimmedStatus = String(status || '').trim().toLowerCase();
 
@@ -34,7 +40,7 @@ const normalizeStatusValue = (status) => {
 
   return trimmedStatus;
 };
-
+// Componente principal de la gestión de propiedades, que incluye funcionalidades para listar, buscar, filtrar, editar y eliminar propiedades.
 export function PropertyManagement({ onNavigate }) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -52,6 +58,8 @@ export function PropertyManagement({ onNavigate }) {
     setLoading(true);
     setErrorMessage('');
 
+// Realizamos dos consultas paralelas: una para obtener las propiedades con su información relacionada y otra para contar las reservas por propiedad,
+//  luego combinamos los resultados para mostrar la información completa en la tabla.
     try {
       const [propertiesResult, bookingsResult] = await Promise.all([
         supabase
@@ -60,6 +68,7 @@ export function PropertyManagement({ onNavigate }) {
         supabase.from('reserva').select('id_propiedad'),
       ]);
 
+  // Si alguna de las consultas tiene error, mostramos un mensaje de error pero intentamos mostrar los datos que sí se pudieron cargar.
       if (propertiesResult.error || bookingsResult.error) {
         const messages = [propertiesResult.error, bookingsResult.error]
           .filter(Boolean)
@@ -67,13 +76,14 @@ export function PropertyManagement({ onNavigate }) {
           .join(' | ');
         setErrorMessage(`Carga parcial de propiedades. ${messages}`);
       }
-
+// Construimos un mapa de conteo de reservas por propiedad para luego agregar esa información a cada propiedad en la lista.
       const bookingCountMap = (bookingsResult.data || []).reduce((acc, booking) => {
         const key = String(booking.id_propiedad);
         acc[key] = (acc[key] || 0) + 1;
         return acc;
       }, {});
 
+// Normalizamos los datos de propiedades para asegurarnos de que tengan un formato consistente, incluyendo el nombre del arrendatario y el conteo de reservas.
       const normalizedProperties = (propertiesResult.data || []).map((item) => ({
         id: item.id_propiedad,
         descripcion: item.descripcion,
@@ -85,6 +95,7 @@ export function PropertyManagement({ onNavigate }) {
         reservas: bookingCountMap[String(item.id_propiedad)] || 0,
       }));
 
+// Ordenamos las propiedades por fecha de creación para mostrar las más recientes primero.
       setProperties(normalizedProperties);
     } catch (error) {
       setErrorMessage(error.message || 'No se pudieron cargar las propiedades.');
@@ -92,7 +103,7 @@ export function PropertyManagement({ onNavigate }) {
       setLoading(false);
     }
   };
-
+// Cargamos las propiedades al montar el componente y también configuramos un listener para recargar los datos cuando se actualice la actividad administrativa desde otras vistas.
   useEffect(() => {
     loadProperties();
   }, []);
@@ -103,18 +114,22 @@ export function PropertyManagement({ onNavigate }) {
       property.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
       property.direccion.toLowerCase().includes(searchTerm.toLowerCase()) ||
       property.arrendatario.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus =
+
+  // Para el filtro de estado, normalizamos tanto el valor del estado de la propiedad como el valor del filtro para evitar problemas de mayúsculas, minúsculas o espacios adicionales.  
+      const matchesStatus =
       filterStatus === 'all'
       || normalizeStatusValue(property.estado).toLowerCase() === normalizeStatusValue(filterStatus).toLowerCase();
     return matchesSearch && matchesStatus;
   }), [properties, searchTerm, filterStatus]);
 
+// Construimos una lista de opciones de estado para el filtro, combinando los estados por defecto con los estados únicos encontrados en las propiedades cargadas, asegurándonos de normalizarlos para evitar duplicados visuales.
   const statusOptions = useMemo(() => {
     const allStatuses = [
       ...DEFAULT_STATUS_OPTIONS,
       ...properties.map((property) => normalizeStatusValue(property.estado)),
     ].filter(Boolean);
 
+// Reducimos la lista de estados a un conjunto único de opciones normalizadas para mostrar en el filtro, evitando que variantes del mismo estado aparezcan como opciones separadas.
     return allStatuses.reduce((acc, status) => {
       const normalizedStatus = normalizeStatusValue(status);
 
@@ -149,7 +164,7 @@ export function PropertyManagement({ onNavigate }) {
       setDeleteCandidate(null);
       return;
     }
-
+// Actualizamos la lista de propiedades localmente para reflejar la eliminación sin necesidad de recargar toda la lista desde el backend, y registramos la actividad administrativa.
     setProperties((prev) => prev.filter((item) => item.id !== propertyToDelete.id));
     recordAdminActivity({
       type: 'Propiedad eliminada',
@@ -159,7 +174,7 @@ export function PropertyManagement({ onNavigate }) {
     });
     setDeleteCandidate(null);
   };
-
+// Abre el modal de edición y carga la información de la propiedad seleccionada para editar.
   const openEditModal = (property) => {
     setEditCandidate(property);
     setEditForm({
@@ -169,19 +184,21 @@ export function PropertyManagement({ onNavigate }) {
     });
     setEditErrors({});
   };
-
+// Cierra el modal de edición, con una opción para forzar el cierre incluso si se está guardando la información.
   const closeEditModal = (force = false) => {
     if (isSavingEdit && !force) return;
     setEditCandidate(null);
     setEditErrors({});
   };
 
+// Maneja los cambios en el formulario de edición, actualizando el estado local y limpiando errores relacionados con el campo modificado.
   const handleEditChange = (field, value) => {
     setEditForm((prev) => ({
       ...prev,
       [field]: value,
     }));
 
+// Si hay errores relacionados con el campo que se está modificando, los limpiamos para dar feedback al usuario de que el error se está resolviendo.
     if (editErrors[field] || editErrors.form) {
       setEditErrors((prev) => ({
         ...prev,
@@ -191,17 +208,21 @@ export function PropertyManagement({ onNavigate }) {
     }
   };
 
+  // Función de validación del formulario de edición que verifica que los campos obligatorios estén completos antes de permitir guardar los cambios.
   const validateEditForm = () => {
     const nextErrors = {};
 
+    // Validamos que la descripción, dirección y estado no estén vacíos, mostrando mensajes de error específicos para cada campo si es necesario.
     if (!editForm.descripcion.trim()) {
       nextErrors.descripcion = 'La descripción es obligatoria.';
     }
 
+    // Validamos que la dirección no esté vacía, mostrando un mensaje de error si es necesario.
     if (!editForm.direccion.trim()) {
       nextErrors.direccion = 'La dirección es obligatoria.';
     }
 
+// Validamos que el estado no esté vacío, mostrando un mensaje de error si es necesario.
     if (!editForm.estado.trim()) {
       nextErrors.estado = 'Seleccione un estado.';
     }
@@ -210,9 +231,11 @@ export function PropertyManagement({ onNavigate }) {
     return Object.keys(nextErrors).length === 0;
   };
 
+// Función para guardar los cambios realizados en la propiedad editada, que incluye validación, actualización en el backend y manejo de errores específicos relacionados con permisos o existencia de la propiedad.
   const savePropertyChanges = async () => {
     if (!editCandidate || !validateEditForm()) return;
 
+    // Preparamos el payload con los datos editados, normalizando el estado para asegurar consistencia en la base de datos.
     const propertyId = editCandidate.id;
     const payload = {
       descripcion: editForm.descripcion.trim(),
@@ -221,13 +244,14 @@ export function PropertyManagement({ onNavigate }) {
     };
 
     setIsSavingEdit(true);
-
+// Intentamos actualizar la propiedad en el backend, manejando errores específicos para mostrar mensajes claros al usuario en caso de que la actualización falle por permisos, existencia de la propiedad o problemas de conexión.
     const { data: updatedRows, error } = await supabase
       .from('propiedad')
       .update(payload)
       .eq('id_propiedad', propertyId)
       .select('id_propiedad,descripcion,direccion,estado');
 
+// Si hay un error en la actualización, mostramos un mensaje de error específico y no cerramos el modal para que el usuario pueda intentar corregirlo o reintentar guardar.
     if (error) {
       setEditErrors((prev) => ({
         ...prev,
@@ -236,14 +260,14 @@ export function PropertyManagement({ onNavigate }) {
       setIsSavingEdit(false);
       return;
     }
-
+// Si no se actualizó ninguna fila, es posible que la propiedad haya sido eliminada o que el usuario no tenga permisos UPDATE en RLS, por lo que mostramos un mensaje de error específico para esa situación.
     if (!updatedRows || updatedRows.length === 0) {
       const { data: existingProperty, error: checkError } = await supabase
         .from('propiedad')
         .select('id_propiedad')
         .eq('id_propiedad', propertyId)
         .maybeSingle();
-
+// Construimos un mensaje de error específico dependiendo de si la propiedad existe pero no se pudo actualizar por permisos, o si la propiedad no existe en absoluto, para dar feedback claro al usuario sobre lo que ocurrió.
       const saveErrorMessage = checkError
         ? `No se guardaron cambios en la base de datos. ${checkError.message}`
         : existingProperty
@@ -257,9 +281,10 @@ export function PropertyManagement({ onNavigate }) {
       setIsSavingEdit(false);
       return;
     }
-
+// Si la actualización fue exitosa, actualizamos la lista de propiedades localmente para reflejar los cambios sin necesidad de recargar toda la lista desde el backend, y registramos la actividad administrativa.
     const updatedProperty = updatedRows[0];
 
+// Actualizamos la propiedad editada en la lista localmente para reflejar los cambios sin necesidad de recargar toda la lista desde el backend, y registramos la actividad administrativa.
     setProperties((prev) => prev.map((item) => (
       item.id === propertyId
         ? {
@@ -270,7 +295,7 @@ export function PropertyManagement({ onNavigate }) {
         }
         : item
     )));
-
+// Registramos la actividad administrativa de actualización de propiedad, incluyendo el nombre y dirección de la propiedad para dar contexto sobre qué propiedad fue editada.
     recordAdminActivity({
       type: 'Propiedad actualizada',
       user: `${updatedProperty.descripcion} · ${updatedProperty.direccion}`,
@@ -282,7 +307,7 @@ export function PropertyManagement({ onNavigate }) {
     setIsSavingEdit(false);
     closeEditModal(true);
   };
-
+  // Renderiza la vista de gestión de propiedades.
   return (
     <div className="p-6 lg:p-8 space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -299,7 +324,7 @@ export function PropertyManagement({ onNavigate }) {
           Actualizar
         </Button>
       </div>
-
+      {/* Mensaje de error cuando falla la carga o una operación. */}
       {errorMessage && (
         <Card className="bg-yellow-50 border-yellow-200">
           <CardContent className="p-4 text-sm text-yellow-800">{errorMessage}</CardContent>

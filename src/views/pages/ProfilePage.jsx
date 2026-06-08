@@ -7,6 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/ta
 import { mockUserBookings } from '@/models/bookingModel';
 import { mockFavoriteProperties } from '@/models/propertyModel';
 
+// El componente ProfilePage es la pantalla de perfil del usuario, que muestra información personal, próximas reservas, propiedades favoritas y opciones de configuración de cuenta.
+//  Utiliza un diseño con tarjetas para organizar la información y proporciona una experiencia de usuario clara y funcional para gestionar el perfil del usuario en la plataforma.
 export function ProfilePage() {
   const navigate = useNavigate();
   const handleLogout = () => {
