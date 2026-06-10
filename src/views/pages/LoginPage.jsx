@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 // Agregamos los iconos 'Eye' y 'EyeOff' para ver/ocultar contraseña
-import { Mail, Lock, ArrowRight, AlertCircle, Database, Key, Eye, EyeOff } from 'lucide-react'
+import { Mail, Lock, ArrowRight, AlertCircle, Key, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/app/components/ui/button'
 import { Input } from '@/app/components/ui/input'
 import { Card } from '@/app/components/ui/card'
@@ -135,14 +135,10 @@ export function LoginPage() {
               type="button"
               variant="ghost"
               className="text-[#6B8E23] hover:text-[#5a7a1e] hover:bg-[#6B8E23]/10 h-8 px-3 rounded-lg transition-all font-medium text-xs sm:text-sm flex items-center shadow-none"
-              onClick={e => {
-                e.preventDefault()
-                // TODO: Agregar lógica de recuperación de contraseña en el futuro
-                console.log('Recuperar contraseña clickeado')
-              }}
+              onClick={() => navigate('/forgot-password')}
             >
               <Key className="w-3.5 h-3.5 mr-1.5" />
-              Recuperar contraseña
+              ¿Olvidaste tu contraseña?
             </Button>
           </div>
 
