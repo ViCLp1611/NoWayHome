@@ -1,21 +1,21 @@
-import { Home, User, LogIn, Menu, X } from 'lucide-react';
-import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Button } from '@/app/components/ui/button';
+import { Home, User, LogIn, Menu, X } from 'lucide-react'
+import { useState } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { Button } from '@/app/components/ui/button'
 
 export function Header() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
+    setIsMobileMenuOpen(!isMobileMenuOpen)
+  }
 
-  const handleNavigation = (path) => {
-    navigate(path);
-    setIsMobileMenuOpen(false);
-  };
+  const handleNavigation = path => {
+    navigate(path)
+    setIsMobileMenuOpen(false)
+  }
 
   return (
     <header className="bg-white border-b border-[#6B8E23]/10 sticky top-0 z-50">
@@ -23,7 +23,7 @@ export function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <button
-            onClick={() => handleNavigation('home')}
+            onClick={() => handleNavigation('/')}
             className="font-poppins font-semibold text-xl md:text-2xl text-[#6B8E23] hover:text-[#5a7a1e] transition-colors"
           >
             NoWayHome
@@ -31,7 +31,7 @@ export function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-6">
-            <button
+            {/* <button
               onClick={() => handleNavigation('/')}
               className={`flex items-center gap-2 text-[#5F5F5F] hover:text-[#6B8E23] transition-colors ${
                 location.pathname === '/' ? 'text-[#6B8E23] font-medium' : ''
@@ -39,7 +39,7 @@ export function Header() {
             >
               <Home className="h-5 w-5" />
               Inicio
-            </button>
+            </button> */}
 
             {false ? (
               <button
@@ -79,11 +79,7 @@ export function Header() {
             className="md:hidden text-[#5F5F5F] hover:text-[#6B8E23] transition-colors"
             aria-label="Toggle menu"
           >
-            {isMobileMenuOpen ? (
-              <X className="h-6 w-6" />
-            ) : (
-              <Menu className="h-6 w-6" />
-            )}
+            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </div>
 
@@ -136,5 +132,5 @@ export function Header() {
         )}
       </div>
     </header>
-  );
+  )
 }
