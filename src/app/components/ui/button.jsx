@@ -19,12 +19,26 @@ const buttonVariants = cva(
         ghost:
           "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
         link: "text-primary underline-offset-4 hover:underline",
+        adminPrimary:
+          "bg-[#6B8E23] text-white hover:bg-[#5a7a1d] focus-visible:ring-[#6B8E23]/40",
+        adminSecondary:
+          "border-[1.5px] border-[#6B8E23] bg-transparent text-[#6B8E23] hover:bg-[#F2E8CF] hover:text-[#5F5F5F] focus-visible:ring-[#6B8E23]/40",
+        adminEdit:
+          "bg-[#A67C52] text-white hover:bg-[#8f6844] focus-visible:ring-[#A67C52]/40",
+        adminView:
+          "bg-[#F2E8CF] text-[#5F5F5F] hover:bg-[#e8d7b6] focus-visible:ring-[#A67C52]/30",
+        adminDanger:
+          "bg-[#B42318] text-white hover:bg-[#912018] focus-visible:ring-[#B42318]/30",
+        adminNeutral:
+          "bg-[#5F5F5F] text-white hover:bg-[#4f4f4f] focus-visible:ring-[#5F5F5F]/30",
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",
         sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
         lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
         icon: "size-9 rounded-md",
+        admin: "min-h-[44px] rounded-lg px-4 py-3 font-['Inter'] has-[>svg]:px-4",
+        adminCompact: "min-h-[36px] rounded-lg px-3 py-1.5 text-sm font-['Inter'] has-[>svg]:px-3",
       },
     },
     defaultVariants: {

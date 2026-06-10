@@ -3,33 +3,47 @@ import { Button } from '@/app/components/ui/button';
 
 export function ConfirmActionModal({
   open,
+  type = 'confirm',
   title,
   description,
   onCancel,
   onConfirm,
   cancelLabel = 'Cancelar',
-  confirmLabel = 'Confirmar',
-  confirmButtonClassName = 'bg-[#6B8E23] hover:bg-[#5a7a1d] text-white',
+  confirmLabel,
+  confirmVariant,
+  confirmButtonClassName = '',
   disableCancel = false,
   disableConfirm = false,
 }) {
-  // Si el modal no está abierto, no renderiza nada en el DOM.
   if (!open) return null;
 
-  // Si el modal está abierto, renderiza un overlay centrado.
+  const isConfirm = type === 'confirm';
+  const resolvedTitle =
+    title || (type === 'success' ? 'Accion completada' : type === 'error' ? 'Error' : 'Confirmar accion');
+  const resolvedConfirmLabel = confirmLabel || (isConfirm ? 'Confirmar' : 'Entendido');
+  const resolvedConfirmVariant =
+    confirmVariant || (type === 'error' ? 'adminDanger' : 'adminPrimary');
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      {/* Contenedor principal del modal con título, descripción y acciones. */}
       <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-        <h2 className="text-lg font-semibold text-[#333]">{title}</h2>
+        <h2 className="text-lg font-semibold text-[#333]">{resolvedTitle}</h2>
         <div className="mt-3 text-sm text-[#555]">{description}</div>
-        {/* Botonera de acciones con estados deshabilitados opcionales. */}
+
         <div className="mt-5 flex justify-end gap-2">
-          <Button variant="outline" onClick={onCancel} disabled={disableCancel}>
-            {cancelLabel}
-          </Button>
-          <Button className={confirmButtonClassName} onClick={onConfirm} disabled={disableConfirm}>
-            {confirmLabel}
+          {isConfirm && (
+            <Button variant="adminSecondary" size="admin" onClick={onCancel} disabled={disableCancel}>
+              {cancelLabel}
+            </Button>
+          )}
+          <Button
+            variant={resolvedConfirmVariant}
+            size="admin"
+            className={confirmButtonClassName}
+            onClick={onConfirm}
+            disabled={disableConfirm}
+          >
+            {resolvedConfirmLabel}
           </Button>
         </div>
       </div>

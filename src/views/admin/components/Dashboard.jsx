@@ -28,6 +28,7 @@ import {
 // Importamos cliente de Supabase para consultas a la base de datos
 import { supabase } from '@/lib/supabaseClient';
 import { getAdminActivityLog } from '@/views/admin/utils/adminActivity';
+import { ConfirmActionModal } from './ConfirmActionModal';
 
 // Definimos constantes para mapear posibles nombres de campos en la base de datos
 const MONTHS_ES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -309,8 +310,8 @@ export function Dashboard({ onNavigate }) {
         </div>
         <Button
           onClick={loadDashboardData}
-          variant="outline"
-          className="border-gray-200"
+          variant="adminSecondary"
+          size="admin"
           disabled={loading}
         >
           <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
@@ -318,13 +319,14 @@ export function Dashboard({ onNavigate }) {
         </Button>
       </div>
 
-      {errorMessage && (
-        <Card className="bg-yellow-50 border-yellow-200">
-          <CardContent className="p-4">
-            <p className="text-sm text-yellow-800">{errorMessage}</p>
-          </CardContent>
-        </Card>
-      )}
+      <ConfirmActionModal
+        open={Boolean(errorMessage)}
+        type="error"
+        title="Error"
+        description={errorMessage}
+        confirmLabel="Entendido"
+        onConfirm={() => setErrorMessage('')}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((stat) => {

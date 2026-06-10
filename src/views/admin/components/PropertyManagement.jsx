@@ -5,6 +5,7 @@ import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Textarea } from '@/app/components/ui/textarea';
 import { Badge } from '@/app/components/ui/badge';
+import { ActionMenu } from '@/app/components/ActionMenu';
 // Componentes de tabla reutilizables para mostrar la lista de propiedades.
 import {
   Table,
@@ -20,11 +21,11 @@ import {
   Filter,
   MapPin,
   RefreshCw,
-  Pencil,
 } from 'lucide-react';
 // Utilidades para interactuar con Supabase y registrar actividad administrativa.
 import { supabase } from '@/lib/supabaseClient';
 import { recordAdminActivity } from '@/views/admin/utils/adminActivity';
+import { ConfirmActionModal } from './ConfirmActionModal';
 
 // Componente principal de la gestión de propiedades, que incluye funcionalidades para listar, buscar, filtrar, editar y eliminar propiedades.
 const DEFAULT_STATUS_OPTIONS = ['Disponible', 'Ocupado', 'Mantenimiento', 'Inactiva'];
@@ -46,6 +47,7 @@ export function PropertyManagement({ onNavigate }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [properties, setProperties] = useState([]);
   const [deleteCandidate, setDeleteCandidate] = useState(null);
   const [editCandidate, setEditCandidate] = useState(null);
@@ -166,6 +168,7 @@ export function PropertyManagement({ onNavigate }) {
     }
 // Actualizamos la lista de propiedades localmente para reflejar la eliminación sin necesidad de recargar toda la lista desde el backend, y registramos la actividad administrativa.
     setProperties((prev) => prev.filter((item) => item.id !== propertyToDelete.id));
+    setSuccessMessage('Propiedad eliminada correctamente.');
     recordAdminActivity({
       type: 'Propiedad eliminada',
       user: `${propertyToDelete.descripcion} · ${propertyToDelete.direccion}`,
@@ -177,6 +180,7 @@ export function PropertyManagement({ onNavigate }) {
 // Abre el modal de edición y carga la información de la propiedad seleccionada para editar.
   const openEditModal = (property) => {
     setEditCandidate(property);
+    setSuccessMessage('');
     setEditForm({
       descripcion: property.descripcion || '',
       direccion: property.direccion || '',
@@ -306,6 +310,7 @@ export function PropertyManagement({ onNavigate }) {
     await loadProperties();
     setIsSavingEdit(false);
     closeEditModal(true);
+    setSuccessMessage('Propiedad actualizada correctamente.');
   };
   // Renderiza la vista de gestión de propiedades.
   return (
@@ -319,18 +324,12 @@ export function PropertyManagement({ onNavigate }) {
             Propiedades reales desde la tabla propiedad
           </p>
         </div>
-        <Button onClick={loadProperties} variant="outline" className="border-gray-200" disabled={loading}>
+        <Button onClick={loadProperties} variant="adminSecondary" size="admin" disabled={loading}>
           <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           Actualizar
         </Button>
       </div>
       {/* Mensaje de error cuando falla la carga o una operación. */}
-      {errorMessage && (
-        <Card className="bg-yellow-50 border-yellow-200">
-          <CardContent className="p-4 text-sm text-yellow-800">{errorMessage}</CardContent>
-        </Card>
-      )}
-
       {/* Filters and Search */}
       <Card className="bg-white border-gray-200">
         <CardContent className="p-6">
@@ -346,23 +345,23 @@ export function PropertyManagement({ onNavigate }) {
             </div>
             <div className="flex gap-2">
               <Button
-                variant={filterStatus === 'all' ? 'default' : 'outline'}
-                className={filterStatus === 'all' ? 'bg-[#6B8E23] text-white' : 'border-gray-200'}
+                variant={filterStatus === 'all' ? 'adminPrimary' : 'adminSecondary'}
+                size="admin"
                 onClick={() => setFilterStatus('all')}
               >
                 <Filter className="w-4 h-4 mr-2" />
                 Todos
               </Button>
               <Button
-                variant={filterStatus === 'disponible' ? 'default' : 'outline'}
-                className={filterStatus === 'disponible' ? 'bg-[#6B8E23] text-white' : 'border-gray-200'}
+                variant={filterStatus === 'disponible' ? 'adminPrimary' : 'adminSecondary'}
+                size="admin"
                 onClick={() => setFilterStatus('disponible')}
               >
                 Disponible
               </Button>
               <Button
-                variant={filterStatus === 'ocupado' ? 'default' : 'outline'}
-                className={filterStatus === 'ocupado' ? 'bg-[#6B8E23] text-white' : 'border-gray-200'}
+                variant={filterStatus === 'ocupado' ? 'adminPrimary' : 'adminSecondary'}
+                size="admin"
                 onClick={() => setFilterStatus('ocupado')}
               >
                 Ocupado
@@ -417,24 +416,21 @@ export function PropertyManagement({ onNavigate }) {
                     <TableCell className="text-[#5F5F5F]">{property.reservas}</TableCell>
                     <TableCell className="text-[#5F5F5F]">{property.resena}</TableCell>
                     <TableCell>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-gray-200"
-                          onClick={() => openEditModal(property)}
-                        >
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Editar
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="bg-red-600 hover:bg-red-700 text-white"
-                          onClick={() => setDeleteCandidate(property)}
-                        >
-                          Eliminar
-                        </Button>
-                      </div>
+                      <ActionMenu
+                        label={`Acciones de ${property.descripcion}`}
+                        actions={[
+                          {
+                            label: 'Editar',
+                            variant: 'edit',
+                            onClick: () => openEditModal(property),
+                          },
+                          {
+                            label: 'Eliminar',
+                            variant: 'danger',
+                            onClick: () => setDeleteCandidate(property),
+                          },
+                        ]}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -444,7 +440,40 @@ export function PropertyManagement({ onNavigate }) {
         </CardContent>
       </Card>
 
-      {deleteCandidate && (
+      <ConfirmActionModal
+        open={Boolean(deleteCandidate)}
+        title="Eliminar propiedad"
+        description={(
+          <p>
+            Â¿Seguro quieres eliminar la propiedad <strong>{deleteCandidate?.descripcion}</strong>?
+          </p>
+        )}
+        cancelLabel="Cancelar"
+        confirmLabel="Eliminar"
+        confirmVariant="adminDanger"
+        onCancel={() => setDeleteCandidate(null)}
+        onConfirm={deleteProperty}
+      />
+
+      <ConfirmActionModal
+        open={Boolean(errorMessage)}
+        type="error"
+        title="Error"
+        description={errorMessage}
+        confirmLabel="Entendido"
+        onConfirm={() => setErrorMessage('')}
+      />
+
+      <ConfirmActionModal
+        open={Boolean(successMessage)}
+        type="success"
+        title="Accion completada"
+        description={successMessage}
+        confirmLabel="Entendido"
+        onConfirm={() => setSuccessMessage('')}
+      />
+
+      {false && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
             <h2 className="text-lg font-semibold text-[#333]">Confirmar eliminación</h2>
@@ -452,10 +481,10 @@ export function PropertyManagement({ onNavigate }) {
               ¿Seguro quieres eliminar la propiedad <strong>{deleteCandidate.descripcion}</strong>?
             </p>
             <div className="mt-5 flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setDeleteCandidate(null)}>
+              <Button variant="adminSecondary" size="admin" onClick={() => setDeleteCandidate(null)}>
                 Cancelar
               </Button>
-              <Button className="bg-red-600 hover:bg-red-700" onClick={deleteProperty}>
+              <Button variant="adminDanger" size="admin" onClick={deleteProperty}>
                 Eliminar
               </Button>
             </div>
@@ -537,10 +566,10 @@ export function PropertyManagement({ onNavigate }) {
             </div>
 
             <div className="mt-6 flex justify-end gap-2">
-              <Button variant="outline" onClick={closeEditModal} disabled={isSavingEdit}>
+              <Button variant="adminSecondary" size="admin" onClick={closeEditModal} disabled={isSavingEdit}>
                 Cancelar
               </Button>
-              <Button className="bg-[#6B8E23] hover:bg-[#5a7a1d]" onClick={savePropertyChanges} disabled={isSavingEdit}>
+              <Button variant="adminPrimary" size="admin" onClick={savePropertyChanges} disabled={isSavingEdit}>
                 {isSavingEdit ? 'Guardando...' : 'Guardar cambios'}
               </Button>
             </div>

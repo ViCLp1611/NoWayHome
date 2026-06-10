@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/ca
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Badge } from '@/app/components/ui/badge';
+import { ActionMenu } from '@/app/components/ActionMenu';
 import {
   Table,
   TableBody,
@@ -180,14 +181,11 @@ export function BookingManagement({ onNavigate }) {
     ];
   };
 // Devuelve la clase CSS para el botón de acción según su color.
-  const getActionClassName = (variant) => {
-    const baseClassName = 'h-8 w-full rounded-md px-2';
-
-    if (variant === 'green') return `${baseClassName} bg-[#6B8E23] hover:bg-[#5a7a1d] text-white`;
-    if (variant === 'red') return `${baseClassName} bg-red-600 hover:bg-red-700 text-white`;
-    if (variant === 'blue') return `${baseClassName} bg-blue-600 hover:bg-blue-700 text-white`;
-    if (variant === 'slate') return `${baseClassName} bg-slate-600 hover:bg-slate-700 text-white`;
-    return `${baseClassName} bg-gray-200 text-[#5F5F5F]`;
+  const getActionMenuVariant = (variant) => {
+    if (variant === 'green') return 'primary';
+    if (variant === 'red') return 'danger';
+    if (variant === 'blue' || variant === 'slate') return 'neutral';
+    return 'view';
   };
 
   // Actualiza el estado de una reserva usando su clave compuesta.
@@ -365,7 +363,7 @@ export function BookingManagement({ onNavigate }) {
           </p>
         ),
         confirmLabel: 'Eliminar',
-        confirmButtonClassName: 'bg-red-600 hover:bg-red-700 text-white',
+        confirmVariant: 'adminDanger',
       };
     }
 // Configuración para la acción de cancelar reserva con mensaje específico y estilo de botón rojo.
@@ -378,7 +376,7 @@ export function BookingManagement({ onNavigate }) {
           </p>
         ),
         confirmLabel: 'Cancelar reserva',
-        confirmButtonClassName: 'bg-red-600 hover:bg-red-700 text-white',
+        confirmVariant: 'adminDanger',
       };
     }
 // Configuración para la acción de rechazar reserva con mensaje específico y estilo de botón gris oscuro.
@@ -391,7 +389,7 @@ export function BookingManagement({ onNavigate }) {
           </p>
         ),
         confirmLabel: 'Rechazar reserva',
-        confirmButtonClassName: 'bg-slate-600 hover:bg-slate-700 text-white',
+        confirmVariant: 'adminNeutral',
       };
     }
 // Configuración para la acción de finalizar reserva con mensaje específico y estilo de botón azul.
@@ -404,7 +402,7 @@ export function BookingManagement({ onNavigate }) {
           </p>
         ),
         confirmLabel: 'Finalizar reserva',
-        confirmButtonClassName: 'bg-blue-600 hover:bg-blue-700 text-white',
+        confirmVariant: 'adminNeutral',
       };
     }
 // Configuración para la acción de confirmar reserva con mensaje específico y estilo de botón verde.
@@ -416,7 +414,7 @@ export function BookingManagement({ onNavigate }) {
         </p>
       ),
       confirmLabel: 'Confirmar reserva',
-      confirmButtonClassName: 'bg-[#6B8E23] hover:bg-[#5a7a1d] text-white',
+      confirmVariant: 'adminPrimary',
     };
   };
 // Función que se ejecuta al confirmar la acción en el modal, llama al handler correspondiente según la acción seleccionada y muestra mensajes de éxito o error según corresponda.
@@ -448,25 +446,11 @@ export function BookingManagement({ onNavigate }) {
       </div>
 
       <div className="flex justify-end">
-        <Button onClick={loadBookings} variant="outline" className="border-gray-200" disabled={loading}>
+        <Button onClick={loadBookings} variant="adminSecondary" size="admin" disabled={loading}>
           <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           Actualizar
         </Button>
       </div>
-
-      {errorMessage && (
-        <Card className="bg-yellow-50 border-yellow-200">
-          <CardContent className="p-4 text-sm text-yellow-800">{errorMessage}</CardContent>
-        </Card>
-      )}
-
-      {actionMessage.text && (
-        <Card className={actionMessage.type === 'success' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}>
-          <CardContent className={actionMessage.type === 'success' ? 'p-4 text-sm text-green-800' : 'p-4 text-sm text-red-800'}>
-            {actionMessage.text}
-          </CardContent>
-        </Card>
-      )}
 
       {/* Stats Cards */}
       {/* Tarjetas con resumen de reservas e ingresos. */}
@@ -544,23 +528,23 @@ export function BookingManagement({ onNavigate }) {
             </div>
             <div className="flex gap-2">
               <Button
-                variant={filterStatus === 'all' ? 'default' : 'outline'}
-                className={filterStatus === 'all' ? 'bg-[#6B8E23] text-white' : 'border-gray-200'}
+                variant={filterStatus === 'all' ? 'adminPrimary' : 'adminSecondary'}
+                size="admin"
                 onClick={() => setFilterStatus('all')}
               >
                 <Filter className="w-4 h-4 mr-2" />
                 Todos
               </Button>
               <Button
-                variant={filterStatus === 'confirmada' ? 'default' : 'outline'}
-                className={filterStatus === 'confirmada' ? 'bg-[#6B8E23] text-white' : 'border-gray-200'}
+                variant={filterStatus === 'confirmada' ? 'adminPrimary' : 'adminSecondary'}
+                size="admin"
                 onClick={() => setFilterStatus('confirmada')}
               >
                 Confirmadas
               </Button>
               <Button
-                variant={filterStatus === 'pendiente' ? 'default' : 'outline'}
-                className={filterStatus === 'pendiente' ? 'bg-[#6B8E23] text-white' : 'border-gray-200'}
+                variant={filterStatus === 'pendiente' ? 'adminPrimary' : 'adminSecondary'}
+                size="admin"
                 onClick={() => setFilterStatus('pendiente')}
               >
                 Pendientes
@@ -590,7 +574,7 @@ export function BookingManagement({ onNavigate }) {
                   <TableHead className="text-[#5F5F5F]">Noches</TableHead>
                   <TableHead className="text-[#5F5F5F]">Estado</TableHead>
                   <TableHead className="text-[#5F5F5F]">Total</TableHead>
-                  <TableHead className="text-[#5F5F5F] w-[260px]">Acciones</TableHead>
+                  <TableHead className="text-[#5F5F5F]">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               {/* Filas generadas desde las reservas filtradas. */}
@@ -631,27 +615,22 @@ export function BookingManagement({ onNavigate }) {
                     <TableCell className="text-[#5F5F5F] font-medium">
                       ${booking.pago.toLocaleString('es-MX')}
                     </TableCell>
-                    <TableCell className="w-[260px]">
-                      <div className="grid grid-cols-2 gap-2">
-                        {getAccionesPorEstado(booking.estado).map((action) => (
-                          <Button
-                            key={`${booking.key}-${action.id}`}
-                            size="sm"
-                            className={getActionClassName(action.variant)}
-                            onClick={() => openActionConfirmation(booking.key, action.id)}
-                          >
-                            {action.label}
-                          </Button>
-                        ))}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="col-span-2 h-8 w-full rounded-md border-gray-300 px-2 text-[#5F5F5F] hover:bg-[#F2E8CF]/30"
-                          onClick={() => openActionConfirmation(booking.key, 'eliminar')}
-                        >
-                          Eliminar
-                        </Button>
-                      </div>
+                    <TableCell>
+                      <ActionMenu
+                        label={`Acciones de la reserva RSV-${booking.id_propiedad}-${booking.id_inquilino}`}
+                        actions={[
+                          ...getAccionesPorEstado(booking.estado).map((action) => ({
+                            label: action.label,
+                            variant: getActionMenuVariant(action.variant),
+                            onClick: () => openActionConfirmation(booking.key, action.id),
+                          })),
+                          {
+                            label: 'Eliminar',
+                            variant: 'danger',
+                            onClick: () => openActionConfirmation(booking.key, 'eliminar'),
+                          },
+                        ]}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -667,11 +646,29 @@ export function BookingManagement({ onNavigate }) {
         description={actionModalConfig.description}
         cancelLabel="Cancelar"
         confirmLabel={isApplyingAction ? 'Procesando...' : actionModalConfig.confirmLabel}
-        confirmButtonClassName={actionModalConfig.confirmButtonClassName}
+        confirmVariant={actionModalConfig.confirmVariant}
         onCancel={closeActionConfirmation}
         onConfirm={confirmAndExecuteAction}
         disableCancel={isApplyingAction}
         disableConfirm={isApplyingAction}
+      />
+
+      <ConfirmActionModal
+        open={Boolean(errorMessage)}
+        type="error"
+        title="Error"
+        description={errorMessage}
+        confirmLabel="Entendido"
+        onConfirm={() => setErrorMessage('')}
+      />
+
+      <ConfirmActionModal
+        open={Boolean(actionMessage.text)}
+        type={actionMessage.type === 'success' ? 'success' : 'error'}
+        title={actionMessage.type === 'success' ? 'Accion completada' : 'Error'}
+        description={actionMessage.text}
+        confirmLabel="Entendido"
+        onConfirm={() => setActionMessage({ type: '', text: '' })}
       />
 
       {/* Quick Navigation */}

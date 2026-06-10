@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/ca
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Badge } from '@/app/components/ui/badge';
+import { ActionMenu } from '@/app/components/ActionMenu';
 
 // Iconos para la interfaz de usuario
 import {
@@ -18,7 +19,7 @@ import {
   TableRow,
 } from '@/app/components/ui/table';
 // Importamos iconos para acciones de usuario
-import { Search, RefreshCw, Users, Home, Calendar, UserPlus, Pencil } from 'lucide-react';
+import { Search, RefreshCw, Users, Home, Calendar, UserPlus } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { ConfirmActionModal } from './ConfirmActionModal';
 import { recordAdminActivity } from '@/views/admin/utils/adminActivity';
@@ -221,6 +222,11 @@ export function UserManagement({ onNavigate }) {
     };
   }, [users]);
 
+  const editingUser = useMemo(
+    () => users.find((user) => user.key === editingId) || null,
+    [users, editingId]
+  );
+
   // Convierte el rol técnico a una etiqueta legible para UI.
   const getRoleLabel = (role) => {
     if (role === 'host') return 'Arrendatario';
@@ -241,7 +247,7 @@ export function UserManagement({ onNavigate }) {
     setEditForm({
       nombre: user.nombre || '',
       correo: user.correo || '',
-      telefono: user.telefono || '',
+      telefono: user.telefono === '-' ? '' : user.telefono || '',
     });
   };
 
@@ -489,6 +495,7 @@ export function UserManagement({ onNavigate }) {
         source: 'usuarios',
       });
   // Limpiamos mensajes de error, mostramos un mensaje de éxito y cerramos el modal de confirmación de eliminación.
+      setSuccessMessage('Usuario eliminado correctamente.');
       setDeleteCandidate(null);
     } catch (error) {
       const hint = getDeleteHint(error?.message);
@@ -639,28 +646,18 @@ export function UserManagement({ onNavigate }) {
           <p className="text-[#5F5F5F]/70">Inquilinos y arrendatarios cargados desde la base de datos</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => setShowCreateModal(true)} className="bg-[#6B8E23] hover:bg-[#5a7a1d] text-white">
+          <Button onClick={() => setShowCreateModal(true)} variant="adminPrimary" size="admin">
             <UserPlus className="w-4 h-4 mr-2" />
             Agregar usuario
           </Button>
-          <Button onClick={loadUsers} variant="outline" className="border-gray-200" disabled={loading}>
+          <Button onClick={loadUsers} variant="adminSecondary" size="admin" disabled={loading}>
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Actualizar
           </Button>
         </div>
       </div>
       {/* Mensaje de error de carga/operación. */}
-      {errorMessage && (
-        <Card className="bg-yellow-50 border-yellow-200">
-          <CardContent className="p-4 text-sm text-yellow-800">{errorMessage}</CardContent>
-        </Card>
-      )}
       {/* Mensaje de éxito para acciones completadas. */}
-      {successMessage && (
-        <Card className="bg-green-50 border-green-200">
-          <CardContent className="p-4 text-sm text-green-800">{successMessage}</CardContent>
-        </Card>
-      )}
       {/* Tarjetas de métricas principales. */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="bg-[#F2E8CF] border-none">
@@ -734,22 +731,22 @@ export function UserManagement({ onNavigate }) {
             </div>
             <div className="flex gap-2">
               <Button
-                variant={filterRole === 'all' ? 'default' : 'outline'}
-                className={filterRole === 'all' ? 'bg-[#6B8E23] text-white' : 'border-gray-200'}
+                variant={filterRole === 'all' ? 'adminPrimary' : 'adminSecondary'}
+                size="admin"
                 onClick={() => setFilterRole('all')}
               >
                 Todos
               </Button>
               <Button
-                variant={filterRole === 'host' ? 'default' : 'outline'}
-                className={filterRole === 'host' ? 'bg-[#6B8E23] text-white' : 'border-gray-200'}
+                variant={filterRole === 'host' ? 'adminPrimary' : 'adminSecondary'}
+                size="admin"
                 onClick={() => setFilterRole('host')}
               >
                 Arrendatarios
               </Button>
               <Button
-                variant={filterRole === 'guest' ? 'default' : 'outline'}
-                className={filterRole === 'guest' ? 'bg-[#6B8E23] text-white' : 'border-gray-200'}
+                variant={filterRole === 'guest' ? 'adminPrimary' : 'adminSecondary'}
+                size="admin"
                 onClick={() => setFilterRole('guest')}
               >
                 Inquilinos
@@ -780,57 +777,16 @@ export function UserManagement({ onNavigate }) {
                 {filteredUsers.map((user) => (
                   <TableRow key={user.key} className="hover:bg-[#F2E8CF]/20">
                     <TableCell>
-                      {editingId === user.key ? (
-                        <div className="space-y-2">
-                          <Input
-                            className={editErrors.nombre ? 'border-red-400 focus-visible:ring-red-300' : ''}
-                            value={editForm.nombre}
-                            onChange={(e) => {
-                              setEditForm((prev) => ({ ...prev, nombre: e.target.value }));
-                              setEditErrors((prev) => ({ ...prev, nombre: '' }));
-                            }}
-                          />
-                          {editErrors.nombre && (
-                            <p className="text-xs text-red-600">{editErrors.nombre}</p>
-                          )}
-                          <Input
-                            className={editErrors.correo ? 'border-red-400 focus-visible:ring-red-300' : ''}
-                            value={editForm.correo}
-                            onChange={(e) => {
-                              setEditForm((prev) => ({ ...prev, correo: e.target.value }));
-                              setEditErrors((prev) => ({ ...prev, correo: '' }));
-                            }}
-                          />
-                          {editErrors.correo && (
-                            <p className="text-xs text-red-600">{editErrors.correo}</p>
-                          )}
-                        </div>
-                      ) : (
-                        <div>
-                          <p className="text-[#5F5F5F]">{user.nombre}</p>
-                          <p className="text-sm text-[#5F5F5F]/60">{user.correo}</p>
-                        </div>
-                      )}
+                      <div>
+                        <p className="text-[#5F5F5F]">{user.nombre}</p>
+                        <p className="text-sm text-[#5F5F5F]/60">{user.correo}</p>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge className={getRoleBadgeColor(user.rol)}>{getRoleLabel(user.rol)}</Badge>
                     </TableCell>
                     <TableCell>
-                      {editingId === user.key ? (
-                        <Input
-                          className={editErrors.telefono ? 'border-red-400 focus-visible:ring-red-300' : ''}
-                          value={editForm.telefono}
-                          onChange={(e) => {
-                            setEditForm((prev) => ({ ...prev, telefono: e.target.value }));
-                            setEditErrors((prev) => ({ ...prev, telefono: '' }));
-                          }}
-                        />
-                      ) : (
-                        <span className="text-[#5F5F5F]">{user.telefono}</span>
-                      )}
-                      {editingId === user.key && editErrors.telefono && (
-                        <p className="mt-1 text-xs text-red-600">{editErrors.telefono}</p>
-                      )}
+                      <span className="text-[#5F5F5F]">{user.telefono}</span>
                     </TableCell>
                     <TableCell className="text-[#5F5F5F]">
                       {user.rol === 'host'
@@ -840,30 +796,21 @@ export function UserManagement({ onNavigate }) {
                         : '-'}
                     </TableCell>
                     <TableCell>
-                      {editingId === user.key ? (
-                        <div className="flex gap-2">
-                          <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => requestEditConfirmation(user)}>
-                            Guardar
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={cancelEdit}>
-                            Cancelar
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline" className="border-gray-200" onClick={() => startEdit(user)}>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Editar
-                          </Button>
-                          <Button
-                            size="sm"
-                            className="bg-red-600 hover:bg-red-700 text-white"
-                            onClick={() => setDeleteCandidate(user)}
-                          >
-                            Eliminar
-                          </Button>
-                        </div>
-                      )}
+                      <ActionMenu
+                        label={`Acciones de ${user.nombre}`}
+                        actions={[
+                          {
+                            label: 'Editar',
+                            variant: 'edit',
+                            onClick: () => startEdit(user),
+                          },
+                          {
+                            label: 'Eliminar',
+                            variant: 'danger',
+                            onClick: () => setDeleteCandidate(user),
+                          },
+                        ]}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -873,6 +820,86 @@ export function UserManagement({ onNavigate }) {
         </CardContent>
       </Card>
         {/* Modal de confirmación para eliminar usuario. */}
+      {editingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl">
+            <h2 className="text-lg font-semibold text-[#333]">Editar usuario</h2>
+            <p className="mt-2 text-sm text-[#555]">
+              Modifica los datos personales de {editingUser.nombre}.
+            </p>
+
+            <div className="mt-5 space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[#5F5F5F]" htmlFor="edit-user-name">
+                  Nombre
+                </label>
+                <Input
+                  id="edit-user-name"
+                  className={editErrors.nombre ? 'border-red-400 focus-visible:ring-red-300' : 'bg-[#FAFAFA] border-gray-200'}
+                  value={editForm.nombre}
+                  onChange={(e) => {
+                    setEditForm((prev) => ({ ...prev, nombre: e.target.value }));
+                    setEditErrors((prev) => ({ ...prev, nombre: '' }));
+                  }}
+                  placeholder="Nombre completo"
+                />
+                {editErrors.nombre && (
+                  <p className="text-sm text-red-600">{editErrors.nombre}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[#5F5F5F]" htmlFor="edit-user-email">
+                  Correo
+                </label>
+                <Input
+                  id="edit-user-email"
+                  type="email"
+                  className={editErrors.correo ? 'border-red-400 focus-visible:ring-red-300' : 'bg-[#FAFAFA] border-gray-200'}
+                  value={editForm.correo}
+                  onChange={(e) => {
+                    setEditForm((prev) => ({ ...prev, correo: e.target.value }));
+                    setEditErrors((prev) => ({ ...prev, correo: '' }));
+                  }}
+                  placeholder="correo@dominio.com"
+                />
+                {editErrors.correo && (
+                  <p className="text-sm text-red-600">{editErrors.correo}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[#5F5F5F]" htmlFor="edit-user-phone">
+                  Telefono
+                </label>
+                <Input
+                  id="edit-user-phone"
+                  className={editErrors.telefono ? 'border-red-400 focus-visible:ring-red-300' : 'bg-[#FAFAFA] border-gray-200'}
+                  value={editForm.telefono}
+                  onChange={(e) => {
+                    setEditForm((prev) => ({ ...prev, telefono: e.target.value }));
+                    setEditErrors((prev) => ({ ...prev, telefono: '' }));
+                  }}
+                  placeholder="Opcional"
+                />
+                {editErrors.telefono && (
+                  <p className="text-sm text-red-600">{editErrors.telefono}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <Button variant="adminSecondary" size="admin" onClick={cancelEdit}>
+                Cancelar
+              </Button>
+              <Button variant="adminPrimary" size="admin" onClick={() => requestEditConfirmation(editingUser)}>
+                Guardar cambios
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <ConfirmActionModal
         open={Boolean(deleteCandidate)}
         title="Confirmar eliminación"
@@ -883,9 +910,27 @@ export function UserManagement({ onNavigate }) {
         )}
         cancelLabel="Cancelar"
         confirmLabel="Eliminar"
-        confirmButtonClassName="bg-red-600 hover:bg-red-700"
+        confirmVariant="adminDanger"
         onCancel={() => setDeleteCandidate(null)}
         onConfirm={confirmDelete}
+      />
+
+      <ConfirmActionModal
+        open={Boolean(errorMessage)}
+        type="error"
+        title="Error"
+        description={errorMessage}
+        confirmLabel="Entendido"
+        onConfirm={() => setErrorMessage('')}
+      />
+
+      <ConfirmActionModal
+        open={Boolean(successMessage)}
+        type="success"
+        title="Accion completada"
+        description={successMessage}
+        confirmLabel="Entendido"
+        onConfirm={() => setSuccessMessage('')}
       />
 
       <ConfirmActionModal
@@ -898,7 +943,7 @@ export function UserManagement({ onNavigate }) {
         )}
         cancelLabel="Cancelar"
         confirmLabel="Confirmar"
-        confirmButtonClassName="bg-[#6B8E23] hover:bg-[#5a7a1d]"
+        confirmVariant="adminPrimary"
         onCancel={() => setEditConfirmCandidate(null)}
         onConfirm={() => saveEdit(editConfirmCandidate)}
       />
@@ -992,10 +1037,10 @@ export function UserManagement({ onNavigate }) {
             </div>
 
             <div className="mt-5 flex justify-end gap-2">
-              <Button variant="outline" onClick={closeCreateModal} disabled={creating}>
+              <Button variant="adminSecondary" size="admin" onClick={closeCreateModal} disabled={creating}>
                 Cancelar
               </Button>
-              <Button className="bg-[#6B8E23] hover:bg-[#5a7a1d] text-white" onClick={requestCreateConfirmation} disabled={creating}>
+              <Button variant="adminPrimary" size="admin" onClick={requestCreateConfirmation} disabled={creating}>
                 {creating ? 'Guardando...' : 'Crear usuario'}
               </Button>
             </div>
@@ -1014,7 +1059,7 @@ export function UserManagement({ onNavigate }) {
         )}
         cancelLabel="Cancelar"
         confirmLabel={creating ? 'Guardando...' : 'Confirmar'}
-        confirmButtonClassName="bg-[#6B8E23] hover:bg-[#5a7a1d] text-white"
+        confirmVariant="adminPrimary"
         disableCancel={creating}
         disableConfirm={creating}
         onCancel={() => setShowCreateConfirmModal(false)}
