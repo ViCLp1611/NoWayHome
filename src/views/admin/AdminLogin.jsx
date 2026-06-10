@@ -117,7 +117,9 @@ export function AdminLogin() {
           {/* Botón de envío con estado de carga y spinner durante la petición. */}
           <Button
             type="submit"
-            className="w-full h-12 bg-[#6B8E23] hover:bg-[#5a7a1f] text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
+            variant="adminPrimary"
+            size="admin"
+            className="w-full"
             disabled={isLoading}
           >
             {isLoading ? (

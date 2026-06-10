@@ -223,15 +223,18 @@ export function PropertyForm({ onClose, onSubmit }) {
           <div className="flex gap-4 pt-4">
             <Button
               type="button"
-              variant="outline"
+              variant="adminSecondary"
+              size="admin"
               onClick={onClose}
-              className="flex-1 border-gray-200"
+              className="flex-1"
             >
               Cancelar
             </Button>
             <Button
               type="submit"
-              className="flex-1 bg-[#6B8E23] hover:bg-[#5a7a1d] text-white"
+              variant="adminPrimary"
+              size="admin"
+              className="flex-1"
             >
               Crear Propiedad
             </Button>
