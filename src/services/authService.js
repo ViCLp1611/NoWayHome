@@ -1,5 +1,8 @@
 import { supabase } from '../lib/supabaseClient.js'
 
+// Nueva URL de tu backend (Asegúrate de que el puerto coincida con tu servidor Express)
+const API_URL = 'http://localhost:5000/api/auth'
+
 // Servicio de Autenticación para Usuarios y Administradores
 class AuthService {
   constructor() {
@@ -84,64 +87,52 @@ class AuthService {
   // MÉTODOS NUEVOS PARA USUARIOS COMUNES (INQUILINOS Y ARRENDATARIOS)
   // ----------------------------------------------------------------------
 
-  // Login para inquilinos y arrendatarios
+  // Login para inquilinos y arrendatarios (Modificado para 2FA vía Servidor)
   async loginUser(correo, contrasena) {
-    if (!this.isSupabaseConfigured()) {
-      throw new Error('Supabase no está configurado. Verifica las variables de entorno.')
-    }
-
     try {
-      // 1. Buscar primero en la tabla inquilino
-      let { data: user, error: errInquilino } = await supabase
-        .from('inquilino')
-        .select('*')
-        .eq('correo', correo)
-        .eq('contrasena', contrasena)
-        .maybeSingle()
+      // Fase 1: Enviar credenciales al backend para validar y recibir el código 2FA
+      const response = await fetch(`${API_URL}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ correo, contrasena }),
+      })
 
-      let role = 'guest'
-
-      // 2. Si no se encuentra en inquilino, buscar en arrendatario
-      if (!user) {
-        const { data: host, error: errArrendatario } = await supabase
-          .from('arrendatario')
-          .select('*')
-          .eq('correo', correo)
-          .eq('contrasena', contrasena)
-          .maybeSingle()
-
-        if (!host) {
-          throw new Error('Credenciales incorrectas. Verifica tu correo y contraseña.')
-        }
-
-        user = host
-        role = 'host'
-      }
-
-      // 3. Normalizar la data devuelta excluyendo la contraseña
-      const userData = {
-        id: role === 'guest' ? user.id_inquilino : user.id_arrendatario,
-        nombre: user.nombre,
-        correo: user.correo,
-        telefono: user.telefono,
-        role: role,
-      }
-
-      return {
-        success: true,
-        user: userData,
-        message: 'Inicio de sesión exitoso',
-      }
+      const data = await response.json()
+      return data // Devuelve { success, message, role }
     } catch (error) {
-      console.error('Error en loginUser:', error)
+      console.error('Error al conectar con el servidor backend:', error)
       return {
         success: false,
-        message: error.message || 'Error desconocido en la autenticación',
+        message: 'Error de conexión con el servidor. Verifica que tu backend esté en ejecución.',
       }
     }
   }
 
-  // Registro para inquilinos y arrendatarios
+  // NUEVO MÉTODO: Validar el código 2FA (Fase 2)
+  async verificar2FA(correo, codigo, role) {
+    try {
+      const response = await fetch(`${API_URL}/verify-2fa`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ correo, codigo, role }),
+      })
+
+      const data = await response.json()
+      return data // Devuelve { success, user, message }
+    } catch (error) {
+      console.error('Error al verificar el código:', error)
+      return {
+        success: false,
+        message: 'Error al procesar la verificación. Intenta de nuevo.',
+      }
+    }
+  }
+
+  // Registro para inquilinos y arrendatarios (CÓDIGO ORIGINAL INTACTO)
   async registerUser(userData) {
     if (!this.isSupabaseConfigured()) {
       throw new Error('Supabase no está configurado. Verifica las variables de entorno.')

@@ -26,9 +26,26 @@ export class AuthController {
     }
 
     try {
-      // Llamada al servicio real de base de datos
+      // Llamada al servicio real (ahora solicita el OTP al backend)
       const result = await authService.loginUser(email, password)
 
+      // Ya no iniciamos sesión aquí (this.isAuthenticated = true),
+      // porque necesitamos que el usuario pase por el 2FA primero.
+      return result
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || 'Error inesperado al iniciar sesión',
+      }
+    }
+  }
+
+  // NUEVO MÉTODO: Verificar el código de 6 dígitos (2FA)
+  async verify2FA(email, code, role) {
+    try {
+      const result = await authService.verificar2FA(email, code, role)
+
+      // Si el código es correcto, AHORA SÍ autenticamos al usuario localmente
       if (result.success) {
         this.currentUser = result.user
         this.isAuthenticated = true
@@ -38,7 +55,7 @@ export class AuthController {
     } catch (error) {
       return {
         success: false,
-        message: error.message || 'Error inesperado al iniciar sesión',
+        message: error.message || 'Error inesperado al verificar el código',
       }
     }
   }

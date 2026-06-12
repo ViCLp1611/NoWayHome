@@ -16,8 +16,13 @@ export function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  // Nuevo estado para controlar la visibilidad de la contraseña
+  // Estado para controlar la visibilidad de la contraseña
   const [showPassword, setShowPassword] = useState(false)
+
+  // Nuevos estados para controlar el flujo de 2FA
+  const [step, setStep] = useState(1) // 1 = Credenciales, 2 = Código 2FA
+  const [otpCode, setOtpCode] = useState('')
+  const [tempRole, setTempRole] = useState('')
 
   const handleSubmit = async e => {
     e.preventDefault()
@@ -25,36 +30,51 @@ export function LoginPage() {
     setIsLoading(true)
 
     try {
-      // 1. Intentar iniciar sesión como usuario común (Inquilino / Arrendatario)
-      const userResult = await authController.login(email, password)
+      if (step === 1) {
+        // 1. Intentar iniciar sesión como usuario común (Inquilino / Arrendatario)
+        const userResult = await authController.login(email, password)
 
-      if (userResult.success) {
-        if (rememberMe) {
-          localStorage.setItem('user', JSON.stringify(userResult.user))
-        } else {
-          sessionStorage.setItem('user', JSON.stringify(userResult.user))
+        if (userResult.success) {
+          // Guardamos el rol temporalmente y cambiamos al paso de verificación 2FA
+          setTempRole(userResult.role)
+          setStep(2)
+          setIsLoading(false)
+          return // Detenemos la ejecución para que el usuario ingrese el código
         }
-        navigate('/profile')
-        return // Detenemos la ejecución si el login fue exitoso
-      }
 
-      // 2. Si no es usuario común, intentar como Administrador
-      const adminResult = await handleAdminLogin(email, password)
+        // 2. Si no es usuario común, intentar como Administrador (Se mantiene intacto)
+        const adminResult = await handleAdminLogin(email, password)
 
-      if (adminResult.success) {
-        if (rememberMe) {
-          localStorage.setItem('admin', JSON.stringify(adminResult.admin))
-        } else {
-          sessionStorage.setItem('admin', JSON.stringify(adminResult.admin))
+        if (adminResult.success) {
+          if (rememberMe) {
+            localStorage.setItem('admin', JSON.stringify(adminResult.admin))
+          } else {
+            sessionStorage.setItem('admin', JSON.stringify(adminResult.admin))
+          }
+          navigate('/admin') // Redirige a la vista de administrador
+          return // Detenemos la ejecución si el login fue exitoso
         }
-        navigate('/admin') // Redirige a la vista de administrador
-        return // Detenemos la ejecución si el login fue exitoso
-      }
 
-      // 3. Si falla en ambas tablas, mostramos el error
-      setError('Credenciales incorrectas. Verifica tu correo y contraseña.')
+        // 3. Si falla en ambas tablas, mostramos el error
+        setError('Credenciales incorrectas. Verifica tu correo y contraseña.')
+      } else if (step === 2) {
+        // 4. Paso 2: Validar el código OTP (2FA)
+        const result = await authController.verify2FA(email, otpCode, tempRole)
+
+        if (result.success) {
+          // Si el código es correcto, guardamos la sesión y navegamos
+          if (rememberMe) {
+            localStorage.setItem('user', JSON.stringify(result.user))
+          } else {
+            sessionStorage.setItem('user', JSON.stringify(result.user))
+          }
+          navigate('/profile')
+        } else {
+          setError(result.message)
+        }
+      }
     } catch (err) {
-      setError(err.message || 'Error inesperado al iniciar sesión')
+      setError(err.message || 'Error inesperado durante la autenticación')
     } finally {
       setIsLoading(false)
     }
@@ -71,87 +91,128 @@ export function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <label htmlFor="email" className="text-[#5F5F5F] font-medium">
-              Correo Electrónico
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
-              <Input
-                id="email"
-                type="email"
-                placeholder="correo@ejemplo.com"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                className="pl-12 h-12 bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] rounded-xl transition-colors"
-                required
-              />
-            </div>
-          </div>
+          {step === 1 ? (
+            <>
+              {/* VISTA 1: FORMULARIO DE CREDENCIALES ORDINARIO */}
+              <div className="space-y-2">
+                <label htmlFor="email" className="text-[#5F5F5F] font-medium">
+                  Correo Electrónico
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="correo@ejemplo.com"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    className="pl-12 h-12 bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] rounded-xl transition-colors"
+                    required
+                  />
+                </div>
+              </div>
 
-          <div className="space-y-2">
-            <label htmlFor="password" className="text-[#5F5F5F] font-medium">
-              Contraseña
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
-              <Input
-                id="password"
-                // Cambiamos el tipo dinámicamente según el estado
-                type={showPassword ? 'text' : 'password'}
-                // Texto explícito para evitar la confusión de autocompletado
-                placeholder="Escribe tu contraseña"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                // Agregamos pr-12 para el ojo, y placeholder:text-[#5F5F5F]/50 para un contraste más suave
-                className="pl-12 pr-12 h-12 bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] placeholder:text-[#5F5F5F]/50 rounded-xl transition-colors"
-                required
-              />
-              {/* Botón para alternar la visibilidad de la contraseña */}
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-[#5F5F5F]/50 hover:text-[#5F5F5F] transition-colors focus:outline-none"
-                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-              >
-                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-              </button>
-            </div>
-          </div>
+              <div className="space-y-2">
+                <label htmlFor="password" className="text-[#5F5F5F] font-medium">
+                  Contraseña
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Escribe tu contraseña"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    className="pl-12 pr-12 h-12 bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] placeholder:text-[#5F5F5F]/50 rounded-xl transition-colors"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[#5F5F5F]/50 hover:text-[#5F5F5F] transition-colors focus:outline-none"
+                    aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+              </div>
 
-          <div className="flex items-center justify-between text-sm">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={e => setRememberMe(e.target.checked)}
-                className="rounded border-[#6B8E23]/30 text-[#6B8E23] focus:ring-[#6B8E23] focus:ring-offset-0"
-              />
-              <span className="text-[#5F5F5F]">Recordarme</span>
-            </label>
+              <div className="flex items-center justify-between text-sm">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={e => setRememberMe(e.target.checked)}
+                    className="rounded border-[#6B8E23]/30 text-[#6B8E23] focus:ring-[#6B8E23] focus:ring-offset-0"
+                  />
+                  <span className="text-[#5F5F5F]">Recordarme</span>
+                </label>
 
-            {/* Botón estético de recuperación de contraseña actualizado */}
-            <Button
-              type="button"
-              variant="ghost"
-              className="text-[#6B8E23] hover:text-[#5a7a1e] hover:bg-[#6B8E23]/10 h-8 px-3 rounded-lg transition-all font-medium text-xs sm:text-sm flex items-center shadow-none"
-              onClick={e => {
-                e.preventDefault()
-                // TODO: Agregar lógica de recuperación de contraseña en el futuro
-                console.log('Recuperar contraseña clickeado')
-              }}
-            >
-              <Key className="w-3.5 h-3.5 mr-1.5" />
-              Recuperar contraseña
-            </Button>
-          </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="text-[#6B8E23] hover:text-[#5a7a1e] hover:bg-[#6B8E23]/10 h-8 px-3 rounded-lg transition-all font-medium text-xs sm:text-sm flex items-center shadow-none"
+                  onClick={e => {
+                    e.preventDefault()
+                    console.log('Recuperar contraseña clickeado')
+                  }}
+                >
+                  <Key className="w-3.5 h-3.5 mr-1.5" />
+                  Recuperar contraseña
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* VISTA 2: FORMULARIO DE VERIFICACIÓN 2FA */}
+              <div className="space-y-4 text-center py-2">
+                <Database className="mx-auto h-12 w-12 text-[#6B8E23] mb-4" />
+                <h3 className="font-medium text-[#5F5F5F] text-lg">Verificación de seguridad</h3>
+                <p className="text-sm text-[#5F5F5F]/80">
+                  Hemos enviado un código de 6 dígitos a <br />
+                  <strong className="text-[#5F5F5F]">{email}</strong>
+                </p>
+
+                <div className="space-y-2 mt-6">
+                  <Input
+                    type="text"
+                    maxLength="6"
+                    placeholder="000000"
+                    value={otpCode}
+                    onChange={e => setOtpCode(e.target.value.replace(/[^0-9]/g, ''))}
+                    className="h-14 text-center text-3xl tracking-[0.5em] bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] rounded-xl transition-colors font-semibold"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep(1)
+                    setOtpCode('')
+                    setError('')
+                  }}
+                  className="text-sm text-[#A67C52] hover:underline mt-4 focus:outline-none"
+                >
+                  Volver al inicio de sesión
+                </button>
+              </div>
+            </>
+          )}
 
           <Button
             type="submit"
             disabled={isLoading}
             className="w-full bg-[#6B8E23] text-white hover:bg-[#5a7a1e] h-12 shadow-none rounded-xl disabled:opacity-50"
           >
-            {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+            {isLoading
+              ? step === 1
+                ? 'Iniciando sesión...'
+                : 'Verificando código...'
+              : step === 1
+                ? 'Iniciar Sesión'
+                : 'Verificar y Entrar'}
             <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
 
@@ -187,7 +248,6 @@ export function LoginPage() {
             <Button
               type="button"
               variant="outline"
-              // Agregamos hover:text-[#5F5F5F] para evitar que el texto se vuelva blanco/invisible
               className="border-2 border-[#6B8E23]/20 text-[#5F5F5F] hover:text-[#5F5F5F] hover:border-[#6B8E23] hover:bg-[#F2E8CF]/30 shadow-none rounded-xl h-11 transition-all"
             >
               Google
@@ -195,7 +255,6 @@ export function LoginPage() {
             <Button
               type="button"
               variant="outline"
-              // Agregamos hover:text-[#5F5F5F] aquí también
               className="border-2 border-[#6B8E23]/20 text-[#5F5F5F] hover:text-[#5F5F5F] hover:border-[#6B8E23] hover:bg-[#F2E8CF]/30 shadow-none rounded-xl h-11 transition-all"
             >
               Facebook
