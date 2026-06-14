@@ -62,13 +62,21 @@ export function LoginPage() {
         const result = await authController.verify2FA(email, otpCode, tempRole)
 
         if (result.success) {
-          // Si el código es correcto, guardamos la sesión y navegamos
+          // Si el código es correcto, guardamos la sesión
           if (rememberMe) {
             localStorage.setItem('user', JSON.stringify(result.user))
           } else {
             sessionStorage.setItem('user', JSON.stringify(result.user))
           }
-          navigate('/profile')
+
+          // SOLUCIÓN: Redirección inteligente basada en la variable tempRole
+          // (que sabemos que es 'host' para arrendatarios)
+          if (tempRole === 'host') {
+            navigate('/arrendatario') // Redirige a la vista de anfitrión
+          } else {
+            // CAMBIO APLICADO: Ahora redirige correctamente a la vista de Inquilino
+            navigate('/inquilino')
+          }
         } else {
           setError(result.message)
         }

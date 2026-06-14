@@ -18,12 +18,16 @@ import { Avatar, AvatarFallback } from '@/app/components/ui/avatar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs'
 import { mockUserBookings } from '@/models/bookingModel'
 import { mockFavoriteProperties } from '@/models/propertyModel'
-import { UserNavbar } from '@/views/user/components/UserNavbar.jsx' // Importación con alias corregida
+import { InquilinoNavbar } from '@/views/inquilino/components/InquilinoNavbar.jsx'
+import { EditInquilinoModal } from '@/views/inquilino/components/EditInquilinoModal.jsx' // Importación del nuevo modal
 
-export function ProfilePage() {
+export function InquilinoPage() {
   const navigate = useNavigate()
   const [userData, setUserData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+
+  // Estado para controlar la visibilidad del Modal de Edición
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
   useEffect(() => {
     // Buscar en session y local storage
@@ -72,7 +76,7 @@ export function ProfilePage() {
 
   return (
     <>
-      <UserNavbar /> {/* Navbar inyectado en la página */}
+      <InquilinoNavbar /> {/* Navbar inyectado en la página */}
       <div className="min-h-screen py-8 px-4 bg-[#FAFAFA]">
         <div className="container mx-auto max-w-5xl">
           {/* Profile Header */}
@@ -120,6 +124,7 @@ export function ProfilePage() {
               <div className="flex md:flex-col gap-3 w-full md:w-auto">
                 <Button
                   variant="outline"
+                  onClick={() => setIsEditModalOpen(true)} // Abre el modal de edición
                   className="flex-1 md:flex-initial border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#6B8E23] hover:text-white shadow-none rounded-xl transition-all"
                 >
                   <Edit className="h-4 w-4 mr-2" />
@@ -346,6 +351,15 @@ export function ProfilePage() {
           </Tabs>
         </div>
       </div>
+      {/* Componente Modal inyectado al final */}
+      {userData && (
+        <EditInquilinoModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          userData={userData}
+          onUpdateSuccess={updatedData => setUserData(updatedData)}
+        />
+      )}
     </>
   )
 }

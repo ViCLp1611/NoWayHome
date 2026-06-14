@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/app/components/ui/button'
 
-export function UserNavbar() {
+export function InquilinoNavbar() {
   const navigate = useNavigate()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
@@ -26,9 +26,15 @@ export function UserNavbar() {
     <header className="bg-white border-b border-[#6B8E23]/10 sticky top-0 z-50">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <button className="font-poppins font-semibold text-xl md:text-2xl text-[#6B8E23] hover:text-[#5a7a1e] transition-colors">
-            NoWayHome
+          {/* Logo adaptado al rol de Huésped */}
+          <button
+            onClick={() => handleNavigation('/')}
+            className="font-poppins font-semibold text-xl md:text-2xl text-[#6B8E23] hover:text-[#5a7a1e] transition-colors flex items-baseline gap-2"
+          >
+            NoWayHome{' '}
+            <span className="text-sm font-medium text-[#5F5F5F] hidden sm:inline-block">
+              | Huésped
+            </span>
           </button>
 
           {/* Desktop Navigation */}
