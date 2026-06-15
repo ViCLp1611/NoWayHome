@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient.js'
+import { hashPassword, comparePassword, isBcryptHash } from '../utils/passwordUtils.js'
 
 // Servicio de Autenticacion para Usuarios y Administradores
 class AuthService {
@@ -28,7 +29,6 @@ class AuthService {
         .from('administrador')
         .select('*')
         .eq('correo', correo)
-        .eq('contrasena', contrasena)
         .maybeSingle()
 
       if (error) {
@@ -42,6 +42,18 @@ class AuthService {
       }
 
       if (!data) {
+        return {
+          success: false,
+          message: 'Credenciales incorrectas. Verifica tu correo y contrasena.',
+        }
+      }
+
+      const isHash = isBcryptHash(data.contrasena)
+      const passwordMatches = isHash
+        ? await comparePassword(contrasena, data.contrasena)
+        : contrasena === data.contrasena
+
+      if (!passwordMatches) {
         return {
           success: false,
           message: 'Credenciales incorrectas. Verifica tu correo y contrasena.',
@@ -85,40 +97,55 @@ class AuthService {
     const normalizedEmail = correo.trim().toLowerCase()
 
     try {
-      let { data: user, error: tenantError } = await supabase
+      let role = 'guest'
+      let user = null
+      let error = null
+
+      const { data: tenant, error: tenantError } = await supabase
         .from('inquilino')
         .select('*')
         .eq('correo', normalizedEmail)
-        .eq('contrasena', contrasena)
         .maybeSingle()
 
       if (tenantError) {
         throw new Error(`No se pudo consultar el perfil de inquilino: ${tenantError.message}`)
       }
 
-      let role = 'guest'
-
-      if (!user) {
+      if (tenant) {
+        user = tenant
+        role = 'guest'
+      } else {
         const { data: host, error: hostError } = await supabase
           .from('arrendatario')
           .select('*')
           .eq('correo', normalizedEmail)
-          .eq('contrasena', contrasena)
           .maybeSingle()
 
         if (hostError) {
           throw new Error(`No se pudo consultar el perfil de arrendatario: ${hostError.message}`)
         }
 
-        if (!host) {
-          return {
-            success: false,
-            message: 'Credenciales incorrectas. Verifica tu correo y contrasena.',
-          }
-        }
-
         user = host
         role = 'host'
+      }
+
+      if (!user) {
+        return {
+          success: false,
+          message: 'Credenciales incorrectas. Verifica tu correo y contrasena.',
+        }
+      }
+
+      const isHash = isBcryptHash(user.contrasena)
+      const passwordMatches = isHash
+        ? await comparePassword(contrasena, user.contrasena)
+        : contrasena === user.contrasena
+
+      if (!passwordMatches) {
+        return {
+          success: false,
+          message: 'Credenciales incorrectas. Verifica tu correo y contrasena.',
+        }
       }
 
       return {
@@ -167,6 +194,7 @@ class AuthService {
         throw new Error('Este correo ya se encuentra registrado en la plataforma.')
       }
 
+      const hashedPassword = await hashPassword(password)
       const { data, error } = await supabase
         .from(table)
         .insert([
@@ -174,7 +202,7 @@ class AuthService {
             nombre: name,
             correo: normalizedEmail,
             telefono: phone,
-            contrasena: password,
+            contrasena: hashedPassword,
           },
         ])
         .select()

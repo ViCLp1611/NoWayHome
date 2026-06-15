@@ -23,6 +23,7 @@ import { Search, RefreshCw, Users, Home, Calendar, UserPlus } from 'lucide-react
 import { supabase } from '@/lib/supabaseClient';
 import { ConfirmActionModal } from './ConfirmActionModal';
 import { recordAdminActivity } from '@/views/admin/utils/adminActivity';
+import { hashPassword } from '@/utils/passwordUtils.js';
 
 // Estados iniciales para formularios de creación y edición de usuarios, así como para manejo de errores en ambos casos, para mantener el código organizado y facilitar el reseteo de formularios después de cada acción.
 const initialCreateForm = {
@@ -590,27 +591,40 @@ export function UserManagement({ onNavigate }) {
 
     setCreating(true);
     setErrorMessage('');
-// Intentamos crear el nuevo usuario en la tabla correspondiente según el tipo seleccionado, manejando errores específicos para mostrar mensajes claros al usuario en caso de que la creación falle por permisos, existencia del usuario o problemas de conexión.
-    const { data, error } = await supabase
-      .from(table)
-      .insert({ nombre, correo, telefono: telefono || null, contrasena })
-      .select(idField)
-      .single();
 
-    setCreating(false);
+    let data = null
 
-    if (error) {
-      const rlsHint = getRlsHint(error.message);
-      setErrorMessage(
-        `No se pudo crear el usuario. ${error.message}${rlsHint ? ` | ${rlsHint}` : ''}`
-      );
-      setSuccessMessage('');
-      setShowCreateConfirmModal(false);
-      return;
+    try {
+      const hashedPassword = await hashPassword(contrasena)
+      const response = await supabase
+        .from(table)
+        .insert({ nombre, correo, telefono: telefono || null, contrasena: hashedPassword })
+        .select(idField)
+        .single()
+
+      setCreating(false)
+
+      if (response.error) {
+        const rlsHint = getRlsHint(response.error.message)
+        setErrorMessage(
+          `No se pudo crear el usuario. ${response.error.message}${rlsHint ? ` | ${rlsHint}` : ''}`
+        )
+        setSuccessMessage('')
+        setShowCreateConfirmModal(false)
+        return
+      }
+
+      data = response.data
+    } catch (hashError) {
+      setCreating(false)
+      setErrorMessage(`Error al procesar la contraseña: ${hashError.message}`)
+      setSuccessMessage('')
+      setShowCreateConfirmModal(false)
+      return
     }
 
-    const entityId = data?.[idField];
-    const isHost = table === 'arrendatario';
+    const entityId = data?.[idField]
+    const isHost = table === 'arrendatario'
 
     setUsers((prev) => [
       {
