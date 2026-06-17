@@ -106,9 +106,17 @@ export function RegisterPage() {
     setIsLoading(false)
 
     if (result.success) {
-      // Guardamos la sesión del usuario común localmente y redirigimos
+      // Guardamos la sesión del usuario localmente
       sessionStorage.setItem('user', JSON.stringify(result.user))
-      navigate('/profile')
+
+      // REDIRECCIÓN DINÁMICA BASADA EN EL ROL
+      if (formData.role === 'host') {
+        // Si eligió ser anfitrión, lo mandamos a su panel de administración de propiedades
+        navigate('/arrendatario') // O '/host', dependiendo de cómo lo llamaste en tu App.jsx
+      } else {
+        // Si eligió ser huésped, lo mandamos a la vista general o inicio
+        navigate('/inquilino') // O '/inquilino', o '/profile', dependiendo de tu ruta base para huéspedes
+      }
     } else {
       setError(result.message)
     }
