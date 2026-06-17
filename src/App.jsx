@@ -5,6 +5,7 @@ import { LoginPage } from '@/views/pages/LoginPage'
 import { RegisterPage } from '@/views/pages/RegisterPage'
 import { ForgotPassword } from '@/views/pages/ForgotPassword'
 import { UpdatePassword } from '@/views/pages/UpdatePassword'
+import { ResetPassword } from '@/views/pages/ResetPassword'
 import { ProfilePage } from '@/views/user/pages/ProfilePage' // Ruta actualizada al nuevo directorio user
 import AdminDashboard from '@/views/admin/AdminDashboard'
 
@@ -46,6 +47,15 @@ export default function App() {
               <>
                 <Header />
                 <ForgotPassword />
+              </>
+            }
+          />
+          <Route
+            path="/reset-password"
+            element={
+              <>
+                <Header />
+                <ResetPassword />
               </>
             }
           />
