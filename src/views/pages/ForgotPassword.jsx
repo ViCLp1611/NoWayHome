@@ -9,8 +9,20 @@ import { requestPasswordReset } from '@/services/passwordResetService'
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const genericMessage =
-  'Si el correo esta registrado, recibiras instrucciones para restablecer tu contrasena.'
+  'Si el correo está registrado, recibirás instrucciones para restablecer tu contraseña.'
 
+/*
+|--------------------------------------------------------------------------
+| Solicitud de recuperacion de contrasena
+|--------------------------------------------------------------------------
+| Consume POST /api/auth/forgot-password mediante passwordResetService.
+|
+| Seguridad:
+| - Siempre muestra un mensaje generico despues de solicitar recuperacion.
+| - No debe revelar si el correo existe en administrador, inquilino o
+|   arrendatario.
+| - El backend genera el token y guarda solo su hash.
+*/
 export function ForgotPassword() {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
@@ -38,6 +50,8 @@ export function ForgotPassword() {
     setIsLoading(true)
 
     try {
+      // Tanto exito como error muestran el mismo mensaje para evitar
+      // enumeracion de usuarios por correo.
       await requestPasswordReset(normalizedEmail)
       setSuccess(genericMessage)
     } catch {
@@ -63,7 +77,9 @@ export function ForgotPassword() {
         {(error || success) && (
           <Alert
             className={
-              success ? 'mb-6 border-green-200 bg-green-50' : 'mb-6 border-red-200 bg-red-50'
+              success
+                ? 'mb-6 rounded-lg border-[#6B8E23]/25 bg-white text-[#5F5F5F] shadow-sm'
+                : 'mb-6 border-red-200 bg-red-50'
             }
           >
             {success ? (
@@ -71,6 +87,7 @@ export function ForgotPassword() {
             ) : (
               <AlertCircle className="h-4 w-4 text-red-600" />
             )}
+            {success && <AlertTitle className="text-[#333]">Acción completada</AlertTitle>}
             {!success && <AlertTitle className="text-red-800">Error de recuperacion</AlertTitle>}
             <AlertDescription className={success ? 'text-[#5F5F5F]' : 'text-red-800'}>
               {success || error}

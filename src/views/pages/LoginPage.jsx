@@ -7,6 +7,20 @@ import { Card } from '@/app/components/ui/card'
 import { Input } from '@/app/components/ui/input'
 import { authController } from '../../controllers/authController'
 
+/*
+|--------------------------------------------------------------------------
+| Pantalla de login unificado + 2FA
+|--------------------------------------------------------------------------
+| Consume el flujo:
+| - POST /api/auth/login para validar correo/contrasena y solicitar 2FA.
+| - POST /api/auth/verify-2fa para completar la sesion.
+|
+| Seguridad:
+| - No se guarda usuario en storage hasta que 2FA termina correctamente.
+| - pendingRole conserva temporalmente el rol devuelto por backend para
+|   validar el codigo en la tabla two_factor_codes.
+| - No mostrar mensajes que revelen si un correo existe.
+*/
 export function LoginPage() {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
@@ -40,6 +54,8 @@ export function LoginPage() {
 
     try {
       if (step === 'credentials') {
+        // Primer paso: el backend valida credenciales y envia codigo 2FA.
+        // Todavia no se considera sesion iniciada.
         const loginResult = await authController.login(email, password)
 
         if (loginResult.success && loginResult.requires2FA) {
@@ -53,6 +69,7 @@ export function LoginPage() {
         return
       }
 
+      // Segundo paso: se verifica el codigo temporal antes de guardar usuario.
       const verifyResult = await authController.verify2FA(email, verificationCode, pendingRole)
 
       if (!verifyResult.success) {

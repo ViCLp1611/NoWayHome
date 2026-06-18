@@ -29,6 +29,14 @@ import { getAdminActivityLog } from '@/views/admin/utils/adminActivity';
 import { ConfirmActionModal } from './ConfirmActionModal';
 import { getAdminDashboardData } from '@/services/adminDataService';
 
+/*
+|--------------------------------------------------------------------------
+| Dashboard administrativo
+|--------------------------------------------------------------------------
+| Consume GET /api/admin/dashboard-data mediante adminDataService.
+| Espera datos agregados de inquilino, arrendatario, propiedad y reserva.
+| El backend debe validar rol administrador antes de consultar Supabase.
+*/
 // Definimos constantes para mapear posibles nombres de campos en la base de datos
 const MONTHS_ES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 // Listas de posibles llaves para extraer datos numéricos, fechas, estados y nombres de propiedades.
