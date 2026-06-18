@@ -1,5 +1,22 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
+/*
+|--------------------------------------------------------------------------
+| Servicio frontend de autenticacion
+|--------------------------------------------------------------------------
+| Consume los endpoints Express para login unificado, verificacion 2FA y
+| registro. Supabase se usa solo desde backend para estas operaciones.
+|
+| Endpoints:
+| - POST /api/auth/login
+| - POST /api/auth/verify-2fa
+| - POST /api/auth/register
+|
+| Seguridad:
+| - No compara contrasenas en frontend.
+| - No maneja hashes, tokens ni codigos almacenados.
+| - No completa sesion hasta que LoginPage recibe respuesta valida de 2FA.
+*/
 async function postJson(path, body) {
   const response = await fetch(`${API_URL}${path}`, {
     method: 'POST',
@@ -51,6 +68,8 @@ class AuthService {
   // ----------------------------------------------------------------------
 
   async loginUser(correo, contrasena) {
+    // Login unificado para administrador, inquilino y arrendatario.
+    // Envia correo/contrasena y espera requires2FA antes de completar sesion.
     const normalizedEmail = correo.trim().toLowerCase()
 
     try {
@@ -68,6 +87,8 @@ class AuthService {
   }
 
   async verify2FA(correo, codigo, role) {
+    // Verifica codigo de 6 digitos contra /api/auth/verify-2fa.
+    // El backend consulta two_factor_codes y devuelve usuario seguro.
     try {
       return await postJson('/api/auth/verify-2fa', {
         correo: correo.trim().toLowerCase(),
@@ -84,6 +105,8 @@ class AuthService {
   }
 
   async registerUser(userData) {
+    // Registra inquilino o arrendatario segun role.
+    // El backend valida duplicados y hashea la contrasena.
     try {
       return await postJson('/api/auth/register', userData)
     } catch (error) {

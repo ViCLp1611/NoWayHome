@@ -28,6 +28,18 @@ import { recordAdminActivity } from '@/views/admin/utils/adminActivity';
 import { ConfirmActionModal } from './ConfirmActionModal';
 import { getAdminPropertiesData } from '@/services/adminDataService';
 
+/*
+|--------------------------------------------------------------------------
+| Gestion de propiedades admin
+|--------------------------------------------------------------------------
+| Consume GET /api/admin/properties-data mediante adminDataService.
+| Espera propiedades, reservas por propiedad y datos del arrendatario.
+|
+| Seguridad:
+| - El backend debe validar rol administrador antes de consultar Supabase.
+| - Las operaciones directas de edicion/eliminacion deben respetar RLS.
+*/
+
 // Componente principal de la gestión de propiedades, que incluye funcionalidades para listar, buscar, filtrar, editar y eliminar propiedades.
 const DEFAULT_STATUS_OPTIONS = ['Disponible', 'Ocupado', 'Mantenimiento', 'Inactiva'];
 

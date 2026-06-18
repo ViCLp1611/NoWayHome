@@ -1,42 +1,52 @@
-import 'dotenv/config'
-import crypto from 'node:crypto'
 import express from 'express'
 import cors from 'cors'
-import nodemailer from 'nodemailer'
-import bcrypt from 'bcryptjs'
-import { createClient } from '@supabase/supabase-js'
+import { FRONTEND_URL, MAIL_FROM, PORT } from './config/env.js'
+import { getTransporter } from './config/mailer.js'
+import { supabase } from './config/supabase.js'
+import {
+  generate2faCode,
+  generateSecureToken,
+  hash2faCode,
+  hashPassword,
+  hashToken,
+  validatePassword,
+} from './utils/crypto.js'
+import { passwordResetEmailTemplate } from './utils/emailTemplates.js'
 
-const PORT = process.env.PORT || 3001
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173'
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || ''
+/*
+|--------------------------------------------------------------------------
+| Mensajes genericos y limites de autenticacion
+|--------------------------------------------------------------------------
+| Estos valores se usan en login, 2FA y recuperacion de contrasena.
+| El mensaje de recuperacion debe seguir siendo generico para no revelar
+| si un correo existe en administrador, inquilino o arrendatario.
+|
+| ADVERTENCIA:
+| No reemplazar estos textos por respuestas que confirmen existencia de
+| usuarios, codigos, tokens o contrasenas.
+*/
 const GENERIC_RESET_MESSAGE =
   'Si el correo esta registrado, recibiras instrucciones para restablecer tu contrasena.'
 const GENERIC_LOGIN_MESSAGE = 'Credenciales incorrectas. Verifica tu correo y contrasena.'
 const TWO_FACTOR_EXPIRATION_MINUTES = 5
 const TWO_FACTOR_MAX_ATTEMPTS = 5
 
-const missingEnv = [
-  !SUPABASE_URL && 'SUPABASE_URL',
-  !process.env.SUPABASE_SERVICE_ROLE_KEY && 'SUPABASE_SERVICE_ROLE_KEY',
-].filter(Boolean)
-
-if (missingEnv.length > 0) {
-  console.warn(`Backend iniciado sin variables requeridas: ${missingEnv.join(', ')}`)
-}
-
-const supabase = createClient(
-  SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  }
-)
-
 const app = express()
 
+/*
+|--------------------------------------------------------------------------
+| Configuracion inicial del servidor Express
+|--------------------------------------------------------------------------
+| Configura CORS y middlewares globales para que el frontend React/Vite
+| pueda consumir el backend Express.
+|
+| Frontend:
+| - Vistas y servicios bajo src/ consumen los endpoints /api/*
+|
+| Seguridad:
+| - CORS se limita a FRONTEND_URL.
+| - Este bloque no contiene logica de negocio ni debe almacenar secretos.
+*/
 app.use(
   cors({
     origin: FRONTEND_URL,
@@ -44,17 +54,16 @@ app.use(
 )
 app.use(express.json())
 
-function hashToken(token) {
-  return crypto.createHash('sha256').update(token).digest('hex')
-}
-
-function hash2faCode(correo, code) {
-  return crypto
-    .createHash('sha256')
-    .update(`${normalizeEmail(correo)}:${code}:${process.env.TWO_FACTOR_PEPPER || ''}`)
-    .digest('hex')
-}
-
+/*
+|--------------------------------------------------------------------------
+| Normalizacion de entrada
+|--------------------------------------------------------------------------
+| Estas funciones preparan correos y texto antes de consultar Supabase.
+| Sirven para evitar diferencias por espacios o mayusculas.
+|
+| ADVERTENCIA:
+| No usar estas funciones para imprimir valores sensibles en consola.
+*/
 function normalizeEmail(correo) {
   return typeof correo === 'string' ? correo.trim().toLowerCase() : ''
 }
@@ -63,21 +72,21 @@ function normalizeText(value) {
   return typeof value === 'string' ? value.trim() : ''
 }
 
-function getTransporter() {
-  const smtpPort = Number(process.env.SMTP_PORT || 587)
-
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: smtpPort,
-    secure: smtpPort === 465,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  })
-}
-
 async function findAccountByEmail(correo) {
+  /*
+   * Busca el correo en las tablas de identidades permitidas.
+   * Se usa en registro y recuperacion de contrasena.
+   *
+   * Tablas consultadas:
+   * - administrador
+   * - inquilino
+   * - arrendatario
+   *
+   * Seguridad:
+   * - Esta funcion solo devuelve informacion de tabla/rol.
+   * - Los endpoints que la usan deben mantener respuestas genericas
+   *   cuando sea necesario evitar enumeracion de usuarios.
+   */
   const lookups = [
     { table: 'administrador', role: 'administrador' },
     { table: 'inquilino', role: 'inquilino' },
@@ -104,6 +113,21 @@ async function findAccountByEmail(correo) {
 }
 
 async function findAccountWithPasswordByEmail(correo) {
+  /*
+   * Busca una cuenta con su contrasena almacenada para el login unificado.
+   *
+   * Frontend:
+   * - LoginPage.jsx -> authController -> authService.loginUser()
+   *
+   * Tablas consultadas:
+   * - administrador
+   * - inquilino
+   * - arrendatario
+   *
+   * Seguridad:
+   * - La contrasena no se devuelve al frontend.
+   * - La comparacion se hace en backend con validatePassword().
+   */
   const lookups = [
     { table: 'administrador', role: 'administrador', idField: 'id_admin' },
     { table: 'inquilino', role: 'inquilino', idField: 'id_inquilino' },
@@ -129,19 +153,11 @@ async function findAccountWithPasswordByEmail(correo) {
   return null
 }
 
-async function validatePassword(plainPassword, storedPassword) {
-  if (!storedPassword || typeof storedPassword !== 'string') {
-    return false
-  }
-
-  if (/^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(storedPassword)) {
-    return bcrypt.compare(plainPassword, storedPassword)
-  }
-
-  return plainPassword === storedPassword
-}
-
 function toSafeAccount(account) {
+  /*
+   * Construye el objeto seguro que se entrega al frontend despues de 2FA.
+   * No incluye contrasena, hashes, tokens ni codigos temporales.
+   */
   const id = account.data[account.idField]
 
   return {
@@ -155,6 +171,14 @@ function toSafeAccount(account) {
 }
 
 function isAdminRequest(req) {
+  /*
+   * Validacion ligera para endpoints admin.
+   * El frontend envia x-admin-role desde adminDataService.js.
+   *
+   * ADVERTENCIA:
+   * No usar esta cabecera como autorizacion fuerte para datos sensibles
+   * sin revisar el modelo de sesiones/autenticacion completo.
+   */
   return req.get('x-admin-role') === 'administrador'
 }
 
@@ -180,26 +204,48 @@ function sendAdminDataResponse(res, results, payload) {
 }
 
 async function sendResetEmail(correo, token) {
+  /*
+   * Envia el correo de recuperacion de contrasena.
+   *
+   * Frontend:
+   * - ForgotPassword.jsx solicita el correo.
+   * - ResetPassword.jsx abre el enlace /reset-password?token=...
+   *
+   * Seguridad:
+   * - Recibe el token en texto plano solo para construir el enlace.
+   * - En Supabase se guarda unicamente hashToken(token).
+   * - No imprimir resetUrl ni token en consola.
+   */
   const resetUrl = `${FRONTEND_URL}/reset-password?token=${encodeURIComponent(token)}`
   const transporter = getTransporter()
+  const resetEmail = passwordResetEmailTemplate(resetUrl)
 
   await transporter.sendMail({
-    from: process.env.MAIL_FROM || process.env.SMTP_USER,
+    from: MAIL_FROM,
     to: correo,
-    subject: 'Restablece tu contrasena de NoWayHome',
-    text: `Usa este enlace para restablecer tu contrasena. Expira en 15 minutos:\n\n${resetUrl}`,
-    html: `
-      <p>Usa este enlace para restablecer tu contrasena. Expira en 15 minutos:</p>
-      <p><a href="${resetUrl}">Restablecer contrasena</a></p>
-    `,
+    subject: resetEmail.subject,
+    text: resetEmail.text,
+    html: resetEmail.html,
   })
 }
 
 async function send2faEmail(correo, code) {
+  /*
+   * Envia el codigo 2FA al correo de la cuenta autenticada.
+   *
+   * Frontend:
+   * - LoginPage.jsx muestra el paso de verificacion.
+   *
+   * Tabla relacionada:
+   * - two_factor_codes guarda el hash del codigo, expiracion y reintentos.
+   *
+   * ADVERTENCIA:
+   * No imprimir el codigo 2FA ni su hash en consola.
+   */
   const transporter = getTransporter()
 
   await transporter.sendMail({
-    from: process.env.MAIL_FROM || process.env.SMTP_USER,
+    from: MAIL_FROM,
     to: correo,
     subject: 'Tu codigo de verificacion de NoWayHome',
     text: `Tu codigo de verificacion es ${code}. Expira en ${TWO_FACTOR_EXPIRATION_MINUTES} minutos.`,
@@ -215,6 +261,42 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true })
 })
 
+/*
+|--------------------------------------------------------------------------
+| POST /api/auth/login
+|--------------------------------------------------------------------------
+| Funcion:
+| Login unificado para administrador, inquilino y arrendatario. Valida
+| correo/contrasena y, si son correctos, genera un codigo 2FA.
+|
+| Frontend que lo consume:
+| - src/views/pages/LoginPage.jsx
+| - src/services/authService.js
+| - src/controllers/authController.js
+|
+| Tablas consultadas:
+| - administrador
+| - inquilino
+| - arrendatario
+|
+| Tabla modificada:
+| - two_factor_codes
+|
+| Recibe:
+| - correo
+| - contrasena
+|
+| Devuelve:
+| - success
+| - requires2FA
+| - role
+| - message
+|
+| Seguridad:
+| - No devuelve datos de usuario hasta completar 2FA.
+| - Usa mensaje generico para credenciales invalidas.
+| - Guarda el codigo 2FA hasheado, con expiracion e intentos.
+*/
 app.post('/api/auth/login', async (req, res) => {
   const correo = normalizeEmail(req.body?.correo)
   const contrasena = typeof req.body?.contrasena === 'string' ? req.body.contrasena : ''
@@ -236,7 +318,7 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ success: false, message: GENERIC_LOGIN_MESSAGE })
     }
 
-    const code = crypto.randomInt(100000, 1000000).toString()
+    const code = generate2faCode()
     const codeHash = hash2faCode(correo, code)
     const expiresAt = new Date(Date.now() + TWO_FACTOR_EXPIRATION_MINUTES * 60 * 1000).toISOString()
 
@@ -268,6 +350,24 @@ app.post('/api/auth/login', async (req, res) => {
 })
 
 app.post('/api/auth/register', async (req, res) => {
+  /*
+   * Registro de usuarios publicos.
+   *
+   * Frontend:
+   * - Registro envia name, email, phone, password y role.
+   *
+   * Tablas modificadas:
+   * - inquilino cuando role != host
+   * - arrendatario cuando role === host
+   *
+   * Seguridad:
+   * - Valida formato basico de correo, telefono y longitud de contrasena.
+   * - Revisa que el correo no exista en ninguna tabla de identidad.
+   * - Guarda la contrasena con bcrypt por medio de hashPassword().
+   *
+   * ADVERTENCIA:
+   * No guardar contrasenas en texto plano ni devolver hashes al frontend.
+   */
   const nombre = normalizeText(req.body?.name)
   const correo = normalizeEmail(req.body?.email)
   const telefono = normalizeText(req.body?.phone).replace(/\D/g, '')
@@ -302,7 +402,7 @@ app.post('/api/auth/register', async (req, res) => {
       })
     }
 
-    const hashedPassword = await bcrypt.hash(contrasena, 10)
+    const hashedPassword = await hashPassword(contrasena)
     const { data, error } = await supabase
       .from(table)
       .insert({
@@ -337,6 +437,30 @@ app.post('/api/auth/register', async (req, res) => {
 })
 
 app.post('/api/auth/verify-2fa', async (req, res) => {
+  /*
+   * Verificacion del segundo factor.
+   *
+   * Frontend:
+   * - LoginPage.jsx envia el codigo ingresado por el usuario.
+   * - authService.verify2FA() llama este endpoint.
+   *
+   * Tabla consultada/modificada:
+   * - two_factor_codes
+   *
+   * Recibe:
+   * - correo
+   * - codigo
+   * - role
+   *
+   * Devuelve:
+   * - user seguro sin contrasena si el codigo es valido.
+   *
+   * Seguridad:
+   * - Solo acepta codigos de 6 digitos.
+   * - Compara contra hash2faCode().
+   * - Rechaza codigos usados, expirados o con demasiados intentos.
+   * - Marca el codigo como usado despues de verificarlo.
+   */
   const correo = normalizeEmail(req.body?.correo)
   const code = typeof req.body?.codigo === 'string' ? req.body.codigo.trim() : ''
   const role = typeof req.body?.role === 'string' ? req.body.role.trim() : ''
@@ -408,6 +532,23 @@ app.post('/api/auth/verify-2fa', async (req, res) => {
 })
 
 app.get('/api/admin/dashboard-data', async (req, res) => {
+  /*
+   * Dashboard general de administrador.
+   *
+   * Frontend:
+   * - src/views/admin/components/Dashboard.jsx
+   * - src/services/adminDataService.js
+   *
+   * Tablas consultadas:
+   * - inquilino
+   * - arrendatario
+   * - propiedad
+   * - reserva
+   *
+   * Seguridad:
+   * - Requiere cabecera x-admin-role con valor administrador.
+   * - No debe exponerse sin validar rol/sesion admin.
+   */
   if (!isAdminRequest(req)) {
     return res.status(401).json({ success: false, message: 'Sesion de administrador requerida.' })
   }
@@ -439,6 +580,22 @@ app.get('/api/admin/dashboard-data', async (req, res) => {
 })
 
 app.get('/api/admin/users-data', async (req, res) => {
+  /*
+   * Datos de usuarios para administracion.
+   *
+   * Frontend:
+   * - src/views/admin/components/UserManagement.jsx
+   * - src/services/adminDataService.js
+   *
+   * Tablas consultadas:
+   * - inquilino
+   * - arrendatario
+   * - propiedad
+   * - reserva
+   *
+   * Devuelve:
+   * - listas de usuarios y relaciones necesarias para actividad.
+   */
   if (!isAdminRequest(req)) {
     return res.status(401).json({ success: false, message: 'Sesion de administrador requerida.' })
   }
@@ -468,6 +625,18 @@ app.get('/api/admin/users-data', async (req, res) => {
 })
 
 app.get('/api/admin/properties-data', async (req, res) => {
+  /*
+   * Datos de propiedades para administracion.
+   *
+   * Frontend:
+   * - src/views/admin/components/PropertyManagement.jsx
+   * - src/services/adminDataService.js
+   *
+   * Tablas consultadas:
+   * - propiedad
+   * - reserva
+   * - arrendatario mediante relacion de propiedad
+   */
   if (!isAdminRequest(req)) {
     return res.status(401).json({ success: false, message: 'Sesion de administrador requerida.' })
   }
@@ -491,6 +660,19 @@ app.get('/api/admin/properties-data', async (req, res) => {
 })
 
 app.get('/api/admin/bookings-data', async (req, res) => {
+  /*
+   * Datos de reservas para administracion.
+   *
+   * Frontend:
+   * - src/views/admin/components/BookingManagement.jsx
+   * - src/services/adminDataService.js
+   *
+   * Tablas consultadas:
+   * - reserva
+   * - propiedad
+   * - inquilino
+   * - arrendatario mediante propiedad
+   */
   if (!isAdminRequest(req)) {
     return res.status(401).json({ success: false, message: 'Sesion de administrador requerida.' })
   }
@@ -510,6 +692,35 @@ app.get('/api/admin/bookings-data', async (req, res) => {
 })
 
 app.post('/api/auth/forgot-password', async (req, res) => {
+  /*
+  |--------------------------------------------------------------------------
+  | POST /api/auth/forgot-password
+  |--------------------------------------------------------------------------
+  | Funcion:
+  | Recibe un correo y, si existe en una tabla de identidad, genera un
+  | token seguro para restablecer contrasena.
+  |
+  | Frontend que lo consume:
+  | - src/views/pages/ForgotPassword.jsx
+  | - src/services/passwordResetService.js
+  |
+  | Tablas consultadas:
+  | - administrador
+  | - inquilino
+  | - arrendatario
+  |
+  | Tabla modificada:
+  | - password_reset_tokens
+  |
+  | Seguridad:
+  | - No revela si el correo existe.
+  | - Guarda solo el hash del token.
+  | - El token expira.
+  | - El token solo puede utilizarse una vez.
+  |
+  | ADVERTENCIA:
+  | No cambiar la respuesta por una que confirme correo encontrado/no encontrado.
+  */
   const correo = normalizeEmail(req.body?.correo)
 
   if (!correo) {
@@ -520,7 +731,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     const account = await findAccountByEmail(correo)
 
     if (account) {
-      const token = crypto.randomBytes(32).toString('hex')
+      const token = generateSecureToken()
       const tokenHash = hashToken(token)
       const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString()
 
@@ -547,6 +758,31 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 })
 
 app.post('/api/auth/reset-password', async (req, res) => {
+  /*
+  |--------------------------------------------------------------------------
+  | POST /api/auth/reset-password
+  |--------------------------------------------------------------------------
+  | Funcion:
+  | Recibe el token del enlace y la nueva contrasena. Valida que el token
+  | exista, no este usado y no haya expirado; luego actualiza la contrasena.
+  |
+  | Frontend que lo consume:
+  | - src/views/pages/ResetPassword.jsx
+  | - src/services/passwordResetService.js
+  |
+  | Tabla consultada/modificada:
+  | - password_reset_tokens
+  |
+  | Tablas modificadas segun rol:
+  | - administrador
+  | - inquilino
+  | - arrendatario
+  |
+  | Seguridad:
+  | - El token se compara usando hashToken().
+  | - La nueva contrasena se guarda con bcrypt.
+  | - El token se marca como usado al terminar.
+  */
   const token = typeof req.body?.token === 'string' ? req.body.token.trim() : ''
   const nuevaContrasena =
     typeof req.body?.nuevaContrasena === 'string' ? req.body.nuevaContrasena : ''
@@ -590,7 +826,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
       return res.status(400).json({ message: 'El enlace no es valido o ha expirado.' })
     }
 
-    const hashedPassword = await bcrypt.hash(nuevaContrasena, 10)
+    const hashedPassword = await hashPassword(nuevaContrasena)
 
     const { error: updateError } = await supabase
       .from(table)
@@ -618,5 +854,9 @@ app.post('/api/auth/reset-password', async (req, res) => {
 })
 
 app.listen(PORT, () => {
+  /*
+   * Punto de arranque del backend Express.
+   * No colocar aqui logica de negocio ni valores sensibles.
+   */
   console.log(`Servidor NoWayHome escuchando en http://localhost:${PORT}`)
 })

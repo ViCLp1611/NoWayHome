@@ -36,6 +36,18 @@ import { ConfirmActionModal } from './ConfirmActionModal';
 import { recordAdminActivity } from '@/views/admin/utils/adminActivity';
 import { getAdminBookingsData } from '@/services/adminDataService';
 
+/*
+|--------------------------------------------------------------------------
+| Gestion de reservas admin
+|--------------------------------------------------------------------------
+| Consume GET /api/admin/bookings-data mediante adminDataService.
+| Espera reservas con propiedad, inquilino y arrendatario relacionado.
+|
+| Seguridad:
+| - El backend debe validar rol administrador antes de devolver estos datos.
+| - Las operaciones directas de cambio de estado/eliminacion deben respetar RLS.
+*/
+
 // ================= COMPONENTE PRINCIPAL =================
 export function BookingManagement({ onNavigate }) {
 

@@ -7,6 +7,23 @@ import { Card } from '@/app/components/ui/card'
 import { Alert, AlertDescription } from '@/app/components/ui/alert'
 import { resetPassword } from '@/services/passwordResetService'
 
+/*
+|--------------------------------------------------------------------------
+| Restablecimiento de contrasena desde token
+|--------------------------------------------------------------------------
+| Lee el token desde /reset-password?token=... y envia token +
+| nueva contrasena a POST /api/auth/reset-password.
+|
+| Validaciones visibles:
+| - Token presente en URL.
+| - Ambos campos completos.
+| - Minimo 8 caracteres.
+| - Confirmacion igual a la nueva contrasena.
+|
+| Seguridad:
+| - El backend valida expiracion/uso del token y guarda la contrasena con
+|   bcrypt. Esta vista no debe intentar validar el hash localmente.
+*/
 export function ResetPassword() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()

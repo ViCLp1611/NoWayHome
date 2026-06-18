@@ -26,6 +26,19 @@ import { recordAdminActivity } from '@/views/admin/utils/adminActivity';
 import { hashPassword } from '@/utils/passwordUtils.js';
 import { getAdminUsersData } from '@/services/adminDataService';
 
+/*
+|--------------------------------------------------------------------------
+| Gestion de usuarios admin
+|--------------------------------------------------------------------------
+| Consume GET /api/admin/users-data mediante adminDataService.
+| Espera listas de inquilinos, arrendatarios y relaciones con propiedades
+| o reservas para mostrar actividad.
+|
+| Seguridad:
+| - El backend debe validar rol administrador antes de devolver estos datos.
+| - Las operaciones directas con Supabase en esta vista deben mantenerse
+|   protegidas por RLS y no deben exponer contrasenas ni hashes.
+*/
 // Estados iniciales para formularios de creación y edición de usuarios, así como para manejo de errores en ambos casos, para mantener el código organizado y facilitar el reseteo de formularios después de cada acción.
 const initialCreateForm = {
   tipo: 'inquilino',

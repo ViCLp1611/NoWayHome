@@ -2,6 +2,21 @@
 import { authService } from '../services/authService.js'
 // Opcional: import { UserModel } from '../models/userModel.js'; si aún ocupas algo específico de ahí
 
+/*
+|--------------------------------------------------------------------------
+| Controlador frontend de autenticacion
+|--------------------------------------------------------------------------
+| Orquesta validaciones visibles y delega las llamadas reales a authService.
+|
+| Flujos:
+| - login() consume POST /api/auth/login.
+| - verify2FA() consume POST /api/auth/verify-2fa.
+| - register() consume POST /api/auth/register.
+|
+| Seguridad:
+| - No compara contrasenas ni codigos contra hashes en frontend.
+| - No debe guardar una sesion completa antes de terminar 2FA.
+*/
 export class AuthController {
   constructor() {
     this.currentUser = null
@@ -10,6 +25,8 @@ export class AuthController {
 
   // Método para iniciar sesión (Inquilinos y Arrendatarios)
   async login(email, password) {
+    // Valida formato basico antes de solicitar al backend el inicio de login.
+    // Si el backend responde requires2FA, LoginPage pasa al paso de codigo.
     if (!email || !password) {
       return {
         success: false,
@@ -44,6 +61,8 @@ export class AuthController {
   }
 
   async verify2FA(email, code, role) {
+    // Verifica codigo temporal de 6 digitos. El backend decide si el codigo
+    // coincide, no esta expirado, no fue usado y pertenece al rol indicado.
     if (!email || !code || !role) {
       return {
         success: false,
