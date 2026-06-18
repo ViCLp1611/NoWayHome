@@ -60,8 +60,8 @@ export function ProfilePage() {
     return name.substring(0, 2).toUpperCase()
   }
 
-  // Determinar el rol basado en tu esquema de BD (si tiene id_inquilino o id_arrendatario)
-  const userRole = userData.id_inquilino ? 'Huésped' : 'Anfitrión'
+  const isTenant = userData.role === 'guest' || userData.role === 'inquilino' || userData.id_inquilino
+  const userRole = isTenant ? 'Huésped' : 'Anfitrión'
 
   const mockBookings = mockUserBookings.map(booking => ({
     ...booking.toJSON(),

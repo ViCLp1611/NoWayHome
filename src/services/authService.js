@@ -1,5 +1,25 @@
-import { supabase } from '../lib/supabaseClient.js'
-import { hashPassword, comparePassword, isBcryptHash } from '../utils/passwordUtils.js'
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+
+async function postJson(path, body) {
+  const response = await fetch(`${API_URL}${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+
+  const data = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    return {
+      success: false,
+      message: data.message || 'No se pudo completar la solicitud.',
+    }
+  }
+
+  return data
+}
 
 // Servicio de Autenticacion para Usuarios y Administradores
 class AuthService {
@@ -16,66 +36,7 @@ class AuthService {
   // ----------------------------------------------------------------------
 
   async loginAdmin(correo, contrasena) {
-    if (!this.isSupabaseConfigured()) {
-      throw new Error('Supabase no esta configurado. Verifica las variables de entorno.')
-    }
-
-    if (!correo || !contrasena) {
-      throw new Error('Correo y contrasena son requeridos')
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('administrador')
-        .select('*')
-        .eq('correo', correo)
-        .maybeSingle()
-
-      if (error) {
-        if (error.message.includes('relation "public.administrador" does not exist')) {
-          throw new Error('La tabla administrador no existe. Crea la tabla en Supabase SQL Editor.')
-        } else if (error.message.includes('permission denied')) {
-          throw new Error('Permisos insuficientes. Verifica la configuracion de RLS en Supabase.')
-        } else {
-          throw new Error(`Error de autenticacion: ${error.message}`)
-        }
-      }
-
-      if (!data) {
-        return {
-          success: false,
-          message: 'Credenciales incorrectas. Verifica tu correo y contrasena.',
-        }
-      }
-
-      const isHash = isBcryptHash(data.contrasena)
-      const passwordMatches = isHash
-        ? await comparePassword(contrasena, data.contrasena)
-        : contrasena === data.contrasena
-
-      if (!passwordMatches) {
-        return {
-          success: false,
-          message: 'Credenciales incorrectas. Verifica tu correo y contrasena.',
-        }
-      }
-
-      return {
-        success: true,
-        admin: {
-          id: data.id_admin,
-          nombre: data.nombre,
-          correo: data.correo,
-        },
-        message: 'Inicio de sesion exitoso',
-      }
-    } catch (error) {
-      console.error('Error en loginAdmin:', error)
-      return {
-        success: false,
-        message: error.message || 'Error desconocido en la autenticacion',
-      }
-    }
+    return this.loginUser(correo, contrasena)
   }
 
   async logoutAdmin() {
@@ -90,75 +51,13 @@ class AuthService {
   // ----------------------------------------------------------------------
 
   async loginUser(correo, contrasena) {
-    if (!this.isSupabaseConfigured()) {
-      throw new Error('Supabase no esta configurado. Verifica las variables de entorno.')
-    }
-
     const normalizedEmail = correo.trim().toLowerCase()
 
     try {
-      let role = 'guest'
-      let user = null
-      let error = null
-
-      const { data: tenant, error: tenantError } = await supabase
-        .from('inquilino')
-        .select('*')
-        .eq('correo', normalizedEmail)
-        .maybeSingle()
-
-      if (tenantError) {
-        throw new Error(`No se pudo consultar el perfil de inquilino: ${tenantError.message}`)
-      }
-
-      if (tenant) {
-        user = tenant
-        role = 'guest'
-      } else {
-        const { data: host, error: hostError } = await supabase
-          .from('arrendatario')
-          .select('*')
-          .eq('correo', normalizedEmail)
-          .maybeSingle()
-
-        if (hostError) {
-          throw new Error(`No se pudo consultar el perfil de arrendatario: ${hostError.message}`)
-        }
-
-        user = host
-        role = 'host'
-      }
-
-      if (!user) {
-        return {
-          success: false,
-          message: 'Credenciales incorrectas. Verifica tu correo y contrasena.',
-        }
-      }
-
-      const isHash = isBcryptHash(user.contrasena)
-      const passwordMatches = isHash
-        ? await comparePassword(contrasena, user.contrasena)
-        : contrasena === user.contrasena
-
-      if (!passwordMatches) {
-        return {
-          success: false,
-          message: 'Credenciales incorrectas. Verifica tu correo y contrasena.',
-        }
-      }
-
-      return {
-        success: true,
-        user: {
-          id: role === 'guest' ? user.id_inquilino : user.id_arrendatario,
-          nombre: user.nombre,
-          correo: user.correo,
-          telefono: user.telefono,
-          role,
-        },
-        message: 'Inicio de sesion exitoso',
-      }
+      return await postJson('/api/auth/login', {
+        correo: normalizedEmail,
+        contrasena,
+      })
     } catch (error) {
       console.error('Error en loginUser:', error)
       return {
@@ -168,61 +67,25 @@ class AuthService {
     }
   }
 
-  async registerUser(userData) {
-    if (!this.isSupabaseConfigured()) {
-      throw new Error('Supabase no esta configurado. Verifica las variables de entorno.')
-    }
-
-    const { name, email, phone, password, role } = userData
-    const table = role === 'guest' ? 'inquilino' : 'arrendatario'
-    const normalizedEmail = email.trim().toLowerCase()
-
+  async verify2FA(correo, codigo, role) {
     try {
-      const { data: existInq } = await supabase
-        .from('inquilino')
-        .select('correo')
-        .eq('correo', normalizedEmail)
-        .maybeSingle()
-
-      const { data: existArr } = await supabase
-        .from('arrendatario')
-        .select('correo')
-        .eq('correo', normalizedEmail)
-        .maybeSingle()
-
-      if (existInq || existArr) {
-        throw new Error('Este correo ya se encuentra registrado en la plataforma.')
-      }
-
-      const hashedPassword = await hashPassword(password)
-      const { data, error } = await supabase
-        .from(table)
-        .insert([
-          {
-            nombre: name,
-            correo: normalizedEmail,
-            telefono: phone,
-            contrasena: hashedPassword,
-          },
-        ])
-        .select()
-        .single()
-
-      if (error) {
-        throw new Error(`Error al crear la cuenta: ${error.message}`)
-      }
-
+      return await postJson('/api/auth/verify-2fa', {
+        correo: correo.trim().toLowerCase(),
+        codigo,
+        role,
+      })
+    } catch (error) {
+      console.error('Error en verify2FA:', error)
       return {
-        success: true,
-        user: {
-          id: role === 'guest' ? data.id_inquilino : data.id_arrendatario,
-          nombre: data.nombre,
-          correo: data.correo,
-          telefono: data.telefono,
-          role,
-        },
-        message: 'Registro exitoso',
+        success: false,
+        message: error.message || 'Error al verificar el codigo.',
       }
+    }
+  }
+
+  async registerUser(userData) {
+    try {
+      return await postJson('/api/auth/register', userData)
     } catch (error) {
       console.error('Error en registerUser:', error)
       return {

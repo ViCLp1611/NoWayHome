@@ -34,6 +34,7 @@ import { ConfirmActionModal } from './ConfirmActionModal';
 
 // Utilidad para registrar actividad del admin (logs) por si queremos mostrar un historial de acciones realizadas en el futuro
 import { recordAdminActivity } from '@/views/admin/utils/adminActivity';
+import { getAdminBookingsData } from '@/services/adminDataService';
 
 // ================= COMPONENTE PRINCIPAL =================
 export function BookingManagement({ onNavigate }) {
@@ -60,18 +61,10 @@ export function BookingManagement({ onNavigate }) {
     setActionMessage({ type: '', text: '' });
 
     try {
-      const { data, error } = await supabase
-        .from('reserva')
-        .select('id_propiedad,id_inquilino,fecha_inicio,fecha_fin,estado,pago,propiedad:propiedad(descripcion,id_arrendatario,arrendatario:arrendatario(nombre)),inquilino:inquilino(nombre)');
-
-      if (error) {
-        setErrorMessage(`No se pudieron cargar las reservas. ${error.message}`);
-        setBookings([]);
-        return;
-      }
+      const bookingsData = await getAdminBookingsData();
 
       // Normalización de datos porque la tabla reserva tiene claves compuestas y necesitamos una clave única para cada fila, además de extraer datos relacionados para mostrar información completa en la tabla.
-      const normalized = (data || []).map((item) => ({
+      const normalized = (bookingsData.bookings || []).map((item) => ({
         key: `${item.id_propiedad}-${item.id_inquilino}-${item.fecha_inicio}`,
         id_propiedad: item.id_propiedad,
         id_inquilino: item.id_inquilino,

@@ -29,7 +29,7 @@ export class AuthController {
       // Llamada al servicio real de base de datos
       const result = await authService.loginUser(email, password)
 
-      if (result.success) {
+      if (result.success && !result.requires2FA) {
         this.currentUser = result.user
         this.isAuthenticated = true
       }
@@ -39,6 +39,38 @@ export class AuthController {
       return {
         success: false,
         message: error.message || 'Error inesperado al iniciar sesión',
+      }
+    }
+  }
+
+  async verify2FA(email, code, role) {
+    if (!email || !code || !role) {
+      return {
+        success: false,
+        message: 'Ingresa el codigo de verificacion',
+      }
+    }
+
+    if (!/^\d{6}$/.test(code)) {
+      return {
+        success: false,
+        message: 'El codigo debe tener 6 digitos',
+      }
+    }
+
+    try {
+      const result = await authService.verify2FA(email, code, role)
+
+      if (result.success) {
+        this.currentUser = result.user
+        this.isAuthenticated = true
+      }
+
+      return result
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || 'Error inesperado al verificar el codigo',
       }
     }
   }

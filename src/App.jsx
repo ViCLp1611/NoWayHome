@@ -4,9 +4,9 @@ import { HomePage } from '@/views/pages/HomePage'
 import { LoginPage } from '@/views/pages/LoginPage'
 import { RegisterPage } from '@/views/pages/RegisterPage'
 import { ForgotPassword } from '@/views/pages/ForgotPassword'
-import { UpdatePassword } from '@/views/pages/UpdatePassword'
 import { ResetPassword } from '@/views/pages/ResetPassword'
-import { ProfilePage } from '@/views/user/pages/ProfilePage' // Ruta actualizada al nuevo directorio user
+import { UpdatePassword } from '@/views/pages/UpdatePassword'
+import { ProfilePage } from '@/views/user/pages/ProfilePage'
 import AdminDashboard from '@/views/admin/AdminDashboard'
 
 export default function App() {
@@ -68,13 +68,9 @@ export default function App() {
               </>
             }
           />
-          <Route
-            path="/profile"
-            element={
-              // Se remueve el <Header /> público ya que ProfilePage ahora incluye su propio <UserNavbar />
-              <ProfilePage />
-            }
-          />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/inquilino" element={<ProfilePage />} />
+          <Route path="/arrendatario" element={<ProfilePage />} />
           <Route path="/admin/login" element={<Navigate to="/login" replace />} />
           <Route path="/admin" element={<AdminDashboard />} />
         </Routes>

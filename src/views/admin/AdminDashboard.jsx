@@ -2,7 +2,7 @@
 //  (dashboard, gestión de usuarios, propiedades y reservas) y el cierre de sesión, 
 // utilizando un estado local para controlar la página actual y renderizando el contenido correspondiente según la selección del usuario, 
 // proporcionando una experiencia de usuario fluida e intuitiva para los administradores de la plataforma. */}
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from './components/AdminLayout';
 import { Dashboard } from './components/Dashboard';
@@ -18,10 +18,15 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState('dashboard');
 
-  console.log('AdminDashboard renderizando, currentPage:', currentPage);
+  useEffect(() => {
+    const storedAdmin = sessionStorage.getItem('admin') || localStorage.getItem('admin');
+
+    if (!storedAdmin) {
+      navigate('/login');
+    }
+  }, [navigate]);
 
   const renderPage = () => {
-    console.log('Renderizando página:', currentPage);
     switch (currentPage) {
       case 'dashboard':
         return <Dashboard onNavigate={setCurrentPage} />;
@@ -38,6 +43,7 @@ export default function AdminDashboard() {
 // Función para manejar el cierre de sesión, que elimina el token de administrador del almacenamiento local, restablece la página actual a dashboard y redirige al usuario a la página de inicio, proporcionando una experiencia de usuario segura y clara para cerrar sesión en el panel de administración.
   const handleLogout = () => {
     localStorage.removeItem('admin');
+    sessionStorage.removeItem('admin');
     setCurrentPage('dashboard');
     navigate('/');
   };
