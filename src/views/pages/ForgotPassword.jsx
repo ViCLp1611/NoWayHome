@@ -5,9 +5,11 @@ import { Button } from '@/app/components/ui/button'
 import { Input } from '@/app/components/ui/input'
 import { Card } from '@/app/components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '@/app/components/ui/alert'
-import { supabase } from '@/lib/supabaseClient'
+import { requestPasswordReset } from '@/services/passwordResetService'
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const genericMessage =
+  'Si el correo esta registrado, recibiras instrucciones para restablecer tu contrasena.'
 
 export function ForgotPassword() {
   const navigate = useNavigate()
@@ -21,7 +23,7 @@ export function ForgotPassword() {
     setError('')
     setSuccess('')
 
-    const normalizedEmail = email.trim()
+    const normalizedEmail = email.trim().toLowerCase()
 
     if (!normalizedEmail) {
       setError('Ingresa tu correo electronico.')
@@ -35,23 +37,14 @@ export function ForgotPassword() {
 
     setIsLoading(true)
 
-    const redirectUrl = `${window.location.origin}/update-password`
-
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
-      redirectTo: redirectUrl,
-    })
-
-    setIsLoading(false)
-
-    if (resetError) {
-      console.error('Reset password error:', resetError)
-      console.log('Email usado:', normalizedEmail)
-      console.log('Redirect URL:', redirectUrl)
-      setError(resetError?.message || 'No se pudo enviar el enlace de recuperación.')
-      return
+    try {
+      await requestPasswordReset(normalizedEmail)
+      setSuccess(genericMessage)
+    } catch {
+      setSuccess(genericMessage)
+    } finally {
+      setIsLoading(false)
     }
-
-    setSuccess('Te enviamos un enlace de recuperacion a tu correo.')
   }
 
   return (
@@ -59,20 +52,18 @@ export function ForgotPassword() {
       <Card className="w-full max-w-md p-8 md:p-10 bg-[#F2E8CF] border border-[#6B8E23]/10 shadow-sm rounded-2xl">
         <div className="text-center mb-8">
           <h1 className="font-poppins font-semibold text-3xl md:text-4xl text-[#5F5F5F] mb-3">
-            Recuperar contraseña
+            Recuperar contrasena
           </h1>
           <p className="font-inter text-[#5F5F5F]/75 text-base leading-relaxed">
-            Escribe el correo asociado a tu cuenta y te enviaremos un enlace para crear una
-            nueva contraseña.
+            Escribe el correo asociado a tu cuenta y te enviaremos instrucciones para crear una
+            nueva contrasena.
           </p>
         </div>
 
         {(error || success) && (
           <Alert
             className={
-              success
-                ? 'mb-6 border-green-200 bg-green-50'
-                : 'mb-6 border-red-200 bg-red-50'
+              success ? 'mb-6 border-green-200 bg-green-50' : 'mb-6 border-red-200 bg-red-50'
             }
           >
             {success ? (
@@ -80,7 +71,7 @@ export function ForgotPassword() {
             ) : (
               <AlertCircle className="h-4 w-4 text-red-600" />
             )}
-            {!success && <AlertTitle className="text-red-800">Error de recuperación</AlertTitle>}
+            {!success && <AlertTitle className="text-red-800">Error de recuperacion</AlertTitle>}
             <AlertDescription className={success ? 'text-[#5F5F5F]' : 'text-red-800'}>
               {success || error}
             </AlertDescription>
@@ -112,7 +103,7 @@ export function ForgotPassword() {
             disabled={isLoading}
             className="w-full bg-[#6B8E23] text-white hover:bg-[#5a7a1e] h-12 shadow-none rounded-xl disabled:opacity-50"
           >
-            {isLoading ? 'Enviando enlace...' : 'Enviar enlace de recuperación'}
+            {isLoading ? 'Enviando instrucciones...' : 'Enviar instrucciones'}
             <Send className="ml-2 h-5 w-5" />
           </Button>
 

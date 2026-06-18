@@ -23,6 +23,8 @@ import { Search, RefreshCw, Users, Home, Calendar, UserPlus } from 'lucide-react
 import { supabase } from '@/lib/supabaseClient';
 import { ConfirmActionModal } from './ConfirmActionModal';
 import { recordAdminActivity } from '@/views/admin/utils/adminActivity';
+import { hashPassword } from '@/utils/passwordUtils.js';
+import { getAdminUsersData } from '@/services/adminDataService';
 
 // Estados iniciales para formularios de creación y edición de usuarios, así como para manejo de errores en ambos casos, para mantener el código organizado y facilitar el reseteo de formularios después de cada acción.
 const initialCreateForm = {
@@ -106,17 +108,11 @@ export function UserManagement({ onNavigate }) {
 
     // Realizamos consultas paralelas para obtener inquilinos, arrendatarios, propiedades y reservas, y luego unificamos la información para mostrarla en la tabla de usuarios, manejando errores específicos para cada consulta y mostrando mensajes claros en caso de fallos.
     try {
-      const [
-        inquilinosResult,
-        arrendatariosResult,
-        propertiesResult,
-        bookingsResult,
-      ] = await Promise.all([
-        supabase.from('inquilino').select('id_inquilino,nombre,correo,telefono'),
-        supabase.from('arrendatario').select('id_arrendatario,nombre,correo,telefono'),
-        supabase.from('propiedad').select('id_propiedad,id_arrendatario'),
-        supabase.from('reserva').select('id_propiedad,id_inquilino,fecha_inicio'),
-      ]);
+      const usersData = await getAdminUsersData();
+      const inquilinosResult = { error: null };
+      const arrendatariosResult = { error: null };
+      const propertiesResult = { error: null };
+      const bookingsResult = { error: null };
 // Verificamos si alguna de las consultas tuvo un error, y si es así, construimos un mensaje de error específico para cada una y lo mostramos al usuario, incluyendo una posible ayuda sobre RLS si el error está relacionado con permisos.
       const hardErrors = [
         inquilinosResult.error,
@@ -144,21 +140,21 @@ export function UserManagement({ onNavigate }) {
       }
 
 // Construimos mapas de conteo de propiedades por arrendatario y reservas por inquilino para calcular la actividad de cada usuario, y luego unificamos la información de inquilinos y arrendatarios en una sola lista de usuarios con su actividad correspondiente, para mostrarla en la tabla de usuarios.
-      const propertyCountMap = (propertiesResult.data || []).reduce((acc, property) => {
+      const propertyCountMap = (usersData.properties || []).reduce((acc, property) => {
         const key = String(property.id_arrendatario);
         acc[key] = (acc[key] || 0) + 1;
         return acc;
       }, {});
 
 // Mapeamos las reservas para contar cuántas tiene cada inquilino, creando un mapa de conteo de reservas por inquilino, que luego se utiliza para calcular la actividad de cada inquilino en la lista unificada de usuarios.
-      const bookingCountMap = (bookingsResult.data || []).reduce((acc, booking) => {
+      const bookingCountMap = (usersData.bookings || []).reduce((acc, booking) => {
         const key = String(booking.id_inquilino);
         acc[key] = (acc[key] || 0) + 1;
         return acc;
       }, {});
 
 // Mapeamos los inquilinos y arrendatarios para unificarlos en una sola lista de usuarios, asignando su actividad correspondiente según el conteo de reservas para inquilinos y propiedades para arrendatarios, y luego actualizamos el estado con la lista unificada de usuarios para mostrarla en la tabla.
-      const inquilinos = (inquilinosResult.data || []).map((item) => ({
+      const inquilinos = (usersData.inquilinos || []).map((item) => ({
         key: `inquilino-${item.id_inquilino}`,
         entityType: 'inquilino',
         entityId: item.id_inquilino,
@@ -170,7 +166,7 @@ export function UserManagement({ onNavigate }) {
         source: 'inquilino',
       }));
 // Mapeamos los arrendatarios para unificarlos en una sola lista de usuarios, asignando su actividad correspondiente según el conteo de propiedades que tienen, y luego actualizamos el estado con la lista unificada de usuarios para mostrarla en la tabla.
-      const arrendatarios = (arrendatariosResult.data || []).map((item) => ({
+      const arrendatarios = (usersData.arrendatarios || []).map((item) => ({
         key: `arrendatario-${item.id_arrendatario}`,
         entityType: 'arrendatario',
         entityId: item.id_arrendatario,
@@ -590,27 +586,40 @@ export function UserManagement({ onNavigate }) {
 
     setCreating(true);
     setErrorMessage('');
-// Intentamos crear el nuevo usuario en la tabla correspondiente según el tipo seleccionado, manejando errores específicos para mostrar mensajes claros al usuario en caso de que la creación falle por permisos, existencia del usuario o problemas de conexión.
-    const { data, error } = await supabase
-      .from(table)
-      .insert({ nombre, correo, telefono: telefono || null, contrasena })
-      .select(idField)
-      .single();
 
-    setCreating(false);
+    let data = null
 
-    if (error) {
-      const rlsHint = getRlsHint(error.message);
-      setErrorMessage(
-        `No se pudo crear el usuario. ${error.message}${rlsHint ? ` | ${rlsHint}` : ''}`
-      );
-      setSuccessMessage('');
-      setShowCreateConfirmModal(false);
-      return;
+    try {
+      const hashedPassword = await hashPassword(contrasena)
+      const response = await supabase
+        .from(table)
+        .insert({ nombre, correo, telefono: telefono || null, contrasena: hashedPassword })
+        .select(idField)
+        .single()
+
+      setCreating(false)
+
+      if (response.error) {
+        const rlsHint = getRlsHint(response.error.message)
+        setErrorMessage(
+          `No se pudo crear el usuario. ${response.error.message}${rlsHint ? ` | ${rlsHint}` : ''}`
+        )
+        setSuccessMessage('')
+        setShowCreateConfirmModal(false)
+        return
+      }
+
+      data = response.data
+    } catch (hashError) {
+      setCreating(false)
+      setErrorMessage(`Error al procesar la contraseña: ${hashError.message}`)
+      setSuccessMessage('')
+      setShowCreateConfirmModal(false)
+      return
     }
 
-    const entityId = data?.[idField];
-    const isHost = table === 'arrendatario';
+    const entityId = data?.[idField]
+    const isHost = table === 'arrendatario'
 
     setUsers((prev) => [
       {
