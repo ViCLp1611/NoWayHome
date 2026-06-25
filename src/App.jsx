@@ -11,6 +11,10 @@ import { CrearPropiedad } from '@/views/pages/arrendatario/CrearPropiedad'
 import { EditarPropiedad } from '@/views/pages/arrendatario/EditarPropiedad'
 import { MisPropiedades } from '@/views/pages/arrendatario/MisPropiedades'
 import AdminDashboard from '@/views/admin/AdminDashboard'
+import { ProfilePage as InquilinoProfile } from '@/views/inquilino/pages/ProfilePage.jsx'
+import { ExplorarPage } from '@/views/inquilino/pages/ExplorarPage.jsx'
+import { PropertyDetailPage } from '@/views/inquilino/pages/PropertyDetailPage.jsx'
+import { ReservaPage } from '@/views/inquilino/pages/ReservaPage.jsx'
 
 export default function App() {
   return (
@@ -71,15 +75,23 @@ export default function App() {
               </>
             }
           />
+
           <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/inquilino" element={<ProfilePage />} />
-          <Route path="/arrendatario" element={<ProfilePage />} />
+
+          <Route path="/admin/login" element={<Navigate to="/login" replace />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+
+          <Route path="/inquilino" element={<Navigate to="/inquilino/explorar" replace />} />
+          <Route path="/inquilino/perfil" element={<InquilinoProfile />} />
+          <Route path="/inquilino/explorar" element={<ExplorarPage />} />
+          <Route path="/inquilino/propiedad/:id" element={<PropertyDetailPage />} />
+          <Route path="/inquilino/reserva/:id" element={<ReservaPage />} />
+
+          <Route path="/arrendatario" element={<Navigate to="/arrendatario/perfil" replace />} />
           <Route path="/arrendatario/perfil" element={<ProfilePage />} />
           <Route path="/arrendatario/propiedades" element={<MisPropiedades />} />
           <Route path="/arrendatario/propiedades/nueva" element={<CrearPropiedad />} />
           <Route path="/arrendatario/propiedades/:id/editar" element={<EditarPropiedad />} />
-          <Route path="/admin/login" element={<Navigate to="/login" replace />} />
-          <Route path="/admin" element={<AdminDashboard />} />
         </Routes>
       </div>
     </Router>

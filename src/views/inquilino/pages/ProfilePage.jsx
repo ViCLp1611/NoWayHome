@@ -1,72 +1,62 @@
 import { useState, useEffect } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
-import {
-  User,
-  Mail,
-  Phone,
-  MapPin,
-  Calendar,
-  Settings,
-  Heart,
-  Star,
-  LogOut,
-  Edit,
-} from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Mail, Phone, MapPin, Calendar, Settings, Heart, Star, Edit, Loader2 } from 'lucide-react'
 import { Button } from '@/app/components/ui/button'
 import { Card } from '@/app/components/ui/card'
 import { Avatar, AvatarFallback } from '@/app/components/ui/avatar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs'
-import { mockUserBookings } from '@/models/bookingModel'
-import { mockFavoriteProperties } from '@/models/propertyModel'
-import { PerfilArrendatario } from '@/views/pages/arrendatario/PerfilArrendatario'
-import { UserNavbar } from '@/views/user/components/UserNavbar.jsx' // Importación con alias corregida
+import { InquilinoNavbar } from '@/views/inquilino/components/InquilinoNavbar.jsx'
+import { EditInquilinoModal } from '@/views/inquilino/pages/EditInquilinoModal.jsx'
+import { inquilinoController } from '@/controllers/inquilinoController'
 
 export function ProfilePage() {
   const navigate = useNavigate()
+
   const [userData, setUserData] = useState(null)
+  const [reservas, setReservas] = useState([])
+  const [favoritos, setFavoritos] = useState([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isEditOpen, setIsEditOpen] = useState(false)
 
   useEffect(() => {
-    // Buscar en session y local storage
-    const storedUser = sessionStorage.getItem('user') || localStorage.getItem('user')
+    const fetchPerfil = async () => {
+      const storedUser = sessionStorage.getItem('user') || localStorage.getItem('user')
+      if (!storedUser) {
+        navigate('/')
+        return
+      }
 
-    if (storedUser) {
-      setUserData(JSON.parse(storedUser))
-    } else {
-      // Si no hay sesión, expulsar al login/raíz
-      navigate('/')
+      const parsedUser = JSON.parse(storedUser)
+      const userId = parsedUser.id_inquilino || parsedUser.id
+
+      if (!userId) {
+        navigate('/')
+        return
+      }
+
+      const result = await inquilinoController.cargarPerfilCompleto(userId)
+      if (result.success) {
+        setUserData({ ...parsedUser, ...result.data.perfil })
+        setReservas(result.data.reservas || [])
+        setFavoritos(result.data.favoritos || [])
+      } else {
+        setUserData(parsedUser)
+      }
+
+      setIsLoading(false)
     }
-    setIsLoading(false)
+
+    fetchPerfil()
   }, [navigate])
 
-  const handleLogout = () => {
-    sessionStorage.removeItem('user')
-    localStorage.removeItem('user')
-    navigate('/')
-  }
-
-  const handleUserUpdate = updatedData => {
-    setUserData(currentUser => {
-      const nextUser = {
-        ...currentUser,
-        ...updatedData,
-      }
-
-      if (sessionStorage.getItem('user')) {
-        sessionStorage.setItem('user', JSON.stringify(nextUser))
-      }
-
-      if (localStorage.getItem('user')) {
-        localStorage.setItem('user', JSON.stringify(nextUser))
-      }
-
-      return nextUser
-    })
+  const handleUpdateSuccess = updatedUser => {
+    setUserData(updatedUser)
   }
 
   if (isLoading || !userData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FAFAFA] text-[#5F5F5F]">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FAFAFA] text-[#5F5F5F]">
+        <Loader2 className="h-8 w-8 animate-spin mb-4 text-[#6B8E23]" />
         Cargando perfil...
       </div>
     )
@@ -80,34 +70,16 @@ export function ProfilePage() {
     return name.substring(0, 2).toUpperCase()
   }
 
-  const isTenant = userData.role === 'guest' || userData.role === 'inquilino' || userData.id_inquilino
-  const isHost =
-    userData.role === 'host' || userData.role === 'arrendatario' || userData.id_arrendatario
+  const userRole = 'Huésped' // Estamos en el módulo Inquilino, el rol es fijo visualmente
 
-  if (userData.role === 'administrador') {
-    return <Navigate to="/admin" replace />
+  // Formateador de moneda
+  const formatPrice = price => {
+    return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(price || 0)
   }
-
-  if (isTenant) {
-    return <Navigate to="/inquilino/perfil" replace />
-  }
-
-  if (isHost) {
-    return <PerfilArrendatario userData={userData} onUserUpdate={handleUserUpdate} />
-  }
-
-  const userRole = isTenant ? 'Huésped' : 'Anfitrión'
-
-  const mockBookings = mockUserBookings.map(booking => ({
-    ...booking.toJSON(),
-    status: booking.getStatusText(),
-  }))
-
-  const mockFavorites = mockFavoriteProperties.map(prop => prop.toJSON())
 
   return (
     <>
-      <UserNavbar /> {/* Navbar inyectado en la página */}
+      <InquilinoNavbar /> {/* Nuevo Navbar inyectado en la página */}
       <div className="min-h-screen py-8 px-4 bg-[#FAFAFA]">
         <div className="container mx-auto max-w-5xl">
           {/* Profile Header */}
@@ -155,6 +127,7 @@ export function ProfilePage() {
               <div className="flex md:flex-col gap-3 w-full md:w-auto">
                 <Button
                   variant="outline"
+                  onClick={() => setIsEditOpen(true)}
                   className="flex-1 md:flex-initial border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#6B8E23] hover:text-white shadow-none rounded-xl transition-all"
                 >
                   <Edit className="h-4 w-4 mr-2" />
@@ -163,6 +136,12 @@ export function ProfilePage() {
               </div>
             </div>
           </Card>
+          <EditInquilinoModal
+            isOpen={isEditOpen}
+            onClose={() => setIsEditOpen(false)}
+            userData={userData}
+            onUpdateSuccess={handleUpdateSuccess}
+          />
 
           {/* Tabs Section */}
           <Tabs defaultValue="bookings" className="w-full">
@@ -194,63 +173,98 @@ export function ProfilePage() {
                   Próximas Reservas
                 </h2>
                 <Button
-                  onClick={() => navigate('/')}
+                  onClick={() => navigate('/inquilino/explorar')}
                   className="bg-[#6B8E23] text-white hover:bg-[#5a7a1e] shadow-none rounded-xl"
                 >
                   Nueva Reserva
                 </Button>
               </div>
 
-              {mockBookings.map(booking => (
-                <Card
-                  key={booking.id}
-                  className="p-6 bg-[#F2E8CF] border-none shadow-none rounded-2xl"
-                >
-                  <div className="flex flex-col md:flex-row justify-between gap-4">
-                    <div className="flex-1">
-                      <h3 className="font-poppins font-semibold text-lg text-[#5F5F5F] mb-3">
-                        {booking.property}
-                      </h3>
-                      <div className="space-y-2 text-[#5F5F5F]">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-[#A67C52]" />
-                          <span className="text-sm">{booking.location}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-[#A67C52]" />
-                          <span className="text-sm">{booking.dates}</span>
+              {reservas.length === 0 ? (
+                <div className="text-center py-12 text-[#5F5F5F]/70">
+                  Aún no tienes reservas realizadas.
+                </div>
+              ) : (
+                reservas.map(booking => (
+                  <Card
+                    key={
+                      booking.id_reserva ||
+                      booking.id ||
+                      `${booking.id_propiedad || 'prop'}-${booking.id_inquilino || 'inqu'}-${booking.fecha_inicio || 'fecha'}`
+                    }
+                    className="p-6 bg-[#F2E8CF] border-none shadow-none rounded-2xl"
+                  >
+                    <div className="flex flex-col md:flex-row justify-between gap-4">
+                      <div className="flex-1">
+                        <h3 className="font-poppins font-semibold text-lg text-[#5F5F5F] mb-3">
+                          {booking.propiedad?.titulo ||
+                            booking.propiedad?.descripcion ||
+                            'Propiedad no disponible'}
+                        </h3>
+                        <div className="space-y-2 text-[#5F5F5F]">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4 text-[#A67C52]" />
+                            <span className="text-sm">
+                              {booking.propiedad?.ubicacion || 'Ubicación oculta'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-[#A67C52]" />
+                            <span className="text-sm">
+                              {new Date(booking.fecha_inicio).toLocaleDateString()} al{' '}
+                              {new Date(booking.fecha_fin).toLocaleDateString()}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex flex-col items-start md:items-end justify-between gap-3">
-                      <div className="text-left md:text-right">
-                        <span className="font-poppins font-semibold text-2xl text-[#6B8E23]">
-                          ${booking.price}
-                        </span>
-                        <span className="block text-sm text-[#5F5F5F] mt-1">
-                          Estado:{' '}
-                          <span
-                            className={
-                              booking.status === 'Confirmada'
-                                ? 'text-[#6B8E23] font-medium'
-                                : 'text-[#A67C52] font-medium'
-                            }
-                          >
-                            {booking.status}
+                      <div className="flex flex-col items-start md:items-end justify-between gap-3">
+                        <div className="text-left md:text-right">
+                          <span className="font-poppins font-semibold text-2xl text-[#6B8E23]">
+                            {formatPrice(booking.pago)}
                           </span>
-                        </span>
+                          <span className="block text-sm text-[#5F5F5F] mt-1">
+                            Estado:{' '}
+                            <span
+                              className={
+                                booking.estado === 'confirmada'
+                                  ? 'text-[#6B8E23] font-medium capitalize'
+                                  : 'text-[#A67C52] font-medium capitalize'
+                              }
+                            >
+                              {booking.estado || 'Procesando'}
+                            </span>
+                          </span>
+                        </div>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            const propertyId =
+                              booking.propiedad?.id_propiedad ||
+                              booking.propiedad?.id ||
+                              booking.id_propiedad ||
+                              booking.id
+                            if (propertyId) {
+                              navigate(`/inquilino/propiedad/${propertyId}`)
+                            }
+                          }}
+                          disabled={
+                            !(
+                              booking.propiedad?.id_propiedad ||
+                              booking.propiedad?.id ||
+                              booking.id_propiedad ||
+                              booking.id
+                            )
+                          }
+                          className="border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#6B8E23] hover:text-white shadow-none rounded-xl transition-all"
+                        >
+                          Ver Detalles
+                        </Button>
                       </div>
-                      <Button
-                        variant="outline"
-                        className="border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#6B8E23] hover:text-white shadow-none rounded-xl transition-all"
-                      >
-                        Ver Detalles
-                      </Button>
                     </div>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                ))
+              )}
             </TabsContent>
 
             {/* Favorites Tab */}
@@ -262,36 +276,47 @@ export function ProfilePage() {
                 </h2>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {mockFavorites.map(favorite => (
-                  <Card
-                    key={favorite.id}
-                    className="p-6 bg-white border border-[#6B8E23]/10 shadow-sm rounded-2xl"
-                  >
-                    <div className="flex justify-between items-start mb-4">
-                      <h3 className="font-poppins font-semibold text-[#5F5F5F]">
-                        {favorite.title}
-                      </h3>
-                      <Heart className="h-5 w-5 fill-[#6B8E23] text-[#6B8E23] cursor-pointer hover:scale-110 transition-transform" />
-                    </div>
-                    <div className="flex items-center gap-2 text-[#5F5F5F] mb-5">
-                      <MapPin className="h-4 w-4 text-[#A67C52]" />
-                      <span className="text-sm">{favorite.location}</span>
-                    </div>
-                    <div className="flex items-center justify-between pt-4 border-t border-[#6B8E23]/10">
-                      <span className="font-poppins font-semibold text-lg text-[#6B8E23]">
-                        ${favorite.price} / noche
-                      </span>
-                      <Button
-                        size="sm"
-                        className="bg-[#6B8E23] text-white hover:bg-[#5a7a1e] shadow-none rounded-lg"
-                      >
-                        Reservar
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
-              </div>
+              {favoritos.length === 0 ? (
+                <div className="text-center py-12 text-[#5F5F5F]/70">
+                  Tu lista de favoritos está vacía.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {favoritos.map(favorite => (
+                    <Card
+                      key={favorite.id_favorito || favorite.id}
+                      className="p-6 bg-white border border-[#6B8E23]/10 shadow-sm rounded-2xl"
+                    >
+                      <div className="flex justify-between items-start mb-4">
+                        <h3 className="font-poppins font-semibold text-[#5F5F5F]">
+                          {favorite.propiedad?.titulo || 'Propiedad sin título'}
+                        </h3>
+                        <Heart className="h-5 w-5 fill-[#6B8E23] text-[#6B8E23] cursor-pointer hover:scale-110 transition-transform" />
+                      </div>
+                      <div className="flex items-center gap-2 text-[#5F5F5F] mb-5">
+                        <MapPin className="h-4 w-4 text-[#A67C52]" />
+                        <span className="text-sm">
+                          {favorite.propiedad?.ubicacion || 'Ubicación no especificada'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between pt-4 border-t border-[#6B8E23]/10">
+                        <span className="font-poppins font-semibold text-lg text-[#6B8E23]">
+                          {formatPrice(favorite.propiedad?.precio_noche)} / noche
+                        </span>
+                        <Button
+                          size="sm"
+                          onClick={() =>
+                            navigate(`/inquilino/reserva/${favorite.propiedad?.id_propiedad}`)
+                          }
+                          className="bg-[#6B8E23] text-white hover:bg-[#5a7a1e] shadow-none rounded-lg"
+                        >
+                          Reservar
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </TabsContent>
 
             {/* Settings Tab */}
@@ -313,9 +338,7 @@ export function ProfilePage() {
                       <span className="inline-flex items-center px-3 py-1 rounded-lg bg-white text-[#6B8E23] font-medium text-sm">
                         {userRole}
                       </span>
-                      <span className="text-sm text-[#5F5F5F]/70">
-                        {userRole === 'Huésped' ? 'Reservar alojamiento' : 'Gestionar propiedades'}
-                      </span>
+                      <span className="text-sm text-[#5F5F5F]/70">Reservar alojamiento</span>
                     </div>
                   </div>
                   {userRole === 'Huésped' && (

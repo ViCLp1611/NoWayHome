@@ -94,6 +94,7 @@ export function HomePage() {
           <div className="text-center mt-12">
             <Button
               variant="outline"
+              onClick={() => navigate('/inquilino/explorar')}
               className="border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#6B8E23] hover:text-white transition-all shadow-none rounded-xl px-8 h-12"
             >
               Ver más propiedades
