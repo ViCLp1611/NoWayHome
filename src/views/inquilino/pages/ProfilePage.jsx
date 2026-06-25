@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Mail, Phone, MapPin, Calendar, Settings, Heart, Star, Edit, Loader2 } from 'lucide-react'
+import { Mail, Phone, MapPin, Calendar, Settings, Heart, Star, Edit } from 'lucide-react'
 import { Button } from '@/app/components/ui/button'
 import { Card } from '@/app/components/ui/card'
 import { Avatar, AvatarFallback } from '@/app/components/ui/avatar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs'
+import { AlertMessage } from '@/app/components/ui/AlertMessage'
+import { LoadingState } from '@/app/components/ui/LoadingState'
 import { InquilinoNavbar } from '@/views/inquilino/components/InquilinoNavbar.jsx'
 import { EditInquilinoModal } from '@/views/inquilino/pages/EditInquilinoModal.jsx'
 import { inquilinoController } from '@/controllers/inquilinoController'
@@ -17,6 +19,7 @@ export function ProfilePage() {
   const [favoritos, setFavoritos] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [isEditOpen, setIsEditOpen] = useState(false)
+  const [loadError, setLoadError] = useState('')
 
   useEffect(() => {
     const fetchPerfil = async () => {
@@ -40,6 +43,7 @@ export function ProfilePage() {
         setReservas(result.data.reservas || [])
         setFavoritos(result.data.favoritos || [])
       } else {
+        setLoadError(result.error || 'No se pudo cargar tu informacion completa.')
         setUserData(parsedUser)
       }
 
@@ -55,9 +59,8 @@ export function ProfilePage() {
 
   if (isLoading || !userData) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FAFAFA] text-[#5F5F5F]">
-        <Loader2 className="h-8 w-8 animate-spin mb-4 text-[#6B8E23]" />
-        Cargando perfil...
+      <div className="min-h-screen bg-[#FAFAFA]">
+        <LoadingState message="Cargando perfil..." className="min-h-screen" />
       </div>
     )
   }
@@ -82,6 +85,15 @@ export function ProfilePage() {
       <InquilinoNavbar /> {/* Nuevo Navbar inyectado en la página */}
       <div className="min-h-screen py-8 px-4 bg-[#FAFAFA]">
         <div className="container mx-auto max-w-5xl">
+          {loadError && (
+            <AlertMessage
+              type="warning"
+              title="Perfil cargado parcialmente"
+              message={loadError}
+              className="mb-6"
+            />
+          )}
+
           {/* Profile Header */}
           <Card className="p-6 md:p-8 mb-8 bg-white border border-[#6B8E23]/10 shadow-sm rounded-2xl">
             <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">

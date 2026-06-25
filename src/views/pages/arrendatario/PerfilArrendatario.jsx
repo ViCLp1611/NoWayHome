@@ -25,6 +25,7 @@ import {
   updateLandlordProfile,
 } from '@/services/landlordProfileService'
 import { getLandlordProperties } from '@/services/propertyService'
+import { landlordBookingService } from '@/services/landlordBookingService'
 import { ConfirmActionModal } from '@/views/admin/components/ConfirmActionModal'
 import { UserNavbar } from '@/views/user/components/UserNavbar.jsx'
 
@@ -48,6 +49,16 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
   const [recentProperties, setRecentProperties] = useState([])
   const [isLoadingProperties, setIsLoadingProperties] = useState(true)
   const [propertiesError, setPropertiesError] = useState('')
+  const [reservationStats, setReservationStats] = useState({
+    totalConfirmado: 0,
+    totalPendiente: 0,
+    totalNoActivo: 0,
+    countConfirmada: 0,
+    countPendiente: 0,
+    countNoActiva: 0,
+  })
+  const [isLoadingStats, setIsLoadingStats] = useState(true)
+  const [statsError, setStatsError] = useState('')
 
   const idArrendatario = useMemo(() => {
     return userData?.id_arrendatario || userData?.id
@@ -71,7 +82,10 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
   }, [userData])
 
   useEffect(() => {
-    if (!idArrendatario) return
+    if (!idArrendatario) {
+      showActionMessage('error', 'No se pudo identificar tu cuenta de arrendatario.')
+      return
+    }
 
     async function loadProfile() {
       try {
@@ -91,7 +105,11 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
   }, [idArrendatario])
 
   useEffect(() => {
-    if (!idArrendatario) return
+    if (!idArrendatario) {
+      setIsLoadingProperties(false)
+      setPropertiesError('No se pudo identificar tu cuenta de arrendatario.')
+      return
+    }
 
     async function loadRecentProperties() {
       try {
@@ -107,6 +125,66 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
     }
 
     loadRecentProperties()
+  }, [idArrendatario])
+
+  useEffect(() => {
+    if (!idArrendatario) {
+      setIsLoadingStats(false)
+      setStatsError('No se pudo identificar tu cuenta de arrendatario.')
+      return
+    }
+
+    async function loadReservationStats() {
+      try {
+        setIsLoadingStats(true)
+        setStatsError('')
+
+        const reservas = await landlordBookingService.obtenerReservasRecibidas(idArrendatario)
+
+        const nextStats = reservas.reduce(
+          (acc, reserva) => {
+            const status = String(reserva.estado || '').toLowerCase()
+            const amount = Number(reserva.total ?? reserva.pago ?? 0)
+            const safeAmount = Number.isFinite(amount) ? amount : 0
+
+            if (status === 'confirmada') {
+              acc.totalConfirmado += safeAmount
+              acc.countConfirmada += 1
+              return acc
+            }
+
+            if (status === 'pendiente') {
+              acc.totalPendiente += safeAmount
+              acc.countPendiente += 1
+              return acc
+            }
+
+            if (status === 'cancelada' || status === 'rechazada') {
+              acc.totalNoActivo += safeAmount
+              acc.countNoActiva += 1
+            }
+
+            return acc
+          },
+          {
+            totalConfirmado: 0,
+            totalPendiente: 0,
+            totalNoActivo: 0,
+            countConfirmada: 0,
+            countPendiente: 0,
+            countNoActiva: 0,
+          }
+        )
+
+        setReservationStats(nextStats)
+      } catch (_error) {
+        setStatsError('No se pudieron cargar los ingresos estimados.')
+      } finally {
+        setIsLoadingStats(false)
+      }
+    }
+
+    loadReservationStats()
   }, [idArrendatario])
 
   const getInitials = name => {
@@ -195,6 +273,14 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
 
   const getStatusClass = estado => {
     return statusStyles[estado] || statusStyles.inactiva
+  }
+
+  const formatCurrency = value => {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN',
+      maximumFractionDigits: 0,
+    }).format(Number(value) || 0)
   }
 
   const renderEditError = field => {
@@ -403,6 +489,7 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
                     Aqui podras revisar solicitudes y reservas asociadas a tus alojamientos.
                   </p>
                   <Button
+                    onClick={() => navigate('/arrendatario/reservas')}
                     variant="outline"
                     className="border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#6B8E23] hover:text-white shadow-none rounded-xl transition-all"
                   >
@@ -417,15 +504,54 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
                     </h3>
                     <BadgeDollarSign className="h-5 w-5 text-[#6B8E23]" />
                   </div>
-                  <p className="text-sm text-[#5F5F5F] mb-5">
-                    Aqui se mostrara el resumen de pagos, movimientos e ingresos.
-                  </p>
-                  <Button
-                    variant="outline"
-                    className="border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#6B8E23] hover:text-white shadow-none rounded-xl transition-all"
-                  >
-                    Ver ingresos
-                  </Button>
+                  {isLoadingStats && (
+                    <p className="text-sm text-[#5F5F5F] mb-5">Calculando ingresos estimados...</p>
+                  )}
+
+                  {!isLoadingStats && statsError && (
+                    <p className="text-sm text-red-800 mb-5">{statsError}</p>
+                  )}
+
+                  {!isLoadingStats && !statsError && (
+                    <div className="space-y-3 text-sm">
+                      <div className="flex items-center justify-between rounded-xl bg-green-50 px-3 py-2">
+                        <span className="text-[#5F5F5F]">Total estimado confirmado</span>
+                        <span className="font-semibold text-green-700">
+                          {formatCurrency(reservationStats.totalConfirmado)}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between rounded-xl bg-amber-50 px-3 py-2">
+                        <span className="text-[#5F5F5F]">Total pendiente</span>
+                        <span className="font-semibold text-amber-700">
+                          {formatCurrency(reservationStats.totalPendiente)}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between rounded-xl bg-[#FAFAFA] px-3 py-2">
+                        <span className="text-[#5F5F5F]">Total cancelado/rechazado</span>
+                        <span className="font-semibold text-[#5F5F5F]">
+                          {formatCurrency(reservationStats.totalNoActivo)}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 pt-1 text-xs">
+                        <div className="rounded-lg bg-[#F2E8CF] px-2 py-2 text-center text-[#5F5F5F]">
+                          {reservationStats.countConfirmada} confirmadas
+                        </div>
+                        <div className="rounded-lg bg-[#F2E8CF] px-2 py-2 text-center text-[#5F5F5F]">
+                          {reservationStats.countPendiente} pendientes
+                        </div>
+                        <div className="rounded-lg bg-[#F2E8CF] px-2 py-2 text-center text-[#5F5F5F]">
+                          {reservationStats.countNoActiva} cancel/rechaz.
+                        </div>
+                      </div>
+
+                      <p className="pt-1 text-xs text-[#5F5F5F]/75">
+                        Estos montos son estimados y se calculan con base en las reservas registradas. Los pagos reales se habilitarán más adelante.
+                      </p>
+                    </div>
+                  )}
                 </Card>
               </div>
             </TabsContent>

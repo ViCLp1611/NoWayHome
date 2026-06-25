@@ -2,10 +2,8 @@ import { inquilinoService } from '../services/inquilinoService'
 
 export const inquilinoController = {
   cargarPerfilCompleto: async id_inquilino => {
-    const [perfilResult, reservasResult, favoritosResult] = await Promise.allSettled([
-      inquilinoService.obtenerPerfil(id_inquilino),
-      inquilinoService.obtenerReservas(id_inquilino),
-      inquilinoService.obtenerFavoritos(id_inquilino),
+    const [perfilResult] = await Promise.allSettled([
+      inquilinoService.obtenerPerfilCompleto(id_inquilino),
     ])
 
     if (perfilResult.status === 'rejected') {
@@ -16,22 +14,14 @@ export const inquilinoController = {
       }
     }
 
-    const reservas = reservasResult.status === 'fulfilled' ? reservasResult.value : []
-    const favoritos = favoritosResult.status === 'fulfilled' ? favoritosResult.value : []
-
-    if (reservasResult.status === 'rejected') {
-      console.warn('No se pudieron cargar las reservas del inquilino:', reservasResult.reason)
-    }
-    if (favoritosResult.status === 'rejected') {
-      console.warn('No se pudieron cargar los favoritos del inquilino:', favoritosResult.reason)
-    }
+    const perfilCompleto = perfilResult.value
 
     return {
       success: true,
       data: {
-        perfil: perfilResult.value,
-        reservas,
-        favoritos,
+        perfil: perfilCompleto.perfil,
+        reservas: perfilCompleto.reservas || [],
+        favoritos: perfilCompleto.favoritos || [],
       },
     }
   },

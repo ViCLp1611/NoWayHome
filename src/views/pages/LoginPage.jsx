@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AlertCircle, ArrowRight, Eye, EyeOff, Key, Lock, Mail, ShieldCheck } from 'lucide-react'
 import { Alert, AlertDescription } from '@/app/components/ui/alert'
@@ -23,6 +23,7 @@ import { authController } from '../../controllers/authController'
 */
 export function LoginPage() {
   const navigate = useNavigate()
+  const PENDING_2FA_KEY = 'pending_2fa'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
@@ -32,6 +33,36 @@ export function LoginPage() {
   const [step, setStep] = useState('credentials')
   const [verificationCode, setVerificationCode] = useState('')
   const [pendingRole, setPendingRole] = useState('')
+
+  useEffect(() => {
+    const rawPending = sessionStorage.getItem(PENDING_2FA_KEY)
+    if (!rawPending) return
+
+    try {
+      const pending = JSON.parse(rawPending)
+      if (!pending?.email || !pending?.role) {
+        sessionStorage.removeItem(PENDING_2FA_KEY)
+        return
+      }
+
+      setEmail(pending.email)
+      setPendingRole(pending.role)
+      setStep('verify')
+    } catch {
+      sessionStorage.removeItem(PENDING_2FA_KEY)
+    }
+  }, [])
+
+  const clearPending2FA = () => {
+    sessionStorage.removeItem(PENDING_2FA_KEY)
+  }
+
+  const clearFinalSessions = () => {
+    sessionStorage.removeItem('user')
+    sessionStorage.removeItem('admin')
+    localStorage.removeItem('user')
+    localStorage.removeItem('admin')
+  }
 
   const redirectByRole = role => {
     if (role === 'administrador') {
@@ -54,12 +85,22 @@ export function LoginPage() {
 
     try {
       if (step === 'credentials') {
+        clearPending2FA()
+
         // Primer paso: el backend valida credenciales y envia codigo 2FA.
         // Todavia no se considera sesion iniciada.
         const loginResult = await authController.login(email, password)
 
         if (loginResult.success && loginResult.requires2FA) {
           setPendingRole(loginResult.role)
+          sessionStorage.setItem(
+            PENDING_2FA_KEY,
+            JSON.stringify({
+              email: email.trim().toLowerCase(),
+              role: loginResult.role,
+              createdAt: Date.now(),
+            })
+          )
           setStep('verify')
           setVerificationCode('')
           return
@@ -78,6 +119,9 @@ export function LoginPage() {
         setError(verifyResult.message || 'Codigo invalido o expirado.')
         return
       }
+
+      clearFinalSessions()
+      clearPending2FA()
 
       const storageKey = verifyResult.user.role === 'administrador' ? 'admin' : 'user'
       const storage = rememberMe ? localStorage : sessionStorage
@@ -195,6 +239,7 @@ export function LoginPage() {
                 type="button"
                 variant="ghost"
                 onClick={() => {
+                  clearPending2FA()
                   setStep('credentials')
                   setVerificationCode('')
                   setPendingRole('')

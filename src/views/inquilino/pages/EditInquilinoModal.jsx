@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X, Loader2 } from 'lucide-react'
 import { Button } from '@/app/components/ui/button'
+import { AlertMessage } from '@/app/components/ui/AlertMessage'
 import { inquilinoController } from '@/controllers/inquilinoController'
 
 export function EditInquilinoModal({ isOpen, onClose, userData, onUpdateSuccess }) {
@@ -83,9 +84,7 @@ export function EditInquilinoModal({ isOpen, onClose, userData, onUpdateSuccess 
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {error && (
-            <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl font-medium">
-              {error}
-            </div>
+            <AlertMessage type="error" title="No se pudo guardar el perfil" message={error} />
           )}
 
           <div className="space-y-1.5">

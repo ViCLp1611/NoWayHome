@@ -10,6 +10,7 @@ import { ProfilePage } from '@/views/user/pages/ProfilePage'
 import { CrearPropiedad } from '@/views/pages/arrendatario/CrearPropiedad'
 import { EditarPropiedad } from '@/views/pages/arrendatario/EditarPropiedad'
 import { MisPropiedades } from '@/views/pages/arrendatario/MisPropiedades'
+import { ReservasArrendatario } from '@/views/pages/arrendatario/ReservasArrendatario'
 import AdminDashboard from '@/views/admin/AdminDashboard'
 import { ProfilePage as InquilinoProfile } from '@/views/inquilino/pages/ProfilePage.jsx'
 import { ExplorarPage } from '@/views/inquilino/pages/ExplorarPage.jsx'
@@ -89,6 +90,7 @@ export default function App() {
 
           <Route path="/arrendatario" element={<Navigate to="/arrendatario/perfil" replace />} />
           <Route path="/arrendatario/perfil" element={<ProfilePage />} />
+          <Route path="/arrendatario/reservas" element={<ReservasArrendatario />} />
           <Route path="/arrendatario/propiedades" element={<MisPropiedades />} />
           <Route path="/arrendatario/propiedades/nueva" element={<CrearPropiedad />} />
           <Route path="/arrendatario/propiedades/:id/editar" element={<EditarPropiedad />} />
