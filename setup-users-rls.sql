@@ -85,6 +85,10 @@ CREATE POLICY "reserva_select_anon" ON public.reserva
 FOR SELECT TO anon
 USING (true);
 
+CREATE POLICY "reserva_insert_anon" ON public.reserva
+FOR INSERT TO anon
+WITH CHECK (true);
+
 CREATE POLICY "reserva_update_anon" ON public.reserva
 FOR UPDATE TO anon
 USING (true)

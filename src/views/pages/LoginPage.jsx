@@ -44,7 +44,7 @@ export function LoginPage() {
       return
     }
 
-    navigate('/inquilino')
+    navigate('/inquilino/perfil')
   }
 
   const handleSubmit = async e => {
@@ -65,7 +65,9 @@ export function LoginPage() {
           return
         }
 
-        setError(loginResult.message || 'Credenciales incorrectas. Verifica tu correo y contrasena.')
+        setError(
+          loginResult.message || 'Credenciales incorrectas. Verifica tu correo y contrasena.'
+        )
         return
       }
 
