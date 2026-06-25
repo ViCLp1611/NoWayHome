@@ -7,6 +7,9 @@ import { ForgotPassword } from '@/views/pages/ForgotPassword'
 import { ResetPassword } from '@/views/pages/ResetPassword'
 import { UpdatePassword } from '@/views/pages/UpdatePassword'
 import { ProfilePage } from '@/views/user/pages/ProfilePage'
+import { CrearPropiedad } from '@/views/pages/arrendatario/CrearPropiedad'
+import { EditarPropiedad } from '@/views/pages/arrendatario/EditarPropiedad'
+import { MisPropiedades } from '@/views/pages/arrendatario/MisPropiedades'
 import AdminDashboard from '@/views/admin/AdminDashboard'
 
 export default function App() {
@@ -71,6 +74,10 @@ export default function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/inquilino" element={<ProfilePage />} />
           <Route path="/arrendatario" element={<ProfilePage />} />
+          <Route path="/arrendatario/perfil" element={<ProfilePage />} />
+          <Route path="/arrendatario/propiedades" element={<MisPropiedades />} />
+          <Route path="/arrendatario/propiedades/nueva" element={<CrearPropiedad />} />
+          <Route path="/arrendatario/propiedades/:id/editar" element={<EditarPropiedad />} />
           <Route path="/admin/login" element={<Navigate to="/login" replace />} />
           <Route path="/admin" element={<AdminDashboard />} />
         </Routes>
