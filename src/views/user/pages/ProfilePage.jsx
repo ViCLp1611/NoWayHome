@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import {
   User,
   Mail,
@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback } from '@/app/components/ui/avatar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs'
 import { mockUserBookings } from '@/models/bookingModel'
 import { mockFavoriteProperties } from '@/models/propertyModel'
+import { PerfilArrendatario } from '@/views/pages/arrendatario/PerfilArrendatario'
 import { UserNavbar } from '@/views/user/components/UserNavbar.jsx' // Importación con alias corregida
 
 export function ProfilePage() {
@@ -61,6 +62,17 @@ export function ProfilePage() {
   }
 
   const isTenant = userData.role === 'guest' || userData.role === 'inquilino' || userData.id_inquilino
+  const isHost =
+    userData.role === 'host' || userData.role === 'arrendatario' || userData.id_arrendatario
+
+  if (userData.role === 'administrador') {
+    return <Navigate to="/admin" replace />
+  }
+
+  if (isHost) {
+    return <PerfilArrendatario userData={userData} />
+  }
+
   const userRole = isTenant ? 'Huésped' : 'Anfitrión'
 
   const mockBookings = mockUserBookings.map(booking => ({
