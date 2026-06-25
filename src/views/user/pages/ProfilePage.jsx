@@ -45,6 +45,25 @@ export function ProfilePage() {
     navigate('/')
   }
 
+  const handleUserUpdate = updatedData => {
+    setUserData(currentUser => {
+      const nextUser = {
+        ...currentUser,
+        ...updatedData,
+      }
+
+      if (sessionStorage.getItem('user')) {
+        sessionStorage.setItem('user', JSON.stringify(nextUser))
+      }
+
+      if (localStorage.getItem('user')) {
+        localStorage.setItem('user', JSON.stringify(nextUser))
+      }
+
+      return nextUser
+    })
+  }
+
   if (isLoading || !userData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAFAFA] text-[#5F5F5F]">
@@ -70,7 +89,7 @@ export function ProfilePage() {
   }
 
   if (isHost) {
-    return <PerfilArrendatario userData={userData} />
+    return <PerfilArrendatario userData={userData} onUserUpdate={handleUserUpdate} />
   }
 
   const userRole = isTenant ? 'Huésped' : 'Anfitrión'

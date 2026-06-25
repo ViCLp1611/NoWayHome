@@ -1,7 +1,9 @@
 import {
   createProperty,
+  deletePropertyImage,
   getLandlordProperties,
   getLandlordPropertyById,
+  replacePropertyImage,
   updateLandlordProperty,
   ValidationError,
 } from '../services/propertyService.js'
@@ -119,6 +121,62 @@ export async function updateLandlordPropertyHandler(req, res) {
     return res.status(500).json({
       ok: false,
       message: 'No se pudo actualizar la propiedad.',
+    })
+  }
+}
+
+export async function deletePropertyImageHandler(req, res) {
+  const idPropiedad = req.params?.id
+  const imageId = req.params?.imageId
+  const idArrendatario = req.query?.id_arrendatario || req.body?.id_arrendatario
+
+  try {
+    const property = await deletePropertyImage(idPropiedad, imageId, idArrendatario)
+
+    return res.json({
+      ok: true,
+      message: 'Imagen eliminada correctamente.',
+      property,
+    })
+  } catch (error) {
+    if (error instanceof ValidationError || error.statusCode === 400) {
+      return res.status(400).json({
+        ok: false,
+        message: error.message,
+      })
+    }
+
+    return res.status(500).json({
+      ok: false,
+      message: 'No se pudo eliminar la imagen.',
+    })
+  }
+}
+
+export async function replacePropertyImageHandler(req, res) {
+  const idPropiedad = req.params?.id
+  const imageId = req.params?.imageId
+  const idArrendatario = req.body?.id_arrendatario || req.query?.id_arrendatario
+
+  try {
+    const property = await replacePropertyImage(idPropiedad, imageId, req.file, idArrendatario)
+
+    return res.json({
+      ok: true,
+      message: 'Imagen reemplazada correctamente.',
+      property,
+    })
+  } catch (error) {
+    if (error instanceof ValidationError || error.statusCode === 400) {
+      return res.status(400).json({
+        ok: false,
+        message: error.message,
+      })
+    }
+
+    return res.status(500).json({
+      ok: false,
+      message: 'No se pudo reemplazar la imagen.',
     })
   }
 }

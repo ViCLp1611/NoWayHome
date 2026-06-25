@@ -1,5 +1,9 @@
 import { supabase } from '../config/supabase.js'
-import { deletePropertyImages, uploadPropertyImages } from './storageService.js'
+import {
+  deleteImageFromStorage,
+  deletePropertyImages,
+  uploadPropertyImages,
+} from './storageService.js'
 
 class ValidationError extends Error {
   constructor(message) {
@@ -8,6 +12,9 @@ class ValidationError extends Error {
     this.statusCode = 400
   }
 }
+
+const MIN_PROPERTY_IMAGES = 5
+const MAX_PROPERTY_IMAGES = 20
 
 function normalizeText(value) {
   return typeof value === 'string' ? value.trim() : ''
@@ -151,6 +158,7 @@ export async function createProperty(data, files) {
   const propertyPayload = buildPropertyInsertPayload(propertyData)
   let createdProperty = null
   let uploadedImages = []
+  let imageRecordUpdated = false
 
   try {
     const { data: property, error: propertyError } = await supabase
@@ -259,6 +267,58 @@ async function getPropertyImages(propertyIds) {
   return imagesByPropertyId
 }
 
+export async function getPropertyImagesCount(idPropiedad) {
+  const propertyId = Number(idPropiedad)
+
+  if (!Number.isInteger(propertyId) || propertyId <= 0) {
+    throw new ValidationError('id_propiedad es obligatorio.')
+  }
+
+  const { count, error } = await supabase
+    .from('propiedad_imagen')
+    .select('id_imagen', { count: 'exact', head: true })
+    .eq('id_propiedad', propertyId)
+
+  if (error) {
+    throw new Error('No se pudo consultar la cantidad de imagenes.')
+  }
+
+  return count || 0
+}
+
+export async function ensurePropertyBelongsToLandlord(idPropiedad, idArrendatario) {
+  const propertyId = Number(idPropiedad)
+  const landlordId = Number(idArrendatario)
+
+  if (!Number.isInteger(propertyId) || propertyId <= 0) {
+    throw new ValidationError('id_propiedad es obligatorio.')
+  }
+
+  if (!Number.isInteger(landlordId) || landlordId <= 0) {
+    throw new ValidationError('id_arrendatario es obligatorio.')
+  }
+
+  const { data: property, error: propertyError } = await supabase
+    .from('propiedad')
+    .select('id_propiedad,descripcion,direccion,precio,tipo_precio,estado,resena,id_arrendatario')
+    .eq('id_propiedad', propertyId)
+    .maybeSingle()
+
+  if (propertyError) {
+    throw new Error('No se pudo cargar la propiedad.')
+  }
+
+  if (!property) {
+    throw new ValidationError('La propiedad no existe.')
+  }
+
+  if (Number(property.id_arrendatario) !== landlordId) {
+    throw new ValidationError('No tienes permiso para acceder a esta propiedad.')
+  }
+
+  return property
+}
+
 function mapPropertyForLandlord(property, imagesByPropertyId) {
   const description = splitStoredDescription(property.descripcion)
   const address = splitStoredAddress(property.direccion)
@@ -310,36 +370,219 @@ export async function getLandlordProperties(idArrendatario) {
 
 export async function getLandlordPropertyById(idPropiedad, idArrendatario) {
   const propertyId = Number(idPropiedad)
-  const landlordId = Number(idArrendatario)
-
-  if (!Number.isInteger(propertyId) || propertyId <= 0) {
-    throw new ValidationError('id_propiedad es obligatorio.')
-  }
-
-  if (!Number.isInteger(landlordId) || landlordId <= 0) {
-    throw new ValidationError('id_arrendatario es obligatorio.')
-  }
-
-  const { data: property, error: propertyError } = await supabase
-    .from('propiedad')
-    .select('id_propiedad,descripcion,direccion,precio,tipo_precio,estado,resena,id_arrendatario')
-    .eq('id_propiedad', propertyId)
-    .maybeSingle()
-
-  if (propertyError) {
-    throw new Error('No se pudo cargar la propiedad.')
-  }
-
-  if (!property) {
-    throw new ValidationError('La propiedad no existe.')
-  }
-
-  if (Number(property.id_arrendatario) !== landlordId) {
-    throw new ValidationError('No tienes permiso para acceder a esta propiedad.')
-  }
+  const property = await ensurePropertyBelongsToLandlord(idPropiedad, idArrendatario)
 
   const imagesByPropertyId = await getPropertyImages([propertyId])
   return mapPropertyForLandlord(property, imagesByPropertyId)
+}
+
+export async function addImagesToProperty(idPropiedad, files = [], idArrendatario) {
+  const propertyId = Number(idPropiedad)
+  const newFiles = files || []
+
+  await ensurePropertyBelongsToLandlord(propertyId, idArrendatario)
+
+  if (newFiles.length === 0) {
+    return []
+  }
+
+  const imagesByPropertyId = await getPropertyImages([propertyId])
+  const existingImages = imagesByPropertyId.get(propertyId) || []
+
+  if (existingImages.length + newFiles.length > MAX_PROPERTY_IMAGES) {
+    throw new ValidationError('Solo puedes tener un máximo de 20 fotografías por propiedad.')
+  }
+
+  const maxExistingOrder = existingImages.reduce(
+    (maxOrder, image) => Math.max(maxOrder, Number(image.orden) || 0),
+    0
+  )
+
+  let uploadedImages = []
+
+  try {
+    uploadedImages = await uploadPropertyImages(propertyId, newFiles, {
+      startOrder: maxExistingOrder + 1,
+      markFirstAsPrincipal: existingImages.length === 0,
+    })
+
+    const imagePayload = uploadedImages.map((image) => ({
+      id_propiedad: propertyId,
+      url: image.url,
+      storage_path: image.storage_path,
+      orden: image.orden,
+      es_principal: image.es_principal,
+    }))
+
+    const { data: images, error: imageError } = await supabase
+      .from('propiedad_imagen')
+      .insert(imagePayload)
+      .select('id_imagen,id_propiedad,url,storage_path,orden,es_principal,fecha_creacion')
+
+    if (imageError) {
+      throw new Error('No se pudieron guardar las imagenes nuevas de la propiedad.')
+    }
+
+    return images || []
+  } catch (error) {
+    await deletePropertyImages(uploadedImages.map((image) => image.storage_path))
+    throw error
+  }
+}
+
+async function reorderPropertyImages(idPropiedad) {
+  const propertyId = Number(idPropiedad)
+  const imagesByPropertyId = await getPropertyImages([propertyId])
+  const images = imagesByPropertyId.get(propertyId) || []
+
+  const updateResults = await Promise.all(
+    images.map((image, index) =>
+      supabase
+        .from('propiedad_imagen')
+        .update({ orden: index + 1 })
+        .eq('id_imagen', image.id_imagen)
+        .eq('id_propiedad', propertyId)
+    )
+  )
+
+  if (updateResults.some((result) => result.error)) {
+    throw new Error('No se pudieron reordenar las imagenes de la propiedad.')
+  }
+}
+
+export async function deletePropertyImage(idPropiedad, imageId, idArrendatario) {
+  const propertyId = Number(idPropiedad)
+  const parsedImageId = Number(imageId)
+  const property = await ensurePropertyBelongsToLandlord(propertyId, idArrendatario)
+
+  if (!Number.isInteger(parsedImageId) || parsedImageId <= 0) {
+    throw new ValidationError('id_imagen es obligatorio.')
+  }
+
+  const currentCount = await getPropertyImagesCount(propertyId)
+
+  if (currentCount <= MIN_PROPERTY_IMAGES) {
+    throw new ValidationError('La propiedad debe conservar al menos 5 fotografías.')
+  }
+
+  const { data: image, error: imageError } = await supabase
+    .from('propiedad_imagen')
+    .select('id_imagen,id_propiedad,url,storage_path,orden,es_principal')
+    .eq('id_imagen', parsedImageId)
+    .maybeSingle()
+
+  if (imageError) {
+    throw new Error('No se pudo cargar la imagen.')
+  }
+
+  if (!image || Number(image.id_propiedad) !== propertyId) {
+    throw new ValidationError('La imagen no pertenece a esta propiedad.')
+  }
+
+  await deleteImageFromStorage(image.storage_path)
+
+  const { error: deleteError } = await supabase
+    .from('propiedad_imagen')
+    .delete()
+    .eq('id_imagen', parsedImageId)
+    .eq('id_propiedad', propertyId)
+
+  if (deleteError) {
+    throw new Error('No se pudo eliminar la imagen de la propiedad.')
+  }
+
+  if (image.es_principal) {
+    const imagesByPropertyId = await getPropertyImages([propertyId])
+    const remainingImages = imagesByPropertyId.get(propertyId) || []
+    const nextMainImage = remainingImages[0]
+
+    if (nextMainImage) {
+      const { error: mainImageError } = await supabase
+        .from('propiedad_imagen')
+        .update({ es_principal: true })
+        .eq('id_imagen', nextMainImage.id_imagen)
+        .eq('id_propiedad', propertyId)
+
+      if (mainImageError) {
+        throw new Error('No se pudo asignar una nueva imagen principal.')
+      }
+    }
+  }
+
+  await reorderPropertyImages(propertyId)
+
+  const imagesByPropertyId = await getPropertyImages([propertyId])
+  return mapPropertyForLandlord(property, imagesByPropertyId)
+}
+
+export async function replacePropertyImage(idPropiedad, imageId, file, idArrendatario) {
+  const propertyId = Number(idPropiedad)
+  const parsedImageId = Number(imageId)
+  const property = await ensurePropertyBelongsToLandlord(propertyId, idArrendatario)
+
+  if (!Number.isInteger(parsedImageId) || parsedImageId <= 0) {
+    throw new ValidationError('id_imagen es obligatorio.')
+  }
+
+  if (!file) {
+    throw new ValidationError('Selecciona una imagen para reemplazar la fotografia.')
+  }
+
+  const { data: image, error: imageError } = await supabase
+    .from('propiedad_imagen')
+    .select('id_imagen,id_propiedad,url,storage_path,orden,es_principal')
+    .eq('id_imagen', parsedImageId)
+    .maybeSingle()
+
+  if (imageError) {
+    throw new Error('No se pudo cargar la imagen.')
+  }
+
+  if (!image || Number(image.id_propiedad) !== propertyId) {
+    throw new ValidationError('La imagen no pertenece a esta propiedad.')
+  }
+
+  let uploadedImages = []
+
+  try {
+    uploadedImages = await uploadPropertyImages(propertyId, [file], {
+      startOrder: Number(image.orden) || 1,
+      markFirstAsPrincipal: Boolean(image.es_principal),
+    })
+
+    const replacement = uploadedImages[0]
+
+    const { error: updateError } = await supabase
+      .from('propiedad_imagen')
+      .update({
+        url: replacement.url,
+        storage_path: replacement.storage_path,
+        orden: image.orden,
+        es_principal: image.es_principal,
+      })
+      .eq('id_imagen', parsedImageId)
+      .eq('id_propiedad', propertyId)
+
+    if (updateError) {
+      throw new Error('No se pudo reemplazar la imagen de la propiedad.')
+    }
+
+    imageRecordUpdated = true
+
+    try {
+      await deleteImageFromStorage(image.storage_path)
+    } catch {
+      // The replacement is already saved; do not break the UI for a best-effort cleanup failure.
+    }
+
+    const imagesByPropertyId = await getPropertyImages([propertyId])
+    return mapPropertyForLandlord(property, imagesByPropertyId)
+  } catch (error) {
+    if (!imageRecordUpdated) {
+      await deletePropertyImages(uploadedImages.map((uploadedImage) => uploadedImage.storage_path))
+    }
+    throw error
+  }
 }
 
 export async function updateLandlordProperty(idPropiedad, data, files = []) {
@@ -360,57 +603,28 @@ export async function updateLandlordProperty(idPropiedad, data, files = []) {
   const existingImages = currentProperty.imagenes || []
   const newFiles = files || []
 
-  if (existingImages.length + newFiles.length > 20) {
-    throw new ValidationError('Solo puedes tener un maximo de 20 fotografias.')
+  if (existingImages.length + newFiles.length > MAX_PROPERTY_IMAGES) {
+    throw new ValidationError('Solo puedes tener un máximo de 20 fotografías por propiedad.')
   }
 
-  let uploadedImages = []
+  const { data: property, error: propertyError } = await supabase
+    .from('propiedad')
+    .update(propertyPayload)
+    .eq('id_propiedad', propertyId)
+    .eq('id_arrendatario', landlordId)
+    .select('id_propiedad,descripcion,direccion,precio,tipo_precio,estado,resena,id_arrendatario')
+    .single()
 
-  try {
-    const { data: property, error: propertyError } = await supabase
-      .from('propiedad')
-      .update(propertyPayload)
-      .eq('id_propiedad', propertyId)
-      .eq('id_arrendatario', landlordId)
-      .select('id_propiedad,descripcion,direccion,precio,tipo_precio,estado,resena,id_arrendatario')
-      .single()
-
-    if (propertyError) {
-      throw new Error('No se pudo actualizar la propiedad.')
-    }
-
-    if (newFiles.length > 0) {
-      const maxExistingOrder = existingImages.reduce(
-        (maxOrder, image) => Math.max(maxOrder, Number(image.orden) || 0),
-        0
-      )
-
-      uploadedImages = await uploadPropertyImages(propertyId, newFiles, {
-        startOrder: maxExistingOrder + 1,
-        markFirstAsPrincipal: existingImages.length === 0,
-      })
-
-      const imagePayload = uploadedImages.map((image) => ({
-        id_propiedad: propertyId,
-        url: image.url,
-        storage_path: image.storage_path,
-        orden: image.orden,
-        es_principal: image.es_principal,
-      }))
-
-      const { error: imageError } = await supabase.from('propiedad_imagen').insert(imagePayload)
-
-      if (imageError) {
-        throw new Error('No se pudieron guardar las imagenes nuevas de la propiedad.')
-      }
-    }
-
-    const imagesByPropertyId = await getPropertyImages([propertyId])
-    return mapPropertyForLandlord(property, imagesByPropertyId)
-  } catch (error) {
-    await deletePropertyImages(uploadedImages.map((image) => image.storage_path))
-    throw error
+  if (propertyError) {
+    throw new Error('No se pudo actualizar la propiedad.')
   }
+
+  if (newFiles.length > 0) {
+    await addImagesToProperty(propertyId, newFiles, landlordId)
+  }
+
+  const imagesByPropertyId = await getPropertyImages([propertyId])
+  return mapPropertyForLandlord(property, imagesByPropertyId)
 }
 
 export { ValidationError }

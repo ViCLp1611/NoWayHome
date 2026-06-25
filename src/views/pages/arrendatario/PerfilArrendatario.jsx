@@ -18,8 +18,14 @@ import {
 import { Avatar, AvatarFallback } from '@/app/components/ui/avatar'
 import { Button } from '@/app/components/ui/button'
 import { Card } from '@/app/components/ui/card'
+import { Input } from '@/app/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs'
+import {
+  getLandlordProfile,
+  updateLandlordProfile,
+} from '@/services/landlordProfileService'
 import { getLandlordProperties } from '@/services/propertyService'
+import { ConfirmActionModal } from '@/views/admin/components/ConfirmActionModal'
 import { UserNavbar } from '@/views/user/components/UserNavbar.jsx'
 
 const statusStyles = {
@@ -28,8 +34,17 @@ const statusStyles = {
   suspendida: 'bg-amber-100 text-amber-800',
 }
 
-export function PerfilArrendatario({ userData }) {
+export function PerfilArrendatario({ userData, onUserUpdate }) {
   const navigate = useNavigate()
+  const [profile, setProfile] = useState(userData)
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [editForm, setEditForm] = useState({
+    nombre: userData?.nombre || '',
+    telefono: userData?.telefono || '',
+  })
+  const [editErrors, setEditErrors] = useState({})
+  const [isSavingProfile, setIsSavingProfile] = useState(false)
+  const [actionMessage, setActionMessage] = useState({ open: false, type: '', title: '', description: '' })
   const [recentProperties, setRecentProperties] = useState([])
   const [isLoadingProperties, setIsLoadingProperties] = useState(true)
   const [propertiesError, setPropertiesError] = useState('')
@@ -37,6 +52,43 @@ export function PerfilArrendatario({ userData }) {
   const idArrendatario = useMemo(() => {
     return userData?.id_arrendatario || userData?.id
   }, [userData])
+
+  const showActionMessage = (type, description, title) => {
+    setActionMessage({
+      open: true,
+      type,
+      title: title || (type === 'success' ? 'Accion completada' : 'Error'),
+      description,
+    })
+  }
+
+  useEffect(() => {
+    setProfile(userData)
+    setEditForm({
+      nombre: userData?.nombre || '',
+      telefono: userData?.telefono || '',
+    })
+  }, [userData])
+
+  useEffect(() => {
+    if (!idArrendatario) return
+
+    async function loadProfile() {
+      try {
+        const nextProfile = await getLandlordProfile(idArrendatario)
+        setProfile(currentProfile => ({ ...currentProfile, ...nextProfile }))
+        setEditForm({
+          nombre: nextProfile.nombre || '',
+          telefono: nextProfile.telefono || '',
+        })
+        onUserUpdate?.(nextProfile)
+      } catch (error) {
+        showActionMessage('error', error.message || 'No se pudo cargar tu informacion.')
+      }
+    }
+
+    loadProfile()
+  }, [idArrendatario])
 
   useEffect(() => {
     if (!idArrendatario) return
@@ -70,6 +122,70 @@ export function PerfilArrendatario({ userData }) {
     navigate('/')
   }
 
+  const openEditProfile = () => {
+    setEditForm({
+      nombre: profile?.nombre || '',
+      telefono: profile?.telefono || '',
+    })
+    setEditErrors({})
+    setIsEditOpen(true)
+  }
+
+  const closeEditProfile = () => {
+    if (isSavingProfile) return
+    setIsEditOpen(false)
+    setEditErrors({})
+  }
+
+  const handleEditFieldChange = event => {
+    const { name, value } = event.target
+    setEditForm(current => ({ ...current, [name]: value }))
+    setEditErrors(current => ({ ...current, [name]: '' }))
+  }
+
+  const validateEditForm = () => {
+    const nextErrors = {}
+    const telefono = editForm.telefono.trim().replace(/\D/g, '')
+
+    if (!editForm.nombre.trim()) {
+      nextErrors.nombre = 'El nombre es obligatorio.'
+    }
+
+    if (editForm.telefono.trim() && (telefono.length < 7 || telefono.length > 20)) {
+      nextErrors.telefono = 'Ingresa un telefono valido.'
+    }
+
+    return nextErrors
+  }
+
+  const handleSaveProfile = async event => {
+    event.preventDefault()
+
+    const nextErrors = validateEditForm()
+    setEditErrors(nextErrors)
+
+    if (Object.values(nextErrors).some(Boolean)) return
+
+    try {
+      setIsSavingProfile(true)
+      const updatedProfile = await updateLandlordProfile(idArrendatario, {
+        nombre: editForm.nombre,
+        telefono: editForm.telefono,
+      })
+      setProfile(currentProfile => ({ ...currentProfile, ...updatedProfile }))
+      onUserUpdate?.(updatedProfile)
+      setIsEditOpen(false)
+      showActionMessage('success', 'Informacion actualizada correctamente.')
+    } catch (error) {
+      showActionMessage(
+        'error',
+        error.message || 'No se pudo actualizar tu informacion. Intenta nuevamente.'
+      )
+    } finally {
+      setIsSavingProfile(false)
+    }
+  }
+
   const formatPrice = property => {
     const price = Number(property.precio_por_noche || 0).toLocaleString('es-MX', {
       maximumFractionDigits: 2,
@@ -81,6 +197,11 @@ export function PerfilArrendatario({ userData }) {
     return statusStyles[estado] || statusStyles.inactiva
   }
 
+  const renderEditError = field => {
+    if (!editErrors[field]) return null
+    return <p className="mt-2 text-sm text-red-700">{editErrors[field]}</p>
+  }
+
   return (
     <>
       <UserNavbar />
@@ -90,14 +211,14 @@ export function PerfilArrendatario({ userData }) {
             <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
               <Avatar className="h-24 w-24 bg-[#6B8E23] ring-4 ring-[#F2E8CF]">
                 <AvatarFallback className="text-white text-2xl font-poppins">
-                  {getInitials(userData.nombre)}
+                  {getInitials(profile?.nombre)}
                 </AvatarFallback>
               </Avatar>
 
               <div className="flex-1">
                 <div className="flex flex-col md:flex-row md:items-center gap-3 mb-4">
                   <h1 className="font-poppins font-semibold text-2xl md:text-3xl text-[#5F5F5F] capitalize">
-                    {userData.nombre || 'Usuario'}
+                    {profile?.nombre || 'Usuario'}
                   </h1>
                   <div className="flex items-center gap-2">
                     <Star className="h-5 w-5 fill-[#6B8E23] text-[#6B8E23]" />
@@ -108,12 +229,12 @@ export function PerfilArrendatario({ userData }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[#5F5F5F]">
                   <div className="flex items-center gap-2">
                     <Mail className="h-4 w-4 text-[#A67C52]" />
-                    <span className="text-sm">{userData.correo}</span>
+                    <span className="text-sm">{profile?.correo}</span>
                   </div>
-                  {userData.telefono && (
+                  {profile?.telefono && (
                     <div className="flex items-center gap-2">
                       <Phone className="h-4 w-4 text-[#A67C52]" />
-                      <span className="text-sm">{userData.telefono}</span>
+                      <span className="text-sm">{profile.telefono}</span>
                     </div>
                   )}
                   <div className="flex items-center gap-2">
@@ -129,6 +250,7 @@ export function PerfilArrendatario({ userData }) {
 
               <div className="flex md:flex-col gap-3 w-full md:w-auto">
                 <Button
+                  onClick={openEditProfile}
                   variant="outline"
                   className="flex-1 md:flex-initial border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#6B8E23] hover:text-white shadow-none rounded-xl transition-all"
                 >
@@ -323,8 +445,8 @@ export function PerfilArrendatario({ userData }) {
                       Informacion personal
                     </h3>
                     <div className="space-y-2 text-sm text-[#5F5F5F]/80">
-                      <p>{userData.correo || 'Correo no registrado'}</p>
-                      <p>{userData.telefono || 'Telefono no registrado'}</p>
+                      <p>{profile?.correo || 'Correo no registrado'}</p>
+                      <p>{profile?.telefono || 'Telefono no registrado'}</p>
                     </div>
                   </div>
                   <span className="inline-flex items-center px-3 py-1 rounded-lg bg-white text-[#6B8E23] font-medium text-sm">
@@ -363,6 +485,94 @@ export function PerfilArrendatario({ userData }) {
           </Tabs>
         </div>
       </div>
+
+      {isEditOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+            <div className="mb-5">
+              <h2 className="font-poppins text-xl font-semibold text-[#5F5F5F]">
+                Editar informacion personal
+              </h2>
+              <p className="mt-2 text-sm text-[#5F5F5F]/75">
+                Actualiza los datos visibles en tu perfil de arrendatario.
+              </p>
+            </div>
+
+            <form onSubmit={handleSaveProfile} className="space-y-4">
+              <div>
+                <label htmlFor="profile-nombre" className="text-[#5F5F5F] font-medium">
+                  Nombre
+                </label>
+                <Input
+                  id="profile-nombre"
+                  name="nombre"
+                  value={editForm.nombre}
+                  onChange={handleEditFieldChange}
+                  className="mt-2 h-12 rounded-xl border-[#6B8E23]/20 text-[#5F5F5F] focus:border-[#6B8E23]"
+                />
+                {renderEditError('nombre')}
+              </div>
+
+              <div>
+                <label htmlFor="profile-telefono" className="text-[#5F5F5F] font-medium">
+                  Telefono
+                </label>
+                <Input
+                  id="profile-telefono"
+                  name="telefono"
+                  value={editForm.telefono}
+                  onChange={handleEditFieldChange}
+                  className="mt-2 h-12 rounded-xl border-[#6B8E23]/20 text-[#5F5F5F] focus:border-[#6B8E23]"
+                />
+                {renderEditError('telefono')}
+              </div>
+
+              <div>
+                <label htmlFor="profile-correo" className="text-[#5F5F5F] font-medium">
+                  Correo
+                </label>
+                <Input
+                  id="profile-correo"
+                  value={profile?.correo || ''}
+                  disabled
+                  className="mt-2 h-12 rounded-xl border-[#6B8E23]/20 bg-[#FAFAFA] text-[#5F5F5F] disabled:opacity-80"
+                />
+                <p className="mt-2 text-xs leading-5 text-[#5F5F5F]/70">
+                  El correo se usa para iniciar sesion y no puede modificarse desde esta seccion.
+                </p>
+              </div>
+
+              <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={closeEditProfile}
+                  disabled={isSavingProfile}
+                  className="border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#6B8E23] hover:text-white shadow-none rounded-xl"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSavingProfile}
+                  className="bg-[#6B8E23] text-white hover:bg-[#5a7a1e] shadow-none rounded-xl disabled:opacity-60"
+                >
+                  {isSavingProfile ? 'Guardando...' : 'Guardar cambios'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <ConfirmActionModal
+        open={actionMessage.open}
+        type={actionMessage.type}
+        title={actionMessage.title}
+        description={actionMessage.description}
+        confirmLabel="Entendido"
+        onConfirm={() => setActionMessage({ open: false, type: '', title: '', description: '' })}
+      />
     </>
   )
 }

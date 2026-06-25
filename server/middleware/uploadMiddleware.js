@@ -100,4 +100,52 @@ export function uploadOptionalPropertyImages(req, res, next) {
   })
 }
 
+export function uploadSinglePropertyImage(req, res, next) {
+  upload.fields([
+    { name: 'imagen', maxCount: 1 },
+    { name: 'imagenes', maxCount: 1 },
+  ])(req, res, (error) => {
+    if (error) {
+      const isFileSizeError = error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE'
+      const isFileCountError =
+        error instanceof multer.MulterError &&
+        (error.code === 'LIMIT_FILE_COUNT' || error.code === 'LIMIT_UNEXPECTED_FILE')
+
+      if (isFileSizeError) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Cada imagen debe pesar maximo 5 MB.',
+        })
+      }
+
+      if (isFileCountError) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Solo puedes reemplazar una imagen a la vez.',
+        })
+      }
+
+      return res.status(400).json({
+        ok: false,
+        message: error.message || 'No se pudo procesar la imagen.',
+      })
+    }
+
+    const selectedFiles = [
+      ...(req.files?.imagen || []),
+      ...(req.files?.imagenes || []),
+    ]
+
+    if (selectedFiles.length !== 1) {
+      return res.status(400).json({
+        ok: false,
+        message: 'Selecciona una imagen para reemplazar la fotografia.',
+      })
+    }
+
+    req.file = selectedFiles[0]
+    return next()
+  })
+}
+
 export { MAX_PROPERTY_IMAGES, MIN_PROPERTY_IMAGES }

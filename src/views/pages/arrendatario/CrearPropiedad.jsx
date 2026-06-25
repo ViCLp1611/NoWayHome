@@ -6,6 +6,7 @@ import { Card } from '@/app/components/ui/card'
 import { Input } from '@/app/components/ui/input'
 import { Textarea } from '@/app/components/ui/textarea'
 import { createProperty } from '@/services/propertyService'
+import { ConfirmActionModal } from '@/views/admin/components/ConfirmActionModal'
 import { UserNavbar } from '@/views/user/components/UserNavbar.jsx'
 
 const initialForm = {
@@ -35,6 +36,7 @@ export function CrearPropiedad() {
   const [message, setMessage] = useState('')
   const [isSuccess, setIsSuccess] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [actionMessage, setActionMessage] = useState({ open: false, type: '', title: '', description: '' })
   const imagesRef = useRef([])
 
   useEffect(() => {
@@ -70,6 +72,15 @@ export function CrearPropiedad() {
   const idArrendatario = useMemo(() => {
     return userData?.id_arrendatario || userData?.id
   }, [userData])
+
+  const showActionMessage = (type, description, title) => {
+    setActionMessage({
+      open: true,
+      type,
+      title: title || (type === 'success' ? 'Accion completada' : 'Error'),
+      description,
+    })
+  }
 
   const handleFieldChange = event => {
     const { name, value } = event.target
@@ -203,9 +214,9 @@ export function CrearPropiedad() {
       setImages([])
       setErrors({})
       setIsSuccess(true)
-      setMessage('Propiedad registrada correctamente.')
+      showActionMessage('success', 'Propiedad registrada correctamente.')
     } catch (error) {
-      setMessage(error.message || 'No se pudo registrar la propiedad.')
+      showActionMessage('error', error.message || 'No se pudo registrar la propiedad.')
       setIsSuccess(false)
     } finally {
       setIsSubmitting(false)
@@ -489,16 +500,6 @@ export function CrearPropiedad() {
                 </p>
               )}
 
-              {message && (
-                <div
-                  className={`rounded-xl px-4 py-3 text-sm ${
-                    isSuccess ? 'bg-white text-[#6B8E23]' : 'bg-red-50 text-red-800'
-                  }`}
-                >
-                  {message}
-                </div>
-              )}
-
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 {isSuccess && (
                   <Button
@@ -523,6 +524,15 @@ export function CrearPropiedad() {
           </Card>
         </div>
       </main>
+
+      <ConfirmActionModal
+        open={actionMessage.open}
+        type={actionMessage.type}
+        title={actionMessage.title}
+        description={actionMessage.description}
+        confirmLabel="Entendido"
+        onConfirm={() => setActionMessage({ open: false, type: '', title: '', description: '' })}
+      />
     </>
   )
 }

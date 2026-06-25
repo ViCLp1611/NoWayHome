@@ -1,11 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, ImagePlus, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/app/components/ui/button'
 import { Card } from '@/app/components/ui/card'
 import { Input } from '@/app/components/ui/input'
 import { Textarea } from '@/app/components/ui/textarea'
-import { getPropertyById, updateProperty } from '@/services/propertyService'
+import {
+  deletePropertyImage,
+  getPropertyById,
+  replacePropertyImage,
+  updateProperty,
+} from '@/services/propertyService'
+import { ConfirmActionModal } from '@/views/admin/components/ConfirmActionModal'
 import { UserNavbar } from '@/views/user/components/UserNavbar.jsx'
 
 const initialForm = {
@@ -39,6 +45,10 @@ export function EditarPropiedad() {
   const [isSuccess, setIsSuccess] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [deletingImageId, setDeletingImageId] = useState(null)
+  const [replacingImageId, setReplacingImageId] = useState(null)
+  const [confirmAction, setConfirmAction] = useState({ open: false, type: '', image: null, file: null })
+  const [actionMessage, setActionMessage] = useState({ open: false, type: '', title: '', description: '' })
   const newImagesRef = useRef([])
 
   useEffect(() => {
@@ -75,6 +85,15 @@ export function EditarPropiedad() {
     }
   }, [])
 
+  const showActionMessage = (type, description, title) => {
+    setActionMessage({
+      open: true,
+      type,
+      title: title || (type === 'success' ? 'Accion completada' : 'Error'),
+      description,
+    })
+  }
+
   useEffect(() => {
     if (!canView || !idArrendatario || !id) return
 
@@ -98,7 +117,7 @@ export function EditarPropiedad() {
         })
         setCurrentImages(property.imagenes || [])
       } catch (error) {
-        setMessage(error.message || 'No se pudo cargar la propiedad.')
+        showActionMessage('error', error.message || 'No se pudo cargar la propiedad.')
       } finally {
         setIsLoading(false)
       }
@@ -116,20 +135,33 @@ export function EditarPropiedad() {
   }
 
   const validateImageFiles = nextFiles => {
+    const totalImages = currentImages.length + newImages.length + nextFiles.length
+
+    if (totalImages > 20) {
+      return 'Solo puedes tener un maximo de 20 fotografias por propiedad.'
+    }
+
     if (currentImages.length + newImages.length + nextFiles.length > 20) {
-      return 'Solo puedes tener un máximo de 20 fotografías.'
+      return 'Solo puedes tener un maximo de 20 fotografias.'
     }
 
     const hasInvalidType = nextFiles.some(file => !acceptedImageTypes.includes(file.type))
     if (hasInvalidType) {
-      return 'Solo se permiten imágenes JPG, PNG o WEBP.'
+      return 'Solo se permiten imagenes JPG, PNG o WEBP.'
     }
 
     const hasOversizedFile = nextFiles.some(file => file.size > maxImageSize)
     if (hasOversizedFile) {
-      return 'Cada imagen debe pesar máximo 5 MB.'
+      return 'Cada imagen debe pesar maximo 25 MB.'
     }
 
+    return ''
+  }
+
+  const validateReplacementFile = file => {
+    if (!file) return 'Selecciona una imagen para reemplazar la fotografía.'
+    if (!acceptedImageTypes.includes(file.type)) return 'Solo se permiten imagenes JPG, PNG o WEBP.'
+    if (file.size > maxImageSize) return 'Cada imagen debe pesar maximo 25 MB.'
     return ''
   }
 
@@ -164,18 +196,86 @@ export function EditarPropiedad() {
       if (imageToRemove) URL.revokeObjectURL(imageToRemove.previewUrl)
       return current.filter(image => image.id !== imageId)
     })
+    setErrors(current => ({ ...current, imagenes: '' }))
+  }
+
+  const handleDeleteCurrentImage = image => {
+    if (currentImages.length <= 5) {
+      setErrors(current => ({
+        ...current,
+        imagenes: 'La propiedad debe conservar al menos 5 fotografías.',
+      }))
+      showActionMessage('error', 'La propiedad debe conservar al menos 5 fotografías.')
+      setIsSuccess(false)
+      return
+    }
+    setConfirmAction({ open: true, type: 'delete', image, file: null })
+  }
+
+  const executeDeleteCurrentImage = async image => {
+    try {
+      setDeletingImageId(image.id_imagen)
+      setMessage('')
+      setErrors(current => ({ ...current, imagenes: '' }))
+      const result = await deletePropertyImage(id, image.id_imagen, idArrendatario)
+      setCurrentImages(result.property?.imagenes || [])
+      setIsSuccess(true)
+      showActionMessage('success', 'Imagen eliminada correctamente.')
+    } catch (error) {
+      showActionMessage('error', error.message || 'No se pudo eliminar la imagen.')
+      setIsSuccess(false)
+    } finally {
+      setDeletingImageId(null)
+      setConfirmAction({ open: false, type: '', image: null, file: null })
+    }
+  }
+
+  const handleReplacementFileChange = (image, event) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    const imageError = validateReplacementFile(file)
+    if (imageError) {
+      setErrors(current => ({ ...current, imagenes: imageError }))
+      showActionMessage('error', imageError)
+      return
+    }
+
+    setErrors(current => ({ ...current, imagenes: '' }))
+    setConfirmAction({ open: true, type: 'replace', image, file })
+  }
+
+  const executeReplaceCurrentImage = async (image, file) => {
+    const replacementFormData = new FormData()
+    replacementFormData.append('id_arrendatario', String(idArrendatario))
+    replacementFormData.append('imagen', file)
+
+    try {
+      setReplacingImageId(image.id_imagen)
+      setMessage('')
+      const result = await replacePropertyImage(id, image.id_imagen, replacementFormData)
+      setCurrentImages(result.property?.imagenes || [])
+      setIsSuccess(true)
+      showActionMessage('success', 'Imagen reemplazada correctamente.')
+    } catch (error) {
+      showActionMessage('error', error.message || 'No se pudo reemplazar la imagen.')
+      setIsSuccess(false)
+    } finally {
+      setReplacingImageId(null)
+      setConfirmAction({ open: false, type: '', image: null, file: null })
+    }
   }
 
   const validateForm = () => {
     const nextErrors = {}
 
-    if (!form.titulo.trim()) nextErrors.titulo = 'El título es obligatorio.'
-    if (!form.descripcion.trim()) nextErrors.descripcion = 'La descripción es obligatoria.'
-    if (!form.direccion.trim()) nextErrors.direccion = 'La dirección es obligatoria.'
+    if (!form.titulo.trim()) nextErrors.titulo = 'El ti­tulo es obligatorio.'
+    if (!form.descripcion.trim()) nextErrors.descripcion = 'La descripcion es obligatoria.'
+    if (!form.direccion.trim()) nextErrors.direccion = 'La direccion es obligatoria.'
     if (!form.ciudad.trim()) nextErrors.ciudad = 'La ciudad es obligatoria.'
-    if (!form.pais.trim()) nextErrors.pais = 'El país es obligatorio.'
+    if (!form.pais.trim()) nextErrors.pais = 'El pais es obligatorio.'
     if (!allowedPriceTypes.includes(form.tipo_precio)) {
-      nextErrors.tipo_precio = 'El tipo de precio no es válido.'
+      nextErrors.tipo_precio = 'El tipo de precio no es valido.'
     }
     if (Number(form.precio_por_noche) <= 0) {
       nextErrors.precio_por_noche =
@@ -191,23 +291,26 @@ export function EditarPropiedad() {
       Number(form.numero_habitaciones) < 0 ||
       form.numero_habitaciones === ''
     ) {
-      nextErrors.numero_habitaciones = 'El número de habitaciones debe ser mayor o igual a 0.'
+      nextErrors.numero_habitaciones = 'El numero de habitaciones debe ser mayor o igual a 0.'
     }
     if (
       !Number.isInteger(Number(form.numero_banos)) ||
       Number(form.numero_banos) < 0 ||
       form.numero_banos === ''
     ) {
-      nextErrors.numero_banos = 'El número de baños debe ser mayor o igual a 0.'
+      nextErrors.numero_banos = 'El numero de baños debe ser mayor o igual a 0.'
     }
     if (form.estado !== 'activa' && form.estado !== 'inactiva' && form.estado !== 'suspendida') {
-      nextErrors.estado = 'El estado no es válido.'
+      nextErrors.estado = 'El estado no es valido.'
     }
     if (form.estado === 'suspendida') {
       nextErrors.estado = 'El estado suspendida queda reservado para administración.'
     }
     if (!idArrendatario) {
       nextErrors.form = 'No se pudo identificar al arrendatario actual.'
+    }
+    if (currentImages.length + newImages.length > 20) {
+      nextErrors.imagenes = 'Solo puedes tener un mÃ¡ximo de 20 fotografias por propiedad.'
     }
 
     return nextErrors
@@ -239,9 +342,12 @@ export function EditarPropiedad() {
       setNewImages([])
       setCurrentImages(result.property?.imagenes || currentImages)
       setIsSuccess(true)
-      setMessage('Propiedad actualizada correctamente.')
+      showActionMessage(
+        'success',
+        newImages.length > 0 ? 'Imágenes agregadas correctamente.' : 'Propiedad actualizada correctamente.'
+      )
     } catch (error) {
-      setMessage(error.message || 'No se pudo actualizar la propiedad.')
+      showActionMessage('error', error.message || 'No se pudo actualizar la propiedad.')
       setIsSuccess(false)
     } finally {
       setIsSubmitting(false)
@@ -254,6 +360,10 @@ export function EditarPropiedad() {
   }
 
   const priceLabel = form.tipo_precio === 'mensual' ? 'Precio mensual' : 'Precio por noche'
+  const isDeleteAction = confirmAction.type === 'delete'
+  const actionImageLabel = confirmAction.image?.es_principal
+    ? 'la imagen principal'
+    : 'esta imagen'
 
   if (!canView) return null
 
@@ -280,7 +390,7 @@ export function EditarPropiedad() {
               Editar propiedad
             </h1>
             <p className="mt-3 text-[#5F5F5F]/80">
-              Actualiza la información de tu alojamiento publicado en NoWayHome.
+              Actualiza la informacion de tu alojamiento publicado en NoWayHome.
             </p>
 
             {isLoading ? (
@@ -440,7 +550,7 @@ export function EditarPropiedad() {
                     </div>
                     <div>
                       <label htmlFor="numero_banos" className="text-[#5F5F5F] font-medium">
-                        Baños
+                        BaÃ±os
                       </label>
                       <Input
                         id="numero_banos"
@@ -461,7 +571,7 @@ export function EditarPropiedad() {
                   <h2 className="font-poppins text-xl font-semibold text-[#5F5F5F]">Estado</h2>
                   <div>
                     <label htmlFor="estado" className="text-[#5F5F5F] font-medium">
-                      Estado de publicación
+                      Estado de publicacion
                     </label>
                     <select
                       id="estado"
@@ -486,16 +596,46 @@ export function EditarPropiedad() {
                   {currentImages.length > 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                       {currentImages.map(image => (
-                        <img
+                        <div
                           key={image.id_imagen || image.url}
-                          src={image.url}
-                          alt="Imagen actual de la propiedad"
-                          className="h-32 w-full rounded-xl object-cover"
-                        />
+                          className="relative overflow-hidden rounded-xl bg-white border border-[#6B8E23]/10"
+                        >
+                          <img
+                            src={image.url}
+                            alt="Imagen actual de la propiedad"
+                            className="h-32 w-full object-cover"
+                          />
+                          {image.es_principal && (
+                            <span className="absolute left-2 top-2 rounded-lg bg-[#6B8E23] px-2 py-1 text-xs font-medium text-white">
+                              Principal
+                            </span>
+                          )}
+                          <div className="absolute inset-x-2 bottom-2 flex flex-wrap justify-end gap-2">
+                            <label className="inline-flex cursor-pointer items-center rounded-lg bg-white px-3 py-2 text-xs font-medium text-[#6B8E23] shadow-sm hover:bg-[#F2E8CF]">
+                              {replacingImageId === image.id_imagen ? 'Reemplazando...' : 'Reemplazar'}
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                onChange={event => handleReplacementFileChange(image, event)}
+                                disabled={replacingImageId === image.id_imagen}
+                                className="sr-only"
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteCurrentImage(image)}
+                              disabled={deletingImageId === image.id_imagen}
+                              className="inline-flex items-center rounded-lg bg-white px-3 py-2 text-xs font-medium text-[#A67C52] shadow-sm hover:bg-[#F2E8CF] disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              <Trash2 className="mr-1 h-3.5 w-3.5" />
+                              {deletingImageId === image.id_imagen ? 'Eliminando...' : 'Eliminar'}
+                            </button>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-[#5F5F5F]/75">Esta propiedad no tiene imágenes.</p>
+                    <p className="text-sm text-[#5F5F5F]/75">Esta propiedad no tiene imÃ¡genes.</p>
                   )}
                 </section>
 
@@ -503,10 +643,10 @@ export function EditarPropiedad() {
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                       <h2 className="font-poppins text-xl font-semibold text-[#5F5F5F]">
-                        Agregar nuevas imágenes
+                        Agregar nuevas imagenes
                       </h2>
                       <p className="mt-1 text-sm text-[#5F5F5F]/75">
-                        Puedes agregar más fotografías sin eliminar las actuales. Máximo 20 en total.
+                        Puedes tener entre 5 y 20 fotografias por propiedad.
                       </p>
                     </div>
                     <label className="inline-flex cursor-pointer items-center justify-center rounded-xl bg-white px-4 py-3 font-medium text-[#6B8E23] border-2 border-[#6B8E23] hover:bg-[#6B8E23] hover:text-white transition-all">
@@ -557,16 +697,6 @@ export function EditarPropiedad() {
                   </p>
                 )}
 
-                {message && (
-                  <div
-                    className={`rounded-xl px-4 py-3 text-sm ${
-                      isSuccess ? 'bg-white text-[#6B8E23]' : 'bg-red-50 text-red-800'
-                    }`}
-                  >
-                    {message}
-                  </div>
-                )}
-
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   {isSuccess && (
                     <Button
@@ -591,6 +721,54 @@ export function EditarPropiedad() {
           </Card>
         </div>
       </main>
+
+      <ConfirmActionModal
+        open={confirmAction.open}
+        title={isDeleteAction ? 'Eliminar imagen' : 'Reemplazar imagen'}
+        description={
+          isDeleteAction ? (
+            <p>
+              ¿Seguro quieres eliminar {actionImageLabel}? Esta acción también borrará el archivo del
+              almacenamiento. La propiedad debe conservar al menos 5 fotografías.
+            </p>
+          ) : (
+            <p>
+              ¿Seguro quieres reemplazar {actionImageLabel}? Se mantendrá el mismo orden en la galería.
+            </p>
+          )
+        }
+        cancelLabel="Cancelar"
+        confirmLabel={
+          isDeleteAction
+            ? deletingImageId
+              ? 'Eliminando...'
+              : 'Eliminar'
+            : replacingImageId
+              ? 'Reemplazando...'
+              : 'Reemplazar'
+        }
+        confirmVariant={isDeleteAction ? 'adminDanger' : 'adminPrimary'}
+        disableCancel={Boolean(deletingImageId || replacingImageId)}
+        disableConfirm={Boolean(deletingImageId || replacingImageId)}
+        onCancel={() => setConfirmAction({ open: false, type: '', image: null, file: null })}
+        onConfirm={() => {
+          if (confirmAction.type === 'delete') {
+            executeDeleteCurrentImage(confirmAction.image)
+            return
+          }
+
+          executeReplaceCurrentImage(confirmAction.image, confirmAction.file)
+        }}
+      />
+
+      <ConfirmActionModal
+        open={actionMessage.open}
+        type={actionMessage.type}
+        title={actionMessage.title}
+        description={actionMessage.description}
+        confirmLabel="Entendido"
+        onConfirm={() => setActionMessage({ open: false, type: '', title: '', description: '' })}
+      />
     </>
   )
 }

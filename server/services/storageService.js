@@ -62,3 +62,15 @@ export async function deletePropertyImages(storagePaths = []) {
     // Best-effort cleanup: the caller should keep returning the original error.
   }
 }
+
+export async function deleteImageFromStorage(storagePath) {
+  if (!storagePath) {
+    return
+  }
+
+  const { error } = await supabase.storage.from(PROPERTY_IMAGES_BUCKET).remove([storagePath])
+
+  if (error) {
+    throw new Error('No se pudo eliminar la imagen del almacenamiento.')
+  }
+}

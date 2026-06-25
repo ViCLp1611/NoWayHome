@@ -61,3 +61,42 @@ export async function updateProperty(idPropiedad, formData) {
 
   return data
 }
+
+export async function deletePropertyImage(idPropiedad, imageId, idArrendatario) {
+  const params = new URLSearchParams({
+    id_arrendatario: String(idArrendatario),
+  })
+
+  const response = await fetch(
+    `${API_URL}/api/arrendatario/properties/${idPropiedad}/images/${imageId}?${params.toString()}`,
+    {
+      method: 'DELETE',
+    }
+  )
+
+  const data = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    throw new Error(data.message || 'No se pudo eliminar la imagen.')
+  }
+
+  return data
+}
+
+export async function replacePropertyImage(idPropiedad, imageId, formData) {
+  const response = await fetch(
+    `${API_URL}/api/arrendatario/properties/${idPropiedad}/images/${imageId}`,
+    {
+      method: 'PATCH',
+      body: formData,
+    }
+  )
+
+  const data = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    throw new Error(data.message || 'No se pudo reemplazar la imagen.')
+  }
+
+  return data
+}

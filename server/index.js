@@ -3,6 +3,7 @@ import cors from 'cors'
 import { FRONTEND_URL, MAIL_FROM, PORT } from './config/env.js'
 import { getTransporter } from './config/mailer.js'
 import { supabase } from './config/supabase.js'
+import landlordProfileRoutes from './routes/landlordProfileRoutes.js'
 import propertyRoutes from './routes/propertyRoutes.js'
 import {
   generate2faCode,
@@ -54,6 +55,7 @@ app.use(
   })
 )
 app.use(express.json())
+app.use('/api/arrendatario/profile', landlordProfileRoutes)
 app.use('/api/arrendatario/properties', propertyRoutes)
 
 /*
