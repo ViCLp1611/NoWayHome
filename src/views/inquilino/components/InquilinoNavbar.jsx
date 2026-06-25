@@ -32,7 +32,21 @@ export function InquilinoNavbar() {
           </button>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-6">
+          <nav className="hidden md:flex items-center gap-4">
+            <Button
+              variant="outline"
+              onClick={() => handleNavigation('/inquilino/explorar')}
+              className="border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#F2E8CF] shadow-none rounded-xl"
+            >
+              Explorar
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleNavigation('/inquilino/perfil')}
+              className="border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#F2E8CF] shadow-none rounded-xl"
+            >
+              Perfil
+            </Button>
             <Button
               onClick={handleLogout}
               className="bg-[#6B8E23] text-white hover:bg-[#5a7a1e] shadow-none rounded-xl"
@@ -56,6 +70,20 @@ export function InquilinoNavbar() {
         {isMobileMenuOpen && (
           <nav className="md:hidden py-4 border-t border-[#6B8E23]/10">
             <div className="flex flex-col gap-4">
+              <Button
+                variant="outline"
+                onClick={() => handleNavigation('/inquilino/explorar')}
+                className="border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#F2E8CF] shadow-none rounded-xl w-full justify-center"
+              >
+                Explorar
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => handleNavigation('/inquilino/perfil')}
+                className="border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#F2E8CF] shadow-none rounded-xl w-full justify-center"
+              >
+                Perfil
+              </Button>
               <Button
                 onClick={handleLogout}
                 className="bg-[#6B8E23] text-white hover:bg-[#5a7a1e] shadow-none rounded-xl w-full justify-center"

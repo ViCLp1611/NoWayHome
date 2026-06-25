@@ -11,6 +11,7 @@ import AdminDashboard from '@/views/admin/AdminDashboard'
 // Importaciones corregidas con extensión .jsx explícita y rutas exactas
 import { ProfilePage as InquilinoProfile } from '@/views/inquilino/pages/ProfilePage.jsx'
 import { ExplorarPage } from '@/views/inquilino/pages/ExplorarPage.jsx'
+import { PropertyDetailPage } from '@/views/inquilino/pages/PropertyDetailPage.jsx'
 import { ReservaPage } from '@/views/inquilino/pages/ReservaPage.jsx'
 
 export default function App() {
@@ -81,6 +82,7 @@ export default function App() {
           <Route path="/inquilino" element={<Navigate to="/inquilino/explorar" replace />} />
           <Route path="/inquilino/perfil" element={<InquilinoProfile />} />
           <Route path="/inquilino/explorar" element={<ExplorarPage />} />
+          <Route path="/inquilino/propiedad/:id" element={<PropertyDetailPage />} />
           <Route path="/inquilino/reserva/:id" element={<ReservaPage />} />
 
           {/* === RUTAS DEL ARRENDATARIO (Anfitrión) === */}

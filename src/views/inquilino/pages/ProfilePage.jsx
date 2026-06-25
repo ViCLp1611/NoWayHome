@@ -197,7 +197,9 @@ export function ProfilePage() {
                     <div className="flex flex-col md:flex-row justify-between gap-4">
                       <div className="flex-1">
                         <h3 className="font-poppins font-semibold text-lg text-[#5F5F5F] mb-3">
-                          {booking.propiedad?.titulo || 'Propiedad no disponible'}
+                          {booking.propiedad?.titulo ||
+                            booking.propiedad?.descripcion ||
+                            'Propiedad no disponible'}
                         </h3>
                         <div className="space-y-2 text-[#5F5F5F]">
                           <div className="flex items-center gap-2">
@@ -236,6 +238,24 @@ export function ProfilePage() {
                         </div>
                         <Button
                           variant="outline"
+                          onClick={() => {
+                            const propertyId =
+                              booking.propiedad?.id_propiedad ||
+                              booking.propiedad?.id ||
+                              booking.id_propiedad ||
+                              booking.id
+                            if (propertyId) {
+                              navigate(`/inquilino/propiedad/${propertyId}`)
+                            }
+                          }}
+                          disabled={
+                            !(
+                              booking.propiedad?.id_propiedad ||
+                              booking.propiedad?.id ||
+                              booking.id_propiedad ||
+                              booking.id
+                            )
+                          }
                           className="border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#6B8E23] hover:text-white shadow-none rounded-xl transition-all"
                         >
                           Ver Detalles

@@ -33,8 +33,26 @@ export const inquilinoService = {
       .eq('id_inquilino', id_inquilino)
       .order('fecha_inicio', { ascending: false })
 
-    if (error) throw new Error('Error al obtener reservas: ' + error.message)
-    return data
+    if (!error) {
+      return data || []
+    }
+
+    console.warn(
+      'Error al obtener reservas con relación anidada, reintentando con select simple:',
+      error.message
+    )
+
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from('reserva')
+      .select('*')
+      .eq('id_inquilino', id_inquilino)
+      .order('fecha_inicio', { ascending: false })
+
+    if (fallbackError) {
+      throw new Error('Error al obtener reservas: ' + fallbackError.message)
+    }
+
+    return fallbackData || []
   },
 
   obtenerFavoritos: async id_inquilino => {
@@ -46,7 +64,17 @@ export const inquilinoService = {
       .eq('id_inquilino', id_inquilino)
       .order('created_at', { ascending: false })
 
-    if (error) throw new Error('Error al obtener favoritos: ' + error.message)
-    return data
+    if (error) {
+      if (error.code === '42P01' || /Could not find the table/i.test(error.message)) {
+        console.warn(
+          'Tabla favoritos no existe en Supabase, retornando lista vacía:',
+          error.message
+        )
+        return []
+      }
+      throw new Error('Error al obtener favoritos: ' + error.message)
+    }
+
+    return data || []
   },
 }

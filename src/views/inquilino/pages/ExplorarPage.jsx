@@ -89,14 +89,23 @@ export function ExplorarPage() {
                 Explora las mejores propiedades en No Way Home
               </p>
             </div>
-            <div className="relative w-full md:w-96">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#5F5F5F]/50" />
-              <Input
-                placeholder="Buscar por ciudad, destino o nombre..."
-                className="pl-10 h-12 rounded-xl border-[#6B8E23]/20 focus-visible:ring-[#6B8E23] text-[#5F5F5F] bg-white"
-                value={filtro}
-                onChange={e => setFiltro(e.target.value)}
-              />
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                onClick={() => navigate('/inquilino/perfil')}
+                className="border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#F2E8CF] shadow-none rounded-xl"
+              >
+                Mi perfil
+              </Button>
+              <div className="relative w-full md:w-96">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#5F5F5F]/50" />
+                <Input
+                  placeholder="Buscar por ciudad, destino o nombre..."
+                  className="pl-10 h-12 rounded-xl border-[#6B8E23]/20 focus-visible:ring-[#6B8E23] text-[#5F5F5F] bg-white"
+                  value={filtro}
+                  onChange={e => setFiltro(e.target.value)}
+                />
+              </div>
             </div>
           </div>
 
@@ -164,7 +173,7 @@ export function ExplorarPage() {
                         <span className="text-sm line-clamp-1">{ubicacion}</span>
                       </div>
 
-                      <div className="flex items-center justify-between mt-4">
+                      <div className="flex items-center justify-between mt-4 gap-3">
                         <div className="flex flex-col">
                           <span className="font-poppins font-semibold text-lg text-[#6B8E23]">
                             {formatPrice(precio)}
@@ -172,12 +181,21 @@ export function ExplorarPage() {
                           <span className="text-xs text-[#5F5F5F]/70">por noche</span>
                         </div>
 
-                        <Button
-                          onClick={() => navigate(`/inquilino/reserva/${id}`)}
-                          className="bg-[#6B8E23] text-white hover:bg-[#5a7a1e] shadow-none rounded-xl"
-                        >
-                          Reservar
-                        </Button>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => navigate(`/inquilino/propiedad/${id}`)}
+                            className="border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#F2E8CF] shadow-none rounded-xl"
+                          >
+                            Ver detalles
+                          </Button>
+                          <Button
+                            onClick={() => navigate(`/inquilino/reserva/${id}`)}
+                            className="bg-[#6B8E23] text-white hover:bg-[#5a7a1e] shadow-none rounded-xl"
+                          >
+                            Reservar
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </Card>
