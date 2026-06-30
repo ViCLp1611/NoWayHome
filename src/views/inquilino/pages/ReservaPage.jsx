@@ -4,6 +4,14 @@ import { ArrowLeft, CheckCircle, Mail, Phone, MapPin } from 'lucide-react'
 import { Button } from '@/app/components/ui/button'
 import { Card } from '@/app/components/ui/card'
 import { Input } from '@/app/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/app/components/ui/dialog'
 import { AlertMessage } from '@/app/components/ui/AlertMessage'
 import { LoadingState } from '@/app/components/ui/LoadingState'
 import { InquilinoNavbar } from '@/views/inquilino/components/InquilinoNavbar.jsx'
@@ -22,6 +30,7 @@ export function ReservaPage() {
   const [costos, setCostos] = useState(null)
   const [idReservaPendiente, setIdReservaPendiente] = useState(null)
   const [message, setMessage] = useState({ type: '', title: '', text: '' })
+  const today = new Date(new Date().setHours(0, 0, 0, 0)).toISOString().split('T')[0]
 
   useEffect(() => {
     const fetchDatos = async () => {
@@ -146,16 +155,16 @@ export function ReservaPage() {
   return (
     <>
       <InquilinoNavbar />
-      <div className="min-h-screen bg-[#FAFAFA] px-4 py-8">
-        <div className="container mx-auto max-w-6xl">
+      <div className="min-h-screen bg-[#FAFAFA] px-4 py-8 sm:py-12">
+        <div className="container mx-auto max-w-7xl">
           <button
-            onClick={() => navigate('/inquilino/propiedad/' + id)}
-            className="mb-8 flex items-center gap-2 font-medium text-[#5F5F5F] transition-colors hover:text-black"
+            onClick={() => (step === 1 ? navigate('/inquilino/propiedad/' + id) : setStep(1))}
+            className="mb-8 flex items-center gap-2 text-sm font-medium text-[#5F5F5F] transition-colors hover:text-[#6B8E23]"
           >
             <ArrowLeft className="h-5 w-5" /> Volver a la propiedad
           </button>
 
-          {message.text && (
+          {message.text && step === 1 && (
             <AlertMessage
               type={message.type}
               title={message.title}
@@ -164,229 +173,160 @@ export function ReservaPage() {
             />
           )}
 
-          {step === 1 && (
-            <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-              {/* Columna izquierda: Fechas y datos */}
-              <div className="space-y-6">
-                {/* Card Fechas */}
-                <Card className="rounded-3xl border border-[#6B8E23]/10 p-6 shadow-sm">
-                  <h2 className="mb-4 text-2xl font-semibold text-[#5F5F5F]">Fechas de reserva</h2>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium text-[#5F5F5F]/70">Fecha de entrada</label>
-                      <Input
-                        type="date"
-                        value={fechaInicio}
-                        onChange={e => setFechaInicio(e.target.value)}
-                        className="mt-2 rounded-xl border-[#6B8E23]/20 text-[#5F5F5F]"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-[#5F5F5F]/70">Fecha de salida</label>
-                      <Input
-                        type="date"
-                        value={fechaFin}
-                        onChange={e => setFechaFin(e.target.value)}
-                        className="mt-2 rounded-xl border-[#6B8E23]/20 text-[#5F5F5F]"
-                      />
-                    </div>
+          <div className="mx-auto max-w-4xl">
+            {/* Encabezado de la Propiedad */}
+            <div className="mb-8">
+              <div className="relative mb-4 aspect-[16/9] w-full overflow-hidden rounded-2xl bg-[#F2E8CF] sm:aspect-[2/1] lg:aspect-[2.5/1]">
+                <img
+                  src={propiedad.imagen_principal || 'https://via.placeholder.com/800x400'}
+                  alt={propiedad.titulo || propiedad.descripcion || 'Propiedad'}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <h1 className="font-poppins text-3xl font-semibold text-[#5F5F5F] sm:text-4xl">
+                {propiedad.titulo || propiedad.descripcion || 'Propiedad'}
+              </h1>
+              <p className="mt-2 flex items-center gap-2 text-base text-[#5F5F5F]/80">
+                <MapPin className="h-5 w-5 shrink-0 text-[#A67C52]" />
+                <span>{propiedad.ubicacion || propiedad.direccion || 'No especificada'}</span>
+              </p>
+            </div>
 
-                    {costos && (
-                      <div className="space-y-3 rounded-2xl bg-[#F2E8CF] p-4">
-                        <div className="flex justify-between">
-                          <span className="text-sm text-[#5F5F5F]/70">Duración</span>
-                          <span className="font-semibold text-[#5F5F5F]">{costos.dias} noche(s)</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm text-[#5F5F5F]/70">Precio por noche</span>
-                          <span className="font-semibold text-[#5F5F5F]">
-                            {formatPrice(propiedad.precio_noche || propiedad.precio || 0)}
-                          </span>
-                        </div>
-                        <div className="border-t border-[#6B8E23]/20 pt-3">
-                          <div className="flex justify-between">
-                            <span className="font-semibold text-[#5F5F5F]">Total estimado</span>
-                            <span className="text-2xl font-bold text-[#6B8E23]">
-                              {formatPrice(costos.total)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </Card>
+            {/* Formulario de Reserva */}
+            <Card className="rounded-2xl border border-[#6B8E23]/10 p-6 shadow-sm sm:p-8">
+              <h2 className="mb-6 font-poppins text-2xl font-semibold text-[#5F5F5F]">
+                Completa los datos de tu reserva
+              </h2>
 
-                {/* Card Datos del huésped */}
-                <Card className="rounded-3xl border border-[#6B8E23]/10 p-6 shadow-sm">
-                  <h2 className="mb-4 text-2xl font-semibold text-[#5F5F5F]">Datos de la reserva</h2>
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-xs font-medium text-[#5F5F5F]/70 mb-1">Reservado a nombre de</p>
-                      <p className="font-semibold text-[#5F5F5F]">
-                        {userData?.nombre || userData?.name || 'Usuario'}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-[#A67C52]" />
-                      <div>
-                        <p className="text-xs text-[#5F5F5F]/70">Correo electrónico</p>
-                        <p className="text-sm font-medium text-[#5F5F5F]">{userData?.correo || userData?.email || 'No disponible'}</p>
-                      </div>
-                    </div>
-                    {userData?.telefono && (
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-4 w-4 text-[#A67C52]" />
-                        <div>
-                          <p className="text-xs text-[#5F5F5F]/70">Teléfono</p>
-                          <p className="text-sm font-medium text-[#5F5F5F]">{userData.telefono}</p>
-                        </div>
-                      </div>
-                    )}
-                    {!userData?.telefono && (
-                      <div className="rounded-lg bg-[#F2E8CF]/50 p-3 text-xs text-[#5F5F5F]/80">
-                        💡 Agrega tu teléfono desde tu perfil para facilitar el contacto con el anfitrión.
-                      </div>
-                    )}
-                  </div>
-                </Card>
+              {/* Card Fechas */}
+              <div className="mb-6 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+                <div>
+                  <label className="text-sm font-medium text-[#5F5F5F]/80">Entrada</label>
+                  <Input
+                    type="date"
+                    min={today}
+                    value={fechaInicio}
+                    onChange={e => setFechaInicio(e.target.value)}
+                    className="mt-2 rounded-xl border-[#6B8E23]/20 bg-white text-[#5F5F5F] focus:border-[#6B8E23] focus:ring-2 focus:ring-[#6B8E23]/50"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-[#5F5F5F]/80">Salida</label>
+                  <Input
+                    type="date"
+                    min={fechaInicio || today}
+                    value={fechaFin}
+                    onChange={e => setFechaFin(e.target.value)}
+                    disabled={!fechaInicio}
+                    className="mt-2 rounded-xl border-[#6B8E23]/20 bg-white text-[#5F5F5F] focus:border-[#6B8E23] focus:ring-2 focus:ring-[#6B8E23]/50 disabled:bg-gray-100"
+                  />
+                </div>
               </div>
 
-              {/* Columna derecha: Resumen de propiedad */}
-              <div>
-                <Card className="sticky top-8 rounded-3xl border border-[#6B8E23]/10 p-6 shadow-sm">
-                  <h2 className="mb-4 text-2xl font-semibold text-[#5F5F5F]">Resumen de la reserva</h2>
-
-                  <div className="mb-6 rounded-2xl overflow-hidden bg-gray-200">
-                    <img
-                      src={propiedad.imagen_principal || 'https://via.placeholder.com/400x250'}
-                      alt={propiedad.titulo}
-                      className="h-40 w-full object-cover"
-                    />
+              {/* Resumen de Costos */}
+              {costos && (
+                <div className="mb-8 space-y-4 rounded-xl bg-[#FAFAFA] p-5">
+                  <h3 className="font-poppins font-semibold text-[#5F5F5F]">Resumen de precios</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between text-[#5F5F5F]">
+                      <span>
+                        {formatPrice(propiedad.precio_noche || propiedad.precio || 0)} x{' '}
+                        {costos.dias} noche(s)
+                      </span>
+                      <span>{formatPrice(costos.total)}</span>
+                    </div>
+                    <div className="flex justify-between text-[#5F5F5F]">
+                      <span>Tarifa de servicio</span>
+                      <span>{formatPrice(0)}</span>
+                    </div>
                   </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-xs font-medium text-[#5F5F5F]/70">Propiedad</p>
-                      <h3 className="text-lg font-semibold text-[#5F5F5F] line-clamp-2">
-                        {propiedad.titulo || propiedad.descripcion || 'Propiedad'}
-                      </h3>
-                    </div>
-
-                    <div className="flex items-start gap-2">
-                      <MapPin className="h-4 w-4 shrink-0 text-[#A67C52] mt-0.5" />
-                      <div>
-                        <p className="text-xs font-medium text-[#5F5F5F]/70">Ubicación</p>
-                        <p className="text-sm text-[#5F5F5F]">
-                          {propiedad.ubicacion || propiedad.direccion || 'No especificada'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="border-t border-[#6B8E23]/10 pt-4 space-y-3">
-                      <div className="flex justify-between">
-                        <span className="text-sm text-[#5F5F5F]/70">Entrada</span>
-                        <span className="font-semibold text-[#5F5F5F]">
-                          {fechaInicio ? formatDate(fechaInicio) : '–'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-[#5F5F5F]/70">Salida</span>
-                        <span className="font-semibold text-[#5F5F5F]">
-                          {fechaFin ? formatDate(fechaFin) : '–'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-[#5F5F5F]/70">Duración</span>
-                        <span className="font-semibold text-[#5F5F5F]">
-                          {costos ? `${costos.dias} noche(s)` : '–'}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="border-t border-[#6B8E23]/10 pt-4 space-y-2 rounded-lg bg-[#F2E8CF] p-3">
-                      <div className="flex justify-between">
-                        <span className="text-sm text-[#5F5F5F]/70">Precio unitario</span>
-                        <span className="font-semibold text-[#5F5F5F]">
-                          {formatPrice(propiedad.precio_noche || propiedad.precio || 0)} por noche
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-lg font-bold">
-                        <span className="text-[#5F5F5F]">Total</span>
-                        <span className="text-[#6B8E23]">{costos ? formatPrice(costos.total) : '$0'}</span>
-                      </div>
-                    </div>
-
-                    <div className="rounded-lg bg-[#F2E8CF]/50 p-3 text-xs text-[#5F5F5F]/80">
-                      <p className="font-semibold mb-1">Estado: Pendiente</p>
-                      <p>Tu reserva será confirmada después de hacer clic en "Confirmar reserva".</p>
-                    </div>
-
-                    <Button
-                      onClick={handleIniciarReserva}
-                      disabled={!costos || !fechaInicio || !fechaFin || isLoading}
-                      className="h-12 w-full rounded-xl bg-[#6B8E23] text-white shadow-none hover:bg-[#5a7a1e] font-semibold"
-                    >
-                      {isLoading ? 'Procesando...' : 'Confirmar reserva'}
-                    </Button>
+                  <div className="flex items-center justify-between border-t border-[#6B8E23]/20 pt-4 font-semibold">
+                    <span className="text-base text-[#5F5F5F]">Total (MXN)</span>
+                    <span className="text-xl text-[#6B8E23]">{formatPrice(costos.total)}</span>
                   </div>
-                </Card>
-              </div>
-            </div>
-          )}
-
-          {step === 2 && (
-            <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-              <div />
-              <Card className="rounded-3xl border-2 border-[#6B8E23] p-8 shadow-lg">
-                <div className="text-center space-y-6">
-                  <div className="w-16 h-16 rounded-full bg-[#6B8E23]/10 flex items-center justify-center mx-auto">
-                    <CheckCircle className="h-8 w-8 text-[#6B8E23]" />
-                  </div>
-                  <h2 className="text-2xl font-bold text-[#5F5F5F]">Reserva creada correctamente</h2>
-                  <p className="text-[#5F5F5F]/80">
-                    Tu reserva está pendiente de confirmación. Haz clic en el botón para completar el proceso.
-                  </p>
-                  <Button
-                    onClick={handleConfirmarPago}
-                    disabled={isLoading}
-                    className="h-12 w-full rounded-xl bg-[#6B8E23] text-white shadow-none hover:bg-[#5a7a1e] font-semibold"
-                  >
-                    {isLoading ? 'Procesando...' : 'Confirmar reserva'}
-                  </Button>
                 </div>
-              </Card>
-            </div>
-          )}
+              )}
 
-          {step === 3 && (
-            <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-              <div />
-              <Card className="rounded-3xl border border-[#6B8E23]/10 p-8 text-center shadow-sm">
-                <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
-                  <CheckCircle className="h-10 w-10 text-green-600" />
+              {/* Card Acción de Pago */}
+              <p className="mb-4 text-center text-sm text-[#5F5F5F]/80">
+                Tu reserva quedará registrada como "pendiente" hasta la confirmación final.
+              </p>
+              <Button
+                onClick={handleIniciarReserva}
+                disabled={!costos || !fechaInicio || !fechaFin || isLoading}
+                className="h-14 w-full rounded-xl bg-[#6B8E23] text-base font-semibold text-white shadow-sm transition-all hover:bg-[#5a7a1e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6B8E23] focus-visible:ring-offset-2 disabled:opacity-60"
+              >
+                {isLoading ? 'Procesando...' : 'Confirmar y continuar'}
+              </Button>
+            </Card>
+          </div>
+
+          {/* Modal para Step 2: Confirmación de Reserva Pendiente */}
+          <Dialog open={step === 2} onOpenChange={isOpen => !isOpen && setStep(1)}>
+            <DialogContent className="sm:max-w-md rounded-2xl">
+              <DialogHeader className="text-center items-center pt-4">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#6B8E23]/10">
+                  <CheckCircle className="h-8 w-8 text-[#6B8E23]" />
                 </div>
-                <h2 className="text-3xl font-bold text-[#5F5F5F] mb-2">¡Reserva confirmada!</h2>
-                <p className="text-[#5F5F5F]/80 mb-8">
+                <DialogTitle className="font-poppins text-2xl font-bold text-[#5F5F5F]">
+                  Reserva creada correctamente
+                </DialogTitle>
+                <DialogDescription className="text-sm text-[#5F5F5F]/80 pt-2">
+                  Tu reserva está pendiente de confirmación. Haz clic en el botón para completar el
+                  proceso y finalizar tu pago.
+                </DialogDescription>
+              </DialogHeader>
+              {message.text && message.type === 'error' && (
+                <div className="px-6 pt-4">
+                  <AlertMessage type={message.type} title={message.title} message={message.text} />
+                </div>
+              )}
+              <DialogFooter className="p-6 pt-4">
+                <Button
+                  onClick={handleConfirmarPago}
+                  disabled={isLoading}
+                  className="h-12 w-full rounded-xl bg-[#6B8E23] font-semibold text-white shadow-sm transition-colors hover:bg-[#5a7a1e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6B8E23] focus-visible:ring-offset-2"
+                >
+                  {isLoading ? 'Procesando...' : 'Confirmar reserva'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Modal para Step 3: Reserva Confirmada */}
+          <Dialog
+            open={step === 3}
+            onOpenChange={isOpen => !isOpen && navigate('/inquilino/perfil')}
+          >
+            <DialogContent className="sm:max-w-md rounded-2xl">
+              <div className="p-6 text-center">
+                <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#6B8E23]/10">
+                  <CheckCircle className="h-10 w-10 text-[#6B8E23]" />
+                </div>
+                <h2 className="font-poppins text-3xl font-bold text-[#5F5F5F]">
+                  ¡Reserva confirmada!
+                </h2>
+                <p className="mt-2 mb-8 text-base text-[#5F5F5F]/80">
                   Tu reserva ha sido creada correctamente. Puedes consultarla desde tu perfil.
                 </p>
                 <div className="space-y-3">
                   <Button
                     onClick={() => navigate('/inquilino/perfil')}
-                    className="h-12 w-full rounded-xl bg-[#6B8E23] text-white shadow-none hover:bg-[#5a7a1e]"
+                    className="h-12 w-full rounded-xl bg-[#6B8E23] font-semibold text-white shadow-sm transition-colors hover:bg-[#5a7a1e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6B8E23] focus-visible:ring-offset-2"
                   >
                     Ver mis reservas
                   </Button>
                   <Button
                     onClick={() => navigate('/inquilino/explorar')}
                     variant="outline"
-                    className="h-12 w-full rounded-xl border-2 border-[#6B8E23] text-[#6B8E23] shadow-none hover:bg-[#F2E8CF]"
+                    className="h-12 w-full rounded-xl border-2 border-[#6B8E23] font-semibold text-[#6B8E23] shadow-none transition-colors hover:bg-[#F2E8CF] hover:text-[#6B8E23] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6B8E23] focus-visible:ring-offset-2"
                   >
-                    Volver a explorar
+                    Explorar más propiedades
                   </Button>
                 </div>
-              </Card>
-            </div>
-          )}
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </>
