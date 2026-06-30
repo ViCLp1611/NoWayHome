@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, CheckCircle, Mail, Phone, MapPin } from 'lucide-react'
+import { PayPalButtons } from '@paypal/react-paypal-js'
 import { Button } from '@/app/components/ui/button'
 import { Card } from '@/app/components/ui/card'
 import { Input } from '@/app/components/ui/input'
@@ -16,6 +17,8 @@ import { AlertMessage } from '@/app/components/ui/AlertMessage'
 import { LoadingState } from '@/app/components/ui/LoadingState'
 import { InquilinoNavbar } from '@/views/inquilino/components/InquilinoNavbar.jsx'
 import { reservaController } from '@/controllers/reservaController.js'
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
 export function ReservaPage() {
   const { id } = useParams()
@@ -89,18 +92,27 @@ export function ReservaPage() {
       fecha_inicio: fechaInicio,
       fecha_fin: fechaFin,
       pago: costos.total,
-      estado: 'pendiente',
+      estado: 'pending', // Corregido para coincidir con el modelo ('pending', 'confirmed', etc.)
     }
 
     const result = await reservaController.iniciarReserva(nuevaReserva)
     if (result.success) {
-      setIdReservaPendiente(result.data)
-      setStep(2)
-      setMessage({
-        type: 'success',
-        title: 'Reserva creada',
-        text: 'Revisa el resumen y confirma para completar tu reserva.',
-      })
+      // --- Robustez Adicional ---
+      // Nos aseguramos de guardar solo el ID numérico de la reserva,
+      // independientemente de si el controlador devuelve un objeto o un array.
+      const reservaData = Array.isArray(result.data) ? result.data[0] : result.data
+      const reservaId = reservaData?.id_reserva
+
+      if (reservaId) {
+        setIdReservaPendiente(reservaId)
+        setStep(2)
+      } else {
+        setMessage({
+          type: 'error',
+          title: 'Error de Comunicación',
+          text: 'No se pudo obtener un ID de reserva válido del servidor.',
+        })
+      }
     } else {
       setMessage({
         type: 'error',
@@ -111,22 +123,52 @@ export function ReservaPage() {
     setIsLoading(false)
   }
 
-  const handleConfirmarPago = async () => {
+  // --- Lógica de PayPal ---
+
+  // Llama al backend para crear una orden en PayPal
+  const createOrder = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/payments/crear-orden`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ total: costos.total.toString() }),
+      })
+      const order = await response.json()
+      if (order.id) {
+        return order.id
+      }
+      throw new Error(order.error || 'No se pudo obtener el ID de la orden de PayPal.')
+    } catch (err) {
+      setMessage({ type: 'error', title: 'Error de Pago', text: err.message })
+      return null
+    }
+  }
+
+  // Llama al backend para capturar el pago cuando el usuario aprueba en PayPal
+  const onApprove = async data => {
     setIsLoading(true)
     setMessage({ type: '', title: '', text: '' })
-    const result = await reservaController.confirmarReserva(idReservaPendiente)
-    if (result.success) {
-      setStep(3)
-      setMessage({
-        type: 'success',
-        title: 'Reserva confirmada',
-        text: 'Tu reserva ha sido creada correctamente. Puedes consultarla desde tu perfil.',
+    try {
+      const response = await fetch(`${API_URL}/api/payments/capturar-orden`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderID: data.orderID,
+          idReserva: idReservaPendiente,
+        }),
       })
-    } else {
+      const result = await response.json()
+
+      if (result.success) {
+        setStep(3) // Muestra el diálogo de éxito final
+      } else {
+        throw new Error(result.error || 'El pago no se completó en el servidor.')
+      }
+    } catch (err) {
       setMessage({
         type: 'error',
-        title: 'No se pudo confirmar la reserva',
-        text: result.error || 'Intenta nuevamente en unos momentos.',
+        title: 'Error al confirmar el pago',
+        text: err.message,
       })
     }
     setIsLoading(false)
@@ -262,34 +304,43 @@ export function ReservaPage() {
           </div>
 
           {/* Modal para Step 2: Confirmación de Reserva Pendiente */}
-          <Dialog open={step === 2} onOpenChange={isOpen => !isOpen && setStep(1)}>
+          {/* Asegúrate de tener PayPalScriptProvider envolviendo tu App */}
+          <Dialog
+            open={step === 2}
+            onOpenChange={isOpen => {
+              if (!isOpen && !isLoading) setStep(1)
+            }}
+          >
             <DialogContent className="sm:max-w-md rounded-2xl">
               <DialogHeader className="text-center items-center pt-4">
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#6B8E23]/10">
                   <CheckCircle className="h-8 w-8 text-[#6B8E23]" />
                 </div>
                 <DialogTitle className="font-poppins text-2xl font-bold text-[#5F5F5F]">
-                  Reserva creada correctamente
+                  Finaliza tu pago
                 </DialogTitle>
                 <DialogDescription className="text-sm text-[#5F5F5F]/80 pt-2">
-                  Tu reserva está pendiente de confirmación. Haz clic en el botón para completar el
-                  proceso y finalizar tu pago.
+                  Tu reserva ha sido creada. Completa el pago de forma segura con PayPal para
+                  confirmarla.
                 </DialogDescription>
               </DialogHeader>
-              {message.text && message.type === 'error' && (
+
+              {isLoading ? (
+                <LoadingState message="Procesando pago..." />
+              ) : message.text ? (
+                <AlertMessage type={message.type} title={message.title} message={message.text} />
+              ) : (
                 <div className="px-6 pt-4">
-                  <AlertMessage type={message.type} title={message.title} message={message.text} />
+                  <PayPalButtons
+                    style={{ layout: 'vertical', color: 'gold', shape: 'rect', label: 'pay' }}
+                    createOrder={createOrder}
+                    onApprove={onApprove}
+                    onError={err =>
+                      setMessage({ type: 'error', title: 'Error de PayPal', text: err.message })
+                    }
+                  />
                 </div>
               )}
-              <DialogFooter className="p-6 pt-4">
-                <Button
-                  onClick={handleConfirmarPago}
-                  disabled={isLoading}
-                  className="h-12 w-full rounded-xl bg-[#6B8E23] font-semibold text-white shadow-sm transition-colors hover:bg-[#5a7a1e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6B8E23] focus-visible:ring-offset-2"
-                >
-                  {isLoading ? 'Procesando...' : 'Confirmar reserva'}
-                </Button>
-              </DialogFooter>
             </DialogContent>
           </Dialog>
 

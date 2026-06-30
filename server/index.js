@@ -7,6 +7,8 @@ import landlordProfileRoutes from './routes/landlordProfileRoutes.js'
 import landlordBookingRoutes from './routes/landlordBookingRoutes.js'
 import propertyRoutes from './routes/propertyRoutes.js'
 import tenantRoutes from './routes/tenantRoutes.js'
+import { paymentController } from './controllers/paymentController.js'
+
 import {
   generate2faCode,
   generateSecureToken,
@@ -61,6 +63,10 @@ app.use('/api/arrendatario/profile', landlordProfileRoutes)
 app.use('/api/arrendatario/reservas', landlordBookingRoutes)
 app.use('/api/arrendatario/properties', propertyRoutes)
 app.use('/api/inquilino', tenantRoutes)
+// Se registran las rutas de pago directamente para asegurar su funcionamiento.
+// El archivo paymentRoutes.js parece no estar configurado correctamente.
+app.post('/api/payments/crear-orden', paymentController.crearOrden)
+app.post('/api/payments/capturar-orden', paymentController.capturarOrden)
 
 /*
 |--------------------------------------------------------------------------
@@ -192,9 +198,9 @@ function isAdminRequest(req) {
 
 function getSupabaseErrorMessage(results) {
   return results
-    .map((result) => result.error)
+    .map(result => result.error)
     .filter(Boolean)
-    .map((error) => error.message)
+    .map(error => error.message)
     .join(' | ')
 }
 
@@ -389,15 +395,21 @@ app.post('/api/auth/register', async (req, res) => {
   }
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
-    return res.status(400).json({ success: false, message: 'Ingresa un correo electronico valido.' })
+    return res
+      .status(400)
+      .json({ success: false, message: 'Ingresa un correo electronico valido.' })
   }
 
   if (telefono.length !== 10) {
-    return res.status(400).json({ success: false, message: 'El telefono debe contener exactamente 10 numeros.' })
+    return res
+      .status(400)
+      .json({ success: false, message: 'El telefono debe contener exactamente 10 numeros.' })
   }
 
   if (contrasena.length < 6) {
-    return res.status(400).json({ success: false, message: 'La contrasena debe tener al menos 6 caracteres.' })
+    return res
+      .status(400)
+      .json({ success: false, message: 'La contrasena debe tener al menos 6 caracteres.' })
   }
 
   try {
@@ -499,7 +511,9 @@ app.post('/api/auth/verify-2fa', async (req, res) => {
     }
 
     if ((twoFactorCode.attempts || 0) >= TWO_FACTOR_MAX_ATTEMPTS) {
-      return res.status(429).json({ success: false, message: 'Demasiados intentos. Solicita un codigo nuevo.' })
+      return res
+        .status(429)
+        .json({ success: false, message: 'Demasiados intentos. Solicita un codigo nuevo.' })
     }
 
     const codeMatches = twoFactorCode.code_hash === hash2faCode(correo, code)
@@ -568,7 +582,9 @@ app.get('/api/admin/dashboard-data', async (req, res) => {
       supabase.from('propiedad').select('id_propiedad,estado,descripcion'),
       supabase
         .from('reserva')
-        .select('id_propiedad,id_inquilino,fecha_inicio,fecha_fin,estado,pago,propiedad:propiedad(descripcion),inquilino:inquilino(nombre)'),
+        .select(
+          'id_propiedad,id_inquilino,fecha_inicio,fecha_fin,estado,pago,propiedad:propiedad(descripcion),inquilino:inquilino(nombre)'
+        ),
     ])
 
     return sendAdminDataResponse(
@@ -583,7 +599,9 @@ app.get('/api/admin/dashboard-data', async (req, res) => {
     )
   } catch (error) {
     console.error('Error en admin dashboard-data:', error.message)
-    return res.status(500).json({ success: false, message: 'No se pudieron cargar datos administrativos.' })
+    return res
+      .status(500)
+      .json({ success: false, message: 'No se pudieron cargar datos administrativos.' })
   }
 })
 
@@ -609,12 +627,13 @@ app.get('/api/admin/users-data', async (req, res) => {
   }
 
   try {
-    const [inquilinosResult, arrendatariosResult, propertiesResult, bookingsResult] = await Promise.all([
-      supabase.from('inquilino').select('id_inquilino,nombre,correo,telefono'),
-      supabase.from('arrendatario').select('id_arrendatario,nombre,correo,telefono'),
-      supabase.from('propiedad').select('id_propiedad,id_arrendatario'),
-      supabase.from('reserva').select('id_propiedad,id_inquilino,fecha_inicio'),
-    ])
+    const [inquilinosResult, arrendatariosResult, propertiesResult, bookingsResult] =
+      await Promise.all([
+        supabase.from('inquilino').select('id_inquilino,nombre,correo,telefono'),
+        supabase.from('arrendatario').select('id_arrendatario,nombre,correo,telefono'),
+        supabase.from('propiedad').select('id_propiedad,id_arrendatario'),
+        supabase.from('reserva').select('id_propiedad,id_inquilino,fecha_inicio'),
+      ])
 
     return sendAdminDataResponse(
       res,
@@ -653,7 +672,9 @@ app.get('/api/admin/properties-data', async (req, res) => {
     const [propertiesResult, bookingsResult] = await Promise.all([
       supabase
         .from('propiedad')
-        .select('id_propiedad,descripcion,direccion,precio,estado,resena,id_arrendatario,arrendatario:arrendatario(nombre)'),
+        .select(
+          'id_propiedad,descripcion,direccion,precio,estado,resena,id_arrendatario,arrendatario:arrendatario(nombre)'
+        ),
       supabase.from('reserva').select('id_propiedad'),
     ])
 
@@ -688,7 +709,9 @@ app.get('/api/admin/bookings-data', async (req, res) => {
   try {
     const bookingsResult = await supabase
       .from('reserva')
-      .select('id_propiedad,id_inquilino,fecha_inicio,fecha_fin,estado,pago,propiedad:propiedad(descripcion,id_arrendatario,arrendatario:arrendatario(nombre)),inquilino:inquilino(nombre)')
+      .select(
+        'id_propiedad,id_inquilino,fecha_inicio,fecha_fin,estado,pago,propiedad:propiedad(descripcion,id_arrendatario,arrendatario:arrendatario(nombre)),inquilino:inquilino(nombre)'
+      )
 
     return sendAdminDataResponse(res, [bookingsResult], {
       bookings: bookingsResult.data || [],
