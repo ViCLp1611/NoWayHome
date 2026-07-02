@@ -20,7 +20,7 @@ function parsePositiveInteger(value, fieldName) {
 
 function validateStatus(status) {
   const validStatuses = ['confirmada', 'rechazada', 'cancelada']
-  
+
   if (!validStatuses.includes(status)) {
     throw new ValidationError(`Estado no válido. Debe ser: ${validStatuses.join(', ')}.`)
   }
@@ -65,11 +65,7 @@ function resolveReservationId(reserva) {
 }
 
 function resolvePropertyPrice(propiedad) {
-  const candidates = [
-    propiedad?.precio_por_noche,
-    propiedad?.precio_noche,
-    propiedad?.precio,
-  ]
+  const candidates = [propiedad?.precio_por_noche, propiedad?.precio_noche, propiedad?.precio]
 
   for (const value of candidates) {
     const parsed = Number(value)
@@ -246,10 +242,11 @@ export async function getLandlordReservations(idArrendatario) {
 
 function parseReservationCompositeId(idReserva) {
   const raw = String(idReserva || '').trim()
-  const match = raw.match(/^(\d+):(\d+):(\d{4}-\d{2}-\d{2})$/)
+  // Se modifica la regex para aceptar tanto ':' como '-' como separadores.
+  const match = raw.match(/^(\d+)[:|-](\d+)[:|-](\d{4}-\d{2}-\d{2})$/)
 
   if (!match) {
-    throw new ValidationError('Identificador de reserva inválido.')
+    throw new ValidationError('Identificador de reserva invÃ¡lido.')
   }
 
   return {

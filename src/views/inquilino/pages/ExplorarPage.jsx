@@ -49,8 +49,8 @@ export function ExplorarPage() {
 
           if (userId) {
             const reservas = await inquilinoService.obtenerReservas(userId)
-            // estados activos que bloquean nueva reserva
-            const estadosActivos = new Set(['pendiente', 'confirmada'])
+            // estados activos que bloquean nueva reserva (soportar variantes en ES/EN)
+            const estadosActivos = new Set(['pendiente', 'pending', 'confirmada', 'confirmed'])
             const propiedadIdsBloqueadas = new Set(
               (reservas || [])
                 .filter(r => estadosActivos.has(String(r.estado || '').toLowerCase()))

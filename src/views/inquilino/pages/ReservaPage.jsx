@@ -17,6 +17,7 @@ import { AlertMessage } from '@/app/components/ui/AlertMessage'
 import { LoadingState } from '@/app/components/ui/LoadingState'
 import { InquilinoNavbar } from '@/views/inquilino/components/InquilinoNavbar.jsx'
 import { reservaController } from '@/controllers/reservaController.js'
+import { formatDateLong } from '@/utils/dateUtils'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
@@ -92,7 +93,7 @@ export function ReservaPage() {
       fecha_inicio: fechaInicio,
       fecha_fin: fechaFin,
       pago: costos.total,
-      estado: 'pending', // Corregido para coincidir con el modelo ('pending', 'confirmed', etc.)
+      estado: 'pendiente',
     }
 
     const result = await reservaController.iniciarReserva(nuevaReserva)
@@ -178,13 +179,7 @@ export function ReservaPage() {
     return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(price || 0)
   }
 
-  const formatDate = dateString => {
-    return new Date(dateString).toLocaleDateString('es-MX', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    })
-  }
+  const formatDate = dateString => formatDateLong(dateString, 'es-MX')
 
   if (isLoading && !propiedad) {
     return (

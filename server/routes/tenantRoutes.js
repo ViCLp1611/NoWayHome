@@ -1,6 +1,7 @@
 import express from 'express'
 import {
   confirmTenantReservationHandler,
+  cancelarReserva,
   createTenantReservationHandler,
   getTenantProfileHandler,
   getTenantPropertyHandler,
@@ -18,6 +19,7 @@ router.get('/properties/:id', getTenantPropertyHandler)
 router.get('/properties', listTenantPropertiesHandler)
 router.get('/reservas/:id', getTenantReservationHandler)
 router.patch('/reservas/:id/confirm', confirmTenantReservationHandler)
+router.patch('/reservas/:id/cancel', cancelarReserva)
 router.get('/reservas', listTenantReservationsHandler)
 router.post('/reservas', createTenantReservationHandler)
 

@@ -5,6 +5,7 @@ import { Button } from '@/app/components/ui/button'
 import { Card } from '@/app/components/ui/card'
 import { InquilinoNavbar } from '@/views/inquilino/components/InquilinoNavbar.jsx'
 import { PLACEHOLDER_PROPERTY_IMAGE } from '@/views/inquilino/constants.js'
+import { formatDateShort } from '@/utils/dateUtils'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
@@ -15,12 +16,25 @@ async function requestJson(path) {
   return data
 }
 
+const MOTIVOS_CANCELACION = [
+  'Cambio de planes / Ya no realizaré el viaje',
+  'Encontré un mejor alojamiento en la plataforma',
+  'Error al seleccionar las fechas de reserva',
+  'Emergencia personal / Motivos de salud',
+  'Otro (Especificar)',
+]
+
 export default function DetalleReservaPage() {
   const { idReserva } = useParams()
   const navigate = useNavigate()
   const [reserva, setReserva] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [isCanceling, setIsCanceling] = useState(false)
+  const [cancelError, setCancelError] = useState('')
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+  const [motivoSeleccionado, setMotivoSeleccionado] = useState('')
+  const [motivoAbierto, setMotivoAbierto] = useState('')
 
   useEffect(() => {
     if (!idReserva) {
@@ -48,17 +62,71 @@ export default function DetalleReservaPage() {
     fetchReserva()
   }, [idReserva])
 
+  const handleCancelarReserva = async () => {
+    if (!reserva?.id_reserva || !reserva?.id_inquilino) return
+
+    setIsCanceling(true)
+    setCancelError('')
+
+    const motivoFinal =
+      motivoSeleccionado === 'Otro (Especificar)' ? motivoAbierto.trim() : motivoSeleccionado
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/inquilino/reservas/${encodeURIComponent(reserva.id_reserva)}/cancel`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id_inquilino: reserva.id_inquilino,
+            motivo_cancelacion: motivoFinal,
+          }),
+        }
+      )
+
+      const result = await response.json()
+      if (!response.ok) {
+        throw new Error(result.message || 'No se pudo cancelar la reserva.')
+      }
+
+      setReserva(prev => ({
+        ...prev,
+        estado: 'cancelada',
+        estado_reserva: 'cancelada',
+      }))
+      setShowCancelConfirm(false)
+      setMotivoSeleccionado('')
+      setMotivoAbierto('')
+    } catch (err) {
+      setCancelError(err.message)
+    } finally {
+      setIsCanceling(false)
+    }
+  }
+
   const formatPrice = price =>
     new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(price || 0)
 
-  const formatDate = value =>
-    value ? new Date(value).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : 'N/A'
+  const formatDate = value => formatDateShort(value)
 
   const estado = String(reserva?.estado_reserva || reserva?.estado || '').toLowerCase()
+  let estadoNormalizado = estado
+  if (estado === 'confirmed') estadoNormalizado = 'confirmada'
+  if (estado === 'pending') estadoNormalizado = 'pendiente'
+  if (estado === 'cancelled') estadoNormalizado = 'cancelada'
+
   const badgeClass =
-    estado === 'confirmada'
-      ? 'inline-flex items-center rounded-full border border-[#6B8E23]/20 bg-[#6B8E23]/10 px-3 py-1 text-sm font-medium text-[#6B8E23]'
-      : 'inline-flex items-center rounded-full border border-[#A67C52]/20 bg-[#A67C52]/10 px-3 py-1 text-sm font-medium text-[#A67C52]'
+    estadoNormalizado === 'cancelada'
+      ? 'inline-flex items-center rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 text-sm font-medium text-red-700'
+      : estadoNormalizado === 'confirmada'
+        ? 'inline-flex items-center rounded-full border border-[#6B8E23]/20 bg-[#6B8E23]/10 px-3 py-1 text-sm font-medium text-[#6B8E23]'
+        : 'inline-flex items-center rounded-full border border-[#A67C52]/20 bg-[#A67C52]/10 px-3 py-1 text-sm font-medium text-[#A67C52]'
+
+  const canCancel = estadoNormalizado === 'pendiente' || estadoNormalizado === 'confirmada'
+  const isCancelDisabled =
+    isCanceling ||
+    !motivoSeleccionado ||
+    (motivoSeleccionado === 'Otro (Especificar)' && !motivoAbierto.trim())
 
   const getText = value => (typeof value === 'string' ? value.trim() : '')
   const getTitleFromDescription = description =>
@@ -174,7 +242,9 @@ export default function DetalleReservaPage() {
                         {propertyLocation || 'Ubicación no disponible'}
                       </p>
                     </div>
-                    <span className={badgeClass}>{reserva?.estado || 'Desconocido'}</span>
+                    <span className={badgeClass}>
+                      {estadoNormalizado.charAt(0).toUpperCase() + estadoNormalizado.slice(1)}
+                    </span>
                   </div>
 
                   <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -236,6 +306,98 @@ export default function DetalleReservaPage() {
                     </div>
                   </div>
                 </div>
+
+                {canCancel && (
+                  <div className="rounded-[24px] border border-red-500/20 bg-red-50/50 p-5">
+                    <h3 className="font-poppins text-lg font-semibold text-red-800">
+                      ¿Necesitas cancelar?
+                    </h3>
+                    <p className="mt-2 text-sm text-red-700/80">
+                      Puedes cancelar tu reserva si tus planes han cambiado. Ten en cuenta las
+                      políticas de cancelación.
+                    </p>
+                    <Button
+                      variant="destructive"
+                      className="mt-4 w-full bg-red-600 text-white hover:bg-red-700"
+                      onClick={() => {
+                        setCancelError('')
+                        setMotivoSeleccionado('')
+                        setMotivoAbierto('')
+                        setShowCancelConfirm(true)
+                      }}
+                    >
+                      Cancelar Reserva
+                    </Button>
+                  </div>
+                )}
+
+                {showCancelConfirm && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <Card className="w-full max-w-md p-6">
+                      <h3 className="font-poppins text-lg font-semibold text-[#5F5F5F]">
+                        Confirmar Cancelación
+                      </h3>
+                      <p className="mt-2 text-sm text-[#5F5F5F]/80">
+                        ¿Estás seguro de que quieres cancelar esta reserva?
+                      </p>
+                      <div className="mt-4 rounded-md border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800">
+                        <strong>Importante:</strong> La cancelación no implica un reembolso
+                        automático.
+                      </div>
+                      <div className="mt-4 space-y-2">
+                        <label
+                          htmlFor="motivo-cancelacion"
+                          className="text-sm font-medium text-[#5F5F5F]"
+                        >
+                          Motivo de cancelación *
+                        </label>
+                        <select
+                          id="motivo-cancelacion"
+                          value={motivoSeleccionado}
+                          onChange={e => setMotivoSeleccionado(e.target.value)}
+                          className="flex h-10 w-full items-center justify-between rounded-md border border-[#6B8E23]/20 bg-white px-3 py-2 text-sm text-[#5F5F5F] ring-offset-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#6B8E23]/50 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <option value="" disabled>
+                            -- Selecciona un motivo --
+                          </option>
+                          {MOTIVOS_CANCELACION.map(motivo => (
+                            <option key={motivo} value={motivo}>
+                              {motivo}
+                            </option>
+                          ))}
+                        </select>
+                        {motivoSeleccionado === 'Otro (Especificar)' && (
+                          <textarea
+                            value={motivoAbierto}
+                            onChange={e => setMotivoAbierto(e.target.value)}
+                            placeholder="Por favor, especifica el motivo de tu cancelación..."
+                            className="mt-2 min-h-[80px] w-full rounded-md border border-[#6B8E23]/20 bg-white p-2 text-sm text-[#5F5F5F] focus:border-[#6B8E23] focus:ring-2 focus:ring-[#6B8E23]/50"
+                          />
+                        )}
+                      </div>
+                      {cancelError && (
+                        <div className="mt-4 text-sm text-red-600">{cancelError}</div>
+                      )}
+                      <div className="mt-6 flex justify-end gap-3">
+                        <Button
+                          variant="ghost"
+                          onClick={() => setShowCancelConfirm(false)}
+                          disabled={isCanceling}
+                        >
+                          Volver
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          className="bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                          onClick={handleCancelarReserva}
+                          disabled={isCancelDisabled}
+                        >
+                          {isCanceling ? 'Cancelando...' : 'Sí, cancelar'}
+                        </Button>
+                      </div>
+                    </Card>
+                  </div>
+                )}
 
                 <div className="rounded-[24px] border border-[#6B8E23]/10 bg-[#FAFAFA] p-5">
                   <h3 className="font-poppins text-lg font-semibold text-[#5F5F5F]">

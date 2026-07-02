@@ -10,6 +10,7 @@ import { LoadingState } from '@/app/components/ui/LoadingState'
 import { InquilinoNavbar } from '@/views/inquilino/components/InquilinoNavbar.jsx'
 import { EditInquilinoModal } from '@/views/inquilino/pages/EditInquilinoModal.jsx'
 import { inquilinoController } from '@/controllers/inquilinoController'
+import { formatDateLong } from '@/utils/dateUtils'
 
 export function ProfilePage() {
   const navigate = useNavigate()
@@ -298,73 +299,83 @@ export function ProfilePage() {
                   Aún no tienes reservas realizadas.
                 </div>
               ) : (
-                reservas.map(booking => (
-                  <Card
-                    key={
-                      booking.id_reserva ||
-                      booking.id ||
-                      `${booking.id_propiedad || 'prop'}-${booking.id_inquilino || 'inqu'}-${getBookingStartDate(booking) || 'fecha'}`
-                    }
-                    className="p-6 bg-[#F2E8CF] border-none shadow-none rounded-2xl"
-                  >
-                    <div className="flex flex-col md:flex-row justify-between gap-4">
-                      <div className="flex-1">
-                        <h3 className="font-poppins font-semibold text-lg text-[#5F5F5F] mb-3">
-                          {getBookingTitle(booking)}
-                        </h3>
-                        <div className="space-y-2 text-[#5F5F5F]">
-                          <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4 text-[#A67C52]" />
-                            <span className="text-sm">{getBookingLocation(booking)}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-[#A67C52]" />
-                            <span className="text-sm">
-                              {new Date(getBookingStartDate(booking)).toLocaleDateString()} al{' '}
-                              {new Date(getBookingEndDate(booking)).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+                reservas.map(booking => {
+                  const estadoCrudo = String(getBookingStatus(booking) || '').toLowerCase()
+                  let estadoNormalizado = estadoCrudo
+                  if (estadoCrudo === 'confirmed') estadoNormalizado = 'confirmada'
+                  if (estadoCrudo === 'pending') estadoNormalizado = 'pendiente'
+                  if (estadoCrudo === 'cancelled') estadoNormalizado = 'cancelada'
 
-                      <div className="flex flex-col items-start md:items-end justify-between gap-3">
-                        <div className="text-left md:text-right">
-                          <span className="font-poppins font-semibold text-2xl text-[#6B8E23]">
-                            {formatPrice(getBookingTotal(booking))}
-                          </span>
-                          <span className="block text-sm text-[#5F5F5F] mt-1">
-                            Estado:{' '}
-                            <span
-                              className={
-                                getBookingStatus(booking) === 'confirmada'
-                                  ? 'text-[#6B8E23] font-medium capitalize'
-                                  : 'text-[#A67C52] font-medium capitalize'
-                              }
-                            >
-                              {getBookingStatus(booking)}
-                            </span>
-                          </span>
+                  const statusClassName =
+                    estadoNormalizado === 'confirmada'
+                      ? 'text-[#6B8E23] font-medium'
+                      : estadoNormalizado === 'cancelada'
+                        ? 'text-red-600 font-medium'
+                        : 'text-[#A67C52] font-medium'
+
+                  return (
+                    <Card
+                      key={
+                        booking.id_reserva ||
+                        booking.id ||
+                        `${booking.id_propiedad || 'prop'}-${booking.id_inquilino || 'inqu'}-${getBookingStartDate(booking) || 'fecha'}`
+                      }
+                      className="p-6 bg-[#F2E8CF] border-none shadow-none rounded-2xl"
+                    >
+                      <div className="flex flex-col md:flex-row justify-between gap-4">
+                        <div className="flex-1">
+                          <h3 className="font-poppins font-semibold text-lg text-[#5F5F5F] mb-3">
+                            {getBookingTitle(booking)}
+                          </h3>
+                          <div className="space-y-2 text-[#5F5F5F]">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-4 w-4 text-[#A67C52]" />
+                              <span className="text-sm">{getBookingLocation(booking)}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4 text-[#A67C52]" />
+                              <span className="text-sm">
+                                {formatDateLong(getBookingStartDate(booking))} al{' '}
+                                {formatDateLong(getBookingEndDate(booking))}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => {
-                            const reservaId = booking.id_reserva ?? booking.id
-                            if (reservaId) {
-                              navigate(
-                                `/inquilino/reserva-detalle/${encodeURIComponent(reservaId)}`
-                              )
-                            }
-                          }}
-                          disabled={!(booking.id_reserva || booking.id)}
-                          className="border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#6B8E23] hover:text-white shadow-none rounded-xl transition-all"
-                        >
-                          Ver Detalles
-                        </Button>
+
+                        <div className="flex flex-col items-start md:items-end justify-between gap-3">
+                          <div className="text-left md:text-right">
+                            <span className="font-poppins font-semibold text-2xl text-[#6B8E23]">
+                              {formatPrice(getBookingTotal(booking))}
+                            </span>
+                            <span className="block text-sm text-[#5F5F5F] mt-1">
+                              Estado:{' '}
+                              <span className={statusClassName}>
+                                {estadoNormalizado.charAt(0).toUpperCase() +
+                                  estadoNormalizado.slice(1)}
+                              </span>
+                            </span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              const reservaId = booking.id_reserva ?? booking.id
+                              if (reservaId) {
+                                navigate(
+                                  `/inquilino/reserva-detalle/${encodeURIComponent(reservaId)}`
+                                )
+                              }
+                            }}
+                            disabled={!(booking.id_reserva || booking.id)}
+                            className="border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#6B8E23] hover:text-white shadow-none rounded-xl transition-all"
+                          >
+                            Ver Detalles
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  </Card>
-                ))
+                    </Card>
+                  )
+                })
               )}
             </TabsContent>
 

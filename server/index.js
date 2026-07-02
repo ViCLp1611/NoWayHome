@@ -6,8 +6,8 @@ import { supabase } from './config/supabase.js'
 import landlordProfileRoutes from './routes/landlordProfileRoutes.js'
 import landlordBookingRoutes from './routes/landlordBookingRoutes.js'
 import propertyRoutes from './routes/propertyRoutes.js'
+import paymentRoutes from './routes/paymentRoutes.js'
 import tenantRoutes from './routes/tenantRoutes.js'
-import { paymentController } from './controllers/paymentController.js'
 
 import {
   generate2faCode,
@@ -63,10 +63,7 @@ app.use('/api/arrendatario/profile', landlordProfileRoutes)
 app.use('/api/arrendatario/reservas', landlordBookingRoutes)
 app.use('/api/arrendatario/properties', propertyRoutes)
 app.use('/api/inquilino', tenantRoutes)
-// Se registran las rutas de pago directamente para asegurar su funcionamiento.
-// El archivo paymentRoutes.js parece no estar configurado correctamente.
-app.post('/api/payments/crear-orden', paymentController.crearOrden)
-app.post('/api/payments/capturar-orden', paymentController.capturarOrden)
+app.use('/api/payments', paymentRoutes)
 
 /*
 |--------------------------------------------------------------------------

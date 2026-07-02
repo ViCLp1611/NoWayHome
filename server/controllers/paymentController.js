@@ -114,7 +114,7 @@ export const paymentController = {
         // 3. Actualizamos la reserva a "Confirmada" en Supabase
         const { error: errorReserva } = await supabase
           .from('reserva')
-          .update({ estado: 'confirmed' }) // Corregido para coincidir con el modelo ('pending', 'confirmed', etc.)
+          .update({ estado: 'confirmada' }) // Estandarizado a 'confirmada' para unificar catálogo.
           .eq('id_reserva', idReserva)
 
         if (errorReserva) {
