@@ -22,6 +22,7 @@ export const EMAIL_USER = process.env.EMAIL_USER || process.env.SMTP_USER
 export const EMAIL_PASS = process.env.EMAIL_PASS || process.env.SMTP_PASS
 export const MAIL_FROM = process.env.MAIL_FROM || EMAIL_USER
 export const TWO_FACTOR_PEPPER = process.env.TWO_FACTOR_PEPPER || ''
+export const GEOAPIFY_API_KEY = process.env.GEOAPIFY_API_KEY || ''
 
 const missingEnv = [
   !SUPABASE_URL && 'SUPABASE_URL',

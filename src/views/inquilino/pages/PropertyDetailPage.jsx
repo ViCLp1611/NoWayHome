@@ -6,6 +6,7 @@ import { Card } from '@/app/components/ui/card'
 import { AlertMessage } from '@/app/components/ui/AlertMessage'
 import { EmptyState } from '@/app/components/ui/EmptyState'
 import { LoadingState } from '@/app/components/ui/LoadingState'
+import { PropertyLocationMap } from '@/views/components/PropertyLocationMap'
 import { InquilinoNavbar } from '@/views/inquilino/components/InquilinoNavbar.jsx'
 import { PLACEHOLDER_PROPERTY_IMAGE } from '@/views/inquilino/constants.js'
 import { propiedadController } from '@/controllers/propiedadController.js'
@@ -93,6 +94,7 @@ export function PropertyDetailPage() {
   const price = propiedad.precio_noche || propiedad.precio || propiedad.price || 0
   const image = propiedad.imagen_principal || PLACEHOLDER_PROPERTY_IMAGE
   const imagenes = propiedad.imagenes || []
+  const hasValue = value => value !== null && value !== undefined && value !== ''
 
   return (
     <>
@@ -202,7 +204,7 @@ export function PropertyDetailPage() {
                 <div className="space-y-3 border-t border-[#6B8E23]/10 pt-4">
                   <h3 className="text-sm font-semibold text-[#5F5F5F]/70">Características</h3>
                   <div className="grid grid-cols-2 gap-3">
-                    {propiedad.capacidad && (
+                    {hasValue(propiedad.capacidad) && (
                       <div className="flex items-center gap-2 rounded-lg bg-[#F2E8CF] p-3">
                         <Users className="h-4 w-4 text-[#6B8E23]" />
                         <div>
@@ -211,7 +213,7 @@ export function PropertyDetailPage() {
                         </div>
                       </div>
                     )}
-                    {propiedad.numero_habitaciones && (
+                    {hasValue(propiedad.numero_habitaciones) && (
                       <div className="flex items-center gap-2 rounded-lg bg-[#F2E8CF] p-3">
                         <Bed className="h-4 w-4 text-[#6B8E23]" />
                         <div>
@@ -220,7 +222,7 @@ export function PropertyDetailPage() {
                         </div>
                       </div>
                     )}
-                    {propiedad.numero_banos && (
+                    {hasValue(propiedad.numero_banos) && (
                       <div className="flex items-center gap-2 rounded-lg bg-[#F2E8CF] p-3">
                         <Bath className="h-4 w-4 text-[#6B8E23]" />
                         <div>
@@ -237,6 +239,11 @@ export function PropertyDetailPage() {
                     <p className="text-sm text-[#5F5F5F]/70">Ubicacion</p>
                     <p className="text-base font-medium text-[#5F5F5F]">{location}</p>
                   </div>
+                  <PropertyLocationMap
+                    latitud={propiedad.latitud}
+                    longitud={propiedad.longitud}
+                    className="min-h-56"
+                  />
                   <div>
                     <p className="text-sm text-[#5F5F5F]/70">Precio por noche</p>
                     <p className="text-xl font-semibold text-[#6B8E23]">{formatPrice(price)}</p>

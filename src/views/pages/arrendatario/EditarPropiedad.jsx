@@ -1,10 +1,13 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ImagePlus, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeft, ImagePlus, Pencil, Search, Trash2 } from 'lucide-react'
 import { Button } from '@/app/components/ui/button'
 import { Card } from '@/app/components/ui/card'
 import { Input } from '@/app/components/ui/input'
 import { Textarea } from '@/app/components/ui/textarea'
+import { AlertMessage } from '@/app/components/ui/AlertMessage'
+import { geocodeAddress } from '@/services/geocodeService'
+import { PropertyLocationMap } from '@/views/components/PropertyLocationMap'
 import {
   deletePropertyImage,
   getPropertyById,
@@ -25,12 +28,29 @@ const initialForm = {
   capacidad: '',
   numero_habitaciones: '',
   numero_banos: '',
+  latitud: '',
+  longitud: '',
   estado: 'activa',
 }
 
 const acceptedImageTypes = ['image/jpeg', 'image/png', 'image/webp']
 const maxImageSize = 5 * 1024 * 1024
 const allowedPriceTypes = ['noche', 'mensual']
+const locationFoundMessage = 'Ubicación encontrada. Puedes ajustar el marcador antes de guardar.'
+const locationNotFoundMessage =
+  'No se encontró una ubicación para esa dirección. Intenta ser más específico.'
+const locationSearchFailedMessage =
+  'No pudimos buscar la ubicación en este momento. Intenta nuevamente.'
+
+function isValidOptionalCoordinate(value, min, max) {
+  if (value === null || value === undefined || value === '') return true
+  const numberValue = Number(value)
+  return Number.isFinite(numberValue) && numberValue >= min && numberValue <= max
+}
+
+function normalizeOptionalNumber(value) {
+  return value === '' ? '' : String(Number(value))
+}
 
 export function EditarPropiedad() {
   const navigate = useNavigate()
@@ -45,6 +65,7 @@ export function EditarPropiedad() {
   const [isSuccess, setIsSuccess] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [geocodeState, setGeocodeState] = useState({ isLoading: false, type: '', message: '' })
   const [deletingImageId, setDeletingImageId] = useState(null)
   const [replacingImageId, setReplacingImageId] = useState(null)
   const [confirmAction, setConfirmAction] = useState({ open: false, type: '', image: null, file: null })
@@ -113,6 +134,8 @@ export function EditarPropiedad() {
           capacidad: property.capacidad || '',
           numero_habitaciones: property.numero_habitaciones ?? '',
           numero_banos: property.numero_banos ?? '',
+          latitud: property.latitud ?? '',
+          longitud: property.longitud ?? '',
           estado: property.estado || 'activa',
         })
         setCurrentImages(property.imagenes || [])
@@ -132,6 +155,62 @@ export function EditarPropiedad() {
     setErrors(current => ({ ...current, [name]: '' }))
     setMessage('')
     setIsSuccess(false)
+  }
+
+  const handleLocationChange = coordinates => {
+    setForm(current => ({
+      ...current,
+      latitud: coordinates.latitud,
+      longitud: coordinates.longitud,
+    }))
+    setErrors(current => ({ ...current, latitud: '', longitud: '' }))
+    setGeocodeState({ isLoading: false, type: '', message: '' })
+    setMessage('')
+    setIsSuccess(false)
+  }
+
+  const buildSearchAddress = () => {
+    return [form.direccion, form.ciudad, form.pais]
+      .map(value => value.trim())
+      .filter(Boolean)
+      .join(', ')
+  }
+
+  const handleSearchLocation = async () => {
+    const address = buildSearchAddress()
+
+    if (!address) {
+      setGeocodeState({
+        isLoading: false,
+        type: 'error',
+        message: 'Escribe una dirección para buscar la ubicación.',
+      })
+      return
+    }
+
+    try {
+      setGeocodeState({ isLoading: true, type: '', message: '' })
+      const location = await geocodeAddress(address)
+      setForm(current => ({
+        ...current,
+        latitud: location.latitud,
+        longitud: location.longitud,
+      }))
+      setErrors(current => ({ ...current, latitud: '', longitud: '' }))
+      setGeocodeState({
+        isLoading: false,
+        type: 'success',
+        message: locationFoundMessage,
+      })
+      setIsSuccess(false)
+    } catch (error) {
+      const isNotFound = error.message?.toLowerCase().includes('no se encontro')
+      setGeocodeState({
+        isLoading: false,
+        type: 'error',
+        message: isNotFound ? locationNotFoundMessage : locationSearchFailedMessage,
+      })
+    }
   }
 
   const validateImageFiles = nextFiles => {
@@ -274,6 +353,12 @@ export function EditarPropiedad() {
     if (!form.direccion.trim()) nextErrors.direccion = 'La direccion es obligatoria.'
     if (!form.ciudad.trim()) nextErrors.ciudad = 'La ciudad es obligatoria.'
     if (!form.pais.trim()) nextErrors.pais = 'El pais es obligatorio.'
+    if (!isValidOptionalCoordinate(form.latitud, -90, 90)) {
+      nextErrors.latitud = 'La latitud debe estar entre -90 y 90.'
+    }
+    if (!isValidOptionalCoordinate(form.longitud, -180, 180)) {
+      nextErrors.longitud = 'La longitud debe estar entre -180 y 180.'
+    }
     if (!allowedPriceTypes.includes(form.tipo_precio)) {
       nextErrors.tipo_precio = 'El tipo de precio no es valido.'
     }
@@ -283,20 +368,20 @@ export function EditarPropiedad() {
           ? 'El precio mensual debe ser mayor a 0.'
           : 'El precio por noche debe ser mayor a 0.'
     }
-    if (Number(form.capacidad) <= 0) {
+    if (form.capacidad !== '' && Number(form.capacidad) <= 0) {
       nextErrors.capacidad = 'La capacidad debe ser mayor a 0.'
     }
     if (
-      !Number.isInteger(Number(form.numero_habitaciones)) ||
-      Number(form.numero_habitaciones) < 0 ||
-      form.numero_habitaciones === ''
+      form.numero_habitaciones !== '' &&
+      (!Number.isInteger(Number(form.numero_habitaciones)) ||
+        Number(form.numero_habitaciones) < 0)
     ) {
       nextErrors.numero_habitaciones = 'El numero de habitaciones debe ser mayor o igual a 0.'
     }
     if (
-      !Number.isInteger(Number(form.numero_banos)) ||
-      Number(form.numero_banos) < 0 ||
-      form.numero_banos === ''
+      form.numero_banos !== '' &&
+      (!Number.isInteger(Number(form.numero_banos)) ||
+        Number(form.numero_banos) < 0)
     ) {
       nextErrors.numero_banos = 'El numero de baños debe ser mayor o igual a 0.'
     }
@@ -328,6 +413,11 @@ export function EditarPropiedad() {
 
     const propertyFormData = new FormData()
     Object.entries(form).forEach(([key, value]) => {
+      if (key === 'capacidad' || key === 'numero_habitaciones' || key === 'numero_banos') {
+        propertyFormData.append(key, normalizeOptionalNumber(value))
+        return
+      }
+
       propertyFormData.append(key, value)
     })
     propertyFormData.append('id_arrendatario', String(idArrendatario))
@@ -475,6 +565,60 @@ export function EditarPropiedad() {
                         className="mt-2 h-12 bg-white border-[#6B8E23]/20 focus:border-[#6B8E23] text-[#5F5F5F] rounded-xl"
                       />
                       {renderError('pais')}
+                    </div>
+                    <div className="md:col-span-3">
+                      <Button
+                        type="button"
+                        onClick={handleSearchLocation}
+                        disabled={geocodeState.isLoading}
+                        className="rounded-xl bg-[#6B8E23] text-white shadow-none hover:bg-[#5a7a1e] disabled:opacity-60"
+                      >
+                        <Search className="mr-2 h-4 w-4" />
+                        {geocodeState.isLoading ? 'Buscando ubicación...' : 'Buscar ubicación'}
+                      </Button>
+                      {geocodeState.message && (
+                        <AlertMessage
+                          type={geocodeState.type}
+                          message={geocodeState.message}
+                          className="mt-3"
+                        />
+                      )}
+                    </div>
+                    <div className="md:col-span-3">
+                      <label className="text-[#5F5F5F] font-medium">Mapa de ubicación</label>
+                      <PropertyLocationMap
+                        editable
+                        latitud={form.latitud}
+                        longitud={form.longitud}
+                        onChange={handleLocationChange}
+                        className="mt-2"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="latitud" className="text-[#5F5F5F] font-medium">
+                        Latitud
+                      </label>
+                      <Input
+                        id="latitud"
+                        name="latitud"
+                        value={form.latitud}
+                        onChange={handleFieldChange}
+                        className="mt-2 h-12 bg-white border-[#6B8E23]/20 focus:border-[#6B8E23] text-[#5F5F5F] rounded-xl"
+                      />
+                      {renderError('latitud')}
+                    </div>
+                    <div>
+                      <label htmlFor="longitud" className="text-[#5F5F5F] font-medium">
+                        Longitud
+                      </label>
+                      <Input
+                        id="longitud"
+                        name="longitud"
+                        value={form.longitud}
+                        onChange={handleFieldChange}
+                        className="mt-2 h-12 bg-white border-[#6B8E23]/20 focus:border-[#6B8E23] text-[#5F5F5F] rounded-xl"
+                      />
+                      {renderError('longitud')}
                     </div>
                   </div>
                 </section>

@@ -7,6 +7,7 @@ import landlordProfileRoutes from './routes/landlordProfileRoutes.js'
 import landlordBookingRoutes from './routes/landlordBookingRoutes.js'
 import propertyRoutes from './routes/propertyRoutes.js'
 import tenantRoutes from './routes/tenantRoutes.js'
+import geocodeRoutes from './routes/geocodeRoutes.js'
 import {
   generate2faCode,
   generateSecureToken,
@@ -61,6 +62,7 @@ app.use('/api/arrendatario/profile', landlordProfileRoutes)
 app.use('/api/arrendatario/reservas', landlordBookingRoutes)
 app.use('/api/arrendatario/properties', propertyRoutes)
 app.use('/api/inquilino', tenantRoutes)
+app.use('/api/geocode', geocodeRoutes)
 
 /*
 |--------------------------------------------------------------------------

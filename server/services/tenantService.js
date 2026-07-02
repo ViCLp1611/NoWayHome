@@ -22,6 +22,44 @@ function normalizeText(value) {
   return typeof value === 'string' ? value.trim() : ''
 }
 
+function parseStoredCapacity(value) {
+  const text = normalizeText(value)
+
+  return {
+    capacidad: text.match(/Capacidad:\s*(\d+)/i)?.[1]
+      ? Number(text.match(/Capacidad:\s*(\d+)/i)[1])
+      : null,
+    numero_habitaciones: text.match(/Habitaciones:\s*(\d+)/i)?.[1]
+      ? Number(text.match(/Habitaciones:\s*(\d+)/i)[1])
+      : null,
+    numero_banos: text.match(/Banos:\s*(\d+)/i)?.[1]
+      ? Number(text.match(/Banos:\s*(\d+)/i)[1])
+      : null,
+  }
+}
+
+function withCapacityFields(property) {
+  if (!property) return property
+
+  const storedCapacity = parseStoredCapacity(property.resena)
+
+  return {
+    ...property,
+    capacidad: property.capacidad ?? storedCapacity.capacidad,
+    numero_habitaciones: property.numero_habitaciones ?? storedCapacity.numero_habitaciones,
+    numero_banos: property.numero_banos ?? storedCapacity.numero_banos,
+  }
+}
+
+function withReservationPropertyCapacity(reservation) {
+  if (!reservation?.propiedad) return reservation
+
+  return {
+    ...reservation,
+    propiedad: withCapacityFields(reservation.propiedad),
+  }
+}
+
 function validateDate(value, fieldName) {
   const normalizedValue = normalizeText(value)
   const date = new Date(normalizedValue)
@@ -129,13 +167,13 @@ export async function getTenantReservations(idInquilino) {
   const { data, error } = await supabase
     .from('reserva')
     .select(
-      '*, propiedad:propiedad(id_propiedad,descripcion,titulo,ubicacion,precio_noche,precio,direccion,estado,resena)'
+      '*, propiedad:propiedad(id_propiedad,descripcion,titulo,ubicacion,precio_noche,precio,direccion,estado,resena,latitud,longitud,capacidad,numero_habitaciones,numero_banos)'
     )
     .eq('id_inquilino', tenantId)
     .order('fecha_inicio', { ascending: false })
 
   if (!error) {
-    return data || []
+    return (data || []).map(withReservationPropertyCapacity)
   }
 
   const { data: fallbackData, error: fallbackError } = await supabase
@@ -154,7 +192,7 @@ export async function getTenantReservations(idInquilino) {
 export async function getTenantReservationById(idReserva) {
   const reservationId = parsePositiveInteger(idReserva, 'id_reserva')
   const baseSelect =
-    '*, propiedad:propiedad(id_propiedad,descripcion,titulo,ubicacion,precio_noche,precio,direccion,estado,resena)'
+    '*, propiedad:propiedad(id_propiedad,descripcion,titulo,ubicacion,precio_noche,precio,direccion,estado,resena,latitud,longitud,capacidad,numero_habitaciones,numero_banos)'
 
   let query = supabase.from('reserva').select(baseSelect).eq('id_reserva', reservationId).maybeSingle()
   let { data, error } = await query
@@ -172,7 +210,7 @@ export async function getTenantReservationById(idReserva) {
     throw new ValidationError('La reserva no existe.')
   }
 
-  return data
+  return withReservationPropertyCapacity(data)
 }
 
 export async function getTenantFavorites(idInquilino) {
@@ -181,7 +219,7 @@ export async function getTenantFavorites(idInquilino) {
   const { data, error } = await supabase
     .from('favoritos')
     .select(
-      '*, propiedad:propiedad(id_propiedad,descripcion,titulo,ubicacion,precio_noche,precio,direccion)'
+      '*, propiedad:propiedad(id_propiedad,descripcion,titulo,ubicacion,precio_noche,precio,direccion,resena,latitud,longitud,capacidad,numero_habitaciones,numero_banos)'
     )
     .eq('id_inquilino', tenantId)
     .order('created_at', { ascending: false })
@@ -194,7 +232,10 @@ export async function getTenantFavorites(idInquilino) {
     throw new Error('No se pudieron cargar los favoritos.')
   }
 
-  return data || []
+  return (data || []).map(favorite => ({
+    ...favorite,
+    propiedad: withCapacityFields(favorite.propiedad),
+  }))
 }
 
 export async function getTenantProperties() {
@@ -245,7 +286,7 @@ export async function getTenantProperties() {
       null
 
     return {
-      ...property,
+      ...withCapacityFields(property),
       imagen_principal: mainImage ? mainImage.url : null,
     }
   })
@@ -289,7 +330,7 @@ export async function getTenantPropertyById(idPropiedad) {
     null
 
   return {
-    ...property,
+    ...withCapacityFields(property),
     imagenes: propertyImages,
     imagen_principal: mainImage ? mainImage.url : null,
   }

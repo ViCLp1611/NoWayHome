@@ -15,6 +15,8 @@ class ValidationError extends Error {
 
 const MIN_PROPERTY_IMAGES = 5
 const MAX_PROPERTY_IMAGES = 20
+const PROPERTY_SELECT =
+  'id_propiedad,descripcion,direccion,precio,tipo_precio,estado,resena,id_arrendatario,latitud,longitud,capacidad,numero_habitaciones,numero_banos'
 
 function normalizeText(value) {
   return typeof value === 'string' ? value.trim() : ''
@@ -35,6 +37,42 @@ function parseNonNegativeInteger(value, fieldName) {
 
   if (!Number.isInteger(numberValue) || numberValue < 0) {
     throw new ValidationError(`${fieldName} debe ser mayor o igual a 0.`)
+  }
+
+  return numberValue
+}
+
+function parseOptionalPositiveInteger(value, fieldName) {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+
+  const numberValue = Number(value)
+
+  if (!Number.isInteger(numberValue) || numberValue <= 0) {
+    throw new ValidationError(`${fieldName} debe ser mayor a 0.`)
+  }
+
+  return numberValue
+}
+
+function parseOptionalNonNegativeInteger(value, fieldName) {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+
+  return parseNonNegativeInteger(value, fieldName)
+}
+
+function parseOptionalCoordinate(value, fieldName, min, max) {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+
+  const numberValue = Number(value)
+
+  if (!Number.isFinite(numberValue) || numberValue < min || numberValue > max) {
+    throw new ValidationError(`${fieldName} no es valida.`)
   }
 
   return numberValue
@@ -97,9 +135,11 @@ function validatePropertyData(data) {
   const estado = normalizePropertyStatus(data?.estado)
   const idArrendatario = Number(data?.id_arrendatario)
   const precioPorNoche = parsePositiveNumber(data?.precio_por_noche, 'precio_por_noche')
-  const capacidad = parsePositiveNumber(data?.capacidad, 'capacidad')
-  const numeroHabitaciones = parseNonNegativeInteger(data?.numero_habitaciones, 'numero_habitaciones')
-  const numeroBanos = parseNonNegativeInteger(data?.numero_banos, 'numero_banos')
+  const capacidad = parseOptionalPositiveInteger(data?.capacidad, 'capacidad')
+  const numeroHabitaciones = parseOptionalNonNegativeInteger(data?.numero_habitaciones, 'numero_habitaciones')
+  const numeroBanos = parseOptionalNonNegativeInteger(data?.numero_banos, 'numero_banos')
+  const latitud = parseOptionalCoordinate(data?.latitud, 'latitud', -90, 90)
+  const longitud = parseOptionalCoordinate(data?.longitud, 'longitud', -180, 180)
 
   if (!titulo) throw new ValidationError('titulo es obligatorio.')
   if (!descripcion) throw new ValidationError('descripcion es obligatoria.')
@@ -123,6 +163,8 @@ function validatePropertyData(data) {
     capacidad,
     numeroHabitaciones,
     numeroBanos,
+    latitud,
+    longitud,
   }
 }
 
@@ -142,7 +184,11 @@ function buildPropertyPayload(propertyData) {
     precio: propertyData.precioPorNoche,
     tipo_precio: propertyData.tipoPrecio,
     estado: propertyData.estado,
-    resena: `Capacidad: ${propertyData.capacidad}. Habitaciones: ${propertyData.numeroHabitaciones}. Banos: ${propertyData.numeroBanos}.`,
+    capacidad: propertyData.capacidad,
+    numero_habitaciones: propertyData.numeroHabitaciones,
+    numero_banos: propertyData.numeroBanos,
+    latitud: propertyData.latitud,
+    longitud: propertyData.longitud,
   }
 }
 
@@ -164,7 +210,7 @@ export async function createProperty(data, files) {
     const { data: property, error: propertyError } = await supabase
       .from('propiedad')
       .insert(propertyPayload)
-      .select('id_propiedad,descripcion,direccion,precio,tipo_precio,estado,resena,id_arrendatario')
+      .select(PROPERTY_SELECT)
       .single()
 
     if (propertyError) {
@@ -235,9 +281,15 @@ function parseStoredCapacity(value) {
   const text = normalizeText(value)
 
   return {
-    capacidad: Number(text.match(/Capacidad:\s*(\d+)/i)?.[1] || 0),
-    numero_habitaciones: Number(text.match(/Habitaciones:\s*(\d+)/i)?.[1] || 0),
-    numero_banos: Number(text.match(/Banos:\s*(\d+)/i)?.[1] || 0),
+    capacidad: text.match(/Capacidad:\s*(\d+)/i)?.[1]
+      ? Number(text.match(/Capacidad:\s*(\d+)/i)[1])
+      : null,
+    numero_habitaciones: text.match(/Habitaciones:\s*(\d+)/i)?.[1]
+      ? Number(text.match(/Habitaciones:\s*(\d+)/i)[1])
+      : null,
+    numero_banos: text.match(/Banos:\s*(\d+)/i)?.[1]
+      ? Number(text.match(/Banos:\s*(\d+)/i)[1])
+      : null,
   }
 }
 
@@ -300,7 +352,7 @@ export async function ensurePropertyBelongsToLandlord(idPropiedad, idArrendatari
 
   const { data: property, error: propertyError } = await supabase
     .from('propiedad')
-    .select('id_propiedad,descripcion,direccion,precio,tipo_precio,estado,resena,id_arrendatario')
+    .select(PROPERTY_SELECT)
     .eq('id_propiedad', propertyId)
     .maybeSingle()
 
@@ -322,7 +374,7 @@ export async function ensurePropertyBelongsToLandlord(idPropiedad, idArrendatari
 function mapPropertyForLandlord(property, imagesByPropertyId) {
   const description = splitStoredDescription(property.descripcion)
   const address = splitStoredAddress(property.direccion)
-  const capacity = parseStoredCapacity(property.resena)
+  const storedCapacity = parseStoredCapacity(property.resena)
   const images = imagesByPropertyId.get(property.id_propiedad) || []
   const mainImage = images.find((image) => image.es_principal) || images[0] || null
 
@@ -335,10 +387,12 @@ function mapPropertyForLandlord(property, imagesByPropertyId) {
     pais: address.pais,
     precio_por_noche: property.precio,
     tipo_precio: property.tipo_precio || 'noche',
-    capacidad: capacity.capacidad,
-    numero_habitaciones: capacity.numero_habitaciones,
-    numero_banos: capacity.numero_banos,
+    capacidad: property.capacidad ?? storedCapacity.capacidad,
+    numero_habitaciones: property.numero_habitaciones ?? storedCapacity.numero_habitaciones,
+    numero_banos: property.numero_banos ?? storedCapacity.numero_banos,
     estado: normalizeListedStatus(property.estado),
+    latitud: property.latitud ?? null,
+    longitud: property.longitud ?? null,
     fecha_publicacion: null,
     imagen_principal: mainImage?.url || '',
     imagenes: images,
@@ -354,7 +408,7 @@ export async function getLandlordProperties(idArrendatario) {
 
   const { data: properties, error: propertiesError } = await supabase
     .from('propiedad')
-    .select('id_propiedad,descripcion,direccion,precio,tipo_precio,estado,resena,id_arrendatario')
+    .select(PROPERTY_SELECT)
     .eq('id_arrendatario', landlordId)
     .order('id_propiedad', { ascending: false })
 
@@ -612,7 +666,7 @@ export async function updateLandlordProperty(idPropiedad, data, files = []) {
     .update(propertyPayload)
     .eq('id_propiedad', propertyId)
     .eq('id_arrendatario', landlordId)
-    .select('id_propiedad,descripcion,direccion,precio,tipo_precio,estado,resena,id_arrendatario')
+    .select(PROPERTY_SELECT)
     .single()
 
   if (propertyError) {
