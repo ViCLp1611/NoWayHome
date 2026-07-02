@@ -10,6 +10,7 @@ import { LoadingState } from '@/app/components/ui/LoadingState'
 import { InquilinoNavbar } from '@/views/inquilino/components/InquilinoNavbar.jsx'
 import { EditInquilinoModal } from '@/views/inquilino/pages/EditInquilinoModal.jsx'
 import { inquilinoController } from '@/controllers/inquilinoController'
+import { formatDateLong } from '@/utils/dateUtils'
 
 export function ProfilePage() {
   const navigate = useNavigate()
@@ -40,7 +41,67 @@ export function ProfilePage() {
       const result = await inquilinoController.cargarPerfilCompleto(userId)
       if (result.success) {
         setUserData({ ...parsedUser, ...result.data.perfil })
-        setReservas(result.data.reservas || [])
+        const normalizedReservas = (result.data.reservas || []).map(reserva => {
+          const reservaId =
+            reserva.id_reserva ||
+            reserva.id ||
+            (reserva.id_propiedad &&
+            reserva.id_inquilino &&
+            (reserva.fecha_entrada || reserva.fecha_inicio)
+              ? `${reserva.id_propiedad}-${reserva.id_inquilino}-${reserva.fecha_entrada || reserva.fecha_inicio}`
+              : null)
+
+          return {
+            ...reserva,
+            id: reservaId,
+            id_reserva: reservaId,
+            fecha_entrada: reserva.fecha_entrada || reserva.fecha_inicio,
+            fecha_salida: reserva.fecha_salida || reserva.fecha_fin,
+            estado: reserva.estado_reserva || reserva.estado,
+            estado_reserva: reserva.estado_reserva || reserva.estado,
+            precio_base: reserva.precio_base ?? (reserva.precio || reserva.precio_noche || 0),
+            comision_y_otros:
+              reserva.comision_y_otros ?? reserva.tarifa_servicio ?? reserva.tarifa ?? 0,
+            total_pagado: reserva.total_pagado ?? reserva.pago ?? reserva.total ?? 0,
+            titulo:
+              reserva.titulo ||
+              reserva.titulo_propiedad ||
+              reserva.propiedad?.titulo ||
+              reserva.nombre_propiedad ||
+              reserva.title ||
+              reserva.propiedad?.nombre,
+            titulo_propiedad:
+              reserva.titulo ||
+              reserva.titulo_propiedad ||
+              reserva.propiedad?.titulo ||
+              reserva.nombre_propiedad ||
+              reserva.title ||
+              reserva.propiedad?.nombre,
+            ubicacion:
+              reserva.ubicacion ||
+              reserva.ubicacion_propiedad ||
+              reserva.direccion ||
+              reserva.propiedad?.direccion ||
+              reserva.propiedad?.ubicacion ||
+              reserva.propiedad?.ciudad ||
+              '',
+            ubicacion_propiedad:
+              reserva.ubicacion ||
+              reserva.ubicacion_propiedad ||
+              reserva.direccion ||
+              reserva.propiedad?.direccion ||
+              reserva.propiedad?.ubicacion ||
+              reserva.propiedad?.ciudad ||
+              '',
+            imagen_principal:
+              reserva.imagen_principal ||
+              reserva.imagen_portada ||
+              reserva.propiedad?.imagen_principal ||
+              reserva.propiedad?.imagen ||
+              null,
+          }
+        })
+        setReservas(normalizedReservas)
         setFavoritos(result.data.favoritos || [])
       } else {
         setLoadError(result.error || 'No se pudo cargar tu informacion completa.')
@@ -79,6 +140,47 @@ export function ProfilePage() {
   const formatPrice = price => {
     return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(price || 0)
   }
+
+  const getText = value => (typeof value === 'string' ? value.trim() : '')
+  const getTitleFromDescription = description =>
+    getText(description)
+      .split('\n')
+      .map(part => part.trim())
+      .find(Boolean) || ''
+
+  const getBookingTitle = booking =>
+    booking.titulo ||
+    booking.titulo_propiedad ||
+    booking.propiedad?.titulo ||
+    booking.propiedad?.title ||
+    booking.propiedad?.nombre ||
+    booking.nombre_propiedad ||
+    booking.title ||
+    getTitleFromDescription(booking.propiedad?.descripcion) ||
+    booking.descripcion ||
+    `Propiedad ${booking.id_propiedad || booking.id || ''}`
+
+  const getBookingLocation = booking =>
+    booking.ubicacion ||
+    booking.ubicacion_propiedad ||
+    booking.propiedad?.ubicacion ||
+    booking.propiedad?.ciudad ||
+    booking.propiedad?.direccion ||
+    booking.ubicacion ||
+    booking.ciudad ||
+    booking.direccion ||
+    'Ubicación oculta'
+
+  const getBookingStartDate = booking => booking.fecha_entrada || booking.fecha_inicio
+  const getBookingEndDate = booking => booking.fecha_salida || booking.fecha_fin
+  const getBookingTotal = booking =>
+    booking.total_pagado ?? booking.precio_total ?? booking.total ?? booking.pago ?? 0
+  const getBookingStatus = booking => booking.estado_reserva || booking.estado || 'Procesando'
+  const getBookingGuests = booking => booking.huespedes ?? booking.huéspedes ?? 1
+  const getBookingCommission = booking =>
+    booking.comision_y_otros ?? booking.tarifa_servicio ?? booking.tarifa ?? 0
+  const getBookingPriceBase = booking =>
+    booking.precio_base ?? booking.precio ?? booking.precio_noche ?? 0
 
   return (
     <>
@@ -197,85 +299,83 @@ export function ProfilePage() {
                   Aún no tienes reservas realizadas.
                 </div>
               ) : (
-                reservas.map(booking => (
-                  <Card
-                    key={
-                      booking.id_reserva ||
-                      booking.id ||
-                      `${booking.id_propiedad || 'prop'}-${booking.id_inquilino || 'inqu'}-${booking.fecha_inicio || 'fecha'}`
-                    }
-                    className="p-6 bg-[#F2E8CF] border-none shadow-none rounded-2xl"
-                  >
-                    <div className="flex flex-col md:flex-row justify-between gap-4">
-                      <div className="flex-1">
-                        <h3 className="font-poppins font-semibold text-lg text-[#5F5F5F] mb-3">
-                          {booking.propiedad?.titulo ||
-                            booking.propiedad?.descripcion ||
-                            'Propiedad no disponible'}
-                        </h3>
-                        <div className="space-y-2 text-[#5F5F5F]">
-                          <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4 text-[#A67C52]" />
-                            <span className="text-sm">
-                              {booking.propiedad?.ubicacion || 'Ubicación oculta'}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-[#A67C52]" />
-                            <span className="text-sm">
-                              {new Date(booking.fecha_inicio).toLocaleDateString()} al{' '}
-                              {new Date(booking.fecha_fin).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+                reservas.map(booking => {
+                  const estadoCrudo = String(getBookingStatus(booking) || '').toLowerCase()
+                  let estadoNormalizado = estadoCrudo
+                  if (estadoCrudo === 'confirmed') estadoNormalizado = 'confirmada'
+                  if (estadoCrudo === 'pending') estadoNormalizado = 'pendiente'
+                  if (estadoCrudo === 'cancelled') estadoNormalizado = 'cancelada'
 
-                      <div className="flex flex-col items-start md:items-end justify-between gap-3">
-                        <div className="text-left md:text-right">
-                          <span className="font-poppins font-semibold text-2xl text-[#6B8E23]">
-                            {formatPrice(booking.pago)}
-                          </span>
-                          <span className="block text-sm text-[#5F5F5F] mt-1">
-                            Estado:{' '}
-                            <span
-                              className={
-                                booking.estado === 'confirmada'
-                                  ? 'text-[#6B8E23] font-medium capitalize'
-                                  : 'text-[#A67C52] font-medium capitalize'
-                              }
-                            >
-                              {booking.estado || 'Procesando'}
-                            </span>
-                          </span>
+                  const statusClassName =
+                    estadoNormalizado === 'confirmada'
+                      ? 'text-[#6B8E23] font-medium'
+                      : estadoNormalizado === 'cancelada'
+                        ? 'text-red-600 font-medium'
+                        : 'text-[#A67C52] font-medium'
+
+                  return (
+                    <Card
+                      key={
+                        booking.id_reserva ||
+                        booking.id ||
+                        `${booking.id_propiedad || 'prop'}-${booking.id_inquilino || 'inqu'}-${getBookingStartDate(booking) || 'fecha'}`
+                      }
+                      className="p-6 bg-[#F2E8CF] border-none shadow-none rounded-2xl"
+                    >
+                      <div className="flex flex-col md:flex-row justify-between gap-4">
+                        <div className="flex-1">
+                          <h3 className="font-poppins font-semibold text-lg text-[#5F5F5F] mb-3">
+                            {getBookingTitle(booking)}
+                          </h3>
+                          <div className="space-y-2 text-[#5F5F5F]">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-4 w-4 text-[#A67C52]" />
+                              <span className="text-sm">{getBookingLocation(booking)}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4 text-[#A67C52]" />
+                              <span className="text-sm">
+                                {formatDateLong(getBookingStartDate(booking))} al{' '}
+                                {formatDateLong(getBookingEndDate(booking))}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            const propertyId =
-                              booking.propiedad?.id_propiedad ||
-                              booking.propiedad?.id ||
-                              booking.id_propiedad ||
-                              booking.id
-                            if (propertyId) {
-                              navigate(`/inquilino/propiedad/${propertyId}`)
-                            }
-                          }}
-                          disabled={
-                            !(
-                              booking.propiedad?.id_propiedad ||
-                              booking.propiedad?.id ||
-                              booking.id_propiedad ||
-                              booking.id
-                            )
-                          }
-                          className="border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#6B8E23] hover:text-white shadow-none rounded-xl transition-all"
-                        >
-                          Ver Detalles
-                        </Button>
+
+                        <div className="flex flex-col items-start md:items-end justify-between gap-3">
+                          <div className="text-left md:text-right">
+                            <span className="font-poppins font-semibold text-2xl text-[#6B8E23]">
+                              {formatPrice(getBookingTotal(booking))}
+                            </span>
+                            <span className="block text-sm text-[#5F5F5F] mt-1">
+                              Estado:{' '}
+                              <span className={statusClassName}>
+                                {estadoNormalizado.charAt(0).toUpperCase() +
+                                  estadoNormalizado.slice(1)}
+                              </span>
+                            </span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              const reservaId = booking.id_reserva ?? booking.id
+                              if (reservaId) {
+                                navigate(
+                                  `/inquilino/reserva-detalle/${encodeURIComponent(reservaId)}`
+                                )
+                              }
+                            }}
+                            disabled={!(booking.id_reserva || booking.id)}
+                            className="border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#6B8E23] hover:text-white shadow-none rounded-xl transition-all"
+                          >
+                            Ver Detalles
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  </Card>
-                ))
+                    </Card>
+                  )
+                })
               )}
             </TabsContent>
 

@@ -114,6 +114,193 @@ function applyReservationIdentifier(query, identifier) {
   throw new ValidationError('Datos de reserva incompletos para confirmar.')
 }
 
+function resolveReservationId(reserva) {
+  if (reserva?.id_reserva || reserva?.id) {
+    return reserva.id_reserva ?? reserva.id
+  }
+
+  if (reserva?.id_propiedad && reserva?.id_inquilino && reserva?.fecha_inicio) {
+    return `${reserva.id_propiedad}:${reserva.id_inquilino}:${reserva.fecha_inicio}`
+  }
+
+  return null
+}
+
+function parseReservationCompositeId(idReserva) {
+  const raw = decodeURIComponent(String(idReserva || '').trim())
+  // Se modifica la regex para aceptar tanto ':' como '-' como separadores.
+  const match = raw.match(/^(\d+)[:|-](\d+)[:|-](\d{4}-\d{2}-\d{2})$/)
+
+  if (!match) {
+    return null
+  }
+
+  return {
+    id_propiedad: Number(match[1]),
+    id_inquilino: Number(match[2]),
+    fecha_inicio: match[3],
+  }
+}
+
+function getPrincipalImageByProperty(images) {
+  const imagesByProperty = {}
+
+  for (const image of images || []) {
+    if (!imagesByProperty[image.id_propiedad]) {
+      imagesByProperty[image.id_propiedad] = []
+    }
+
+    imagesByProperty[image.id_propiedad].push(image)
+  }
+
+  const principalByProperty = {}
+
+  for (const [propertyId, propertyImages] of Object.entries(imagesByProperty)) {
+    const ordered = [...propertyImages].sort((a, b) => {
+      const orderA = Number.isFinite(Number(a.orden)) ? Number(a.orden) : 9999
+      const orderB = Number.isFinite(Number(b.orden)) ? Number(b.orden) : 9999
+      return orderA - orderB
+    })
+
+    const principal = ordered.find(image => image.es_principal) || ordered[0] || null
+    principalByProperty[propertyId] = principal?.url || null
+  }
+
+  return principalByProperty
+}
+
+function splitStoredPropertyDescription(value) {
+  const parts = normalizeText(value)
+    .split('\n')
+    .map(part => part.trim())
+    .filter(Boolean)
+
+  return {
+    titulo: parts[0] || '',
+    descripcion: parts.slice(1).join('\n') || '',
+  }
+}
+
+function getPropertyTitle(propiedad, idPropiedad) {
+  const storedDescription = splitStoredPropertyDescription(propiedad?.descripcion)
+
+  return (
+    normalizeText(propiedad?.titulo) ||
+    normalizeText(propiedad?.nombre) ||
+    storedDescription.titulo ||
+    `Propiedad ${idPropiedad || ''}`.trim()
+  )
+}
+
+function getPropertyLocation(propiedad) {
+  return (
+    normalizeText(propiedad?.ubicacion) ||
+    normalizeText(propiedad?.ciudad) ||
+    normalizeText(propiedad?.direccion) ||
+    ''
+  )
+}
+
+function normalizeProfileReservation(row) {
+  if (!row) return null
+
+  return {
+    ...row,
+    id: row.id_reserva,
+    id_reserva: row.id_reserva,
+    titulo_propiedad: row.titulo,
+    ubicacion_propiedad: row.ubicacion,
+    imagen_principal: row.imagen_portada,
+    fecha_inicio: row.fecha_entrada,
+    fecha_fin: row.fecha_salida,
+    estado: row.estado_reserva,
+    pago: row.total_pagado,
+    total: row.total_pagado,
+    precio_total: row.total_pagado,
+    tarifa_servicio: row.comision_y_otros,
+    propiedad: {
+      id_propiedad: row.id_propiedad,
+      titulo: row.titulo,
+      ubicacion: row.ubicacion,
+      direccion: row.ubicacion,
+      imagen_principal: row.imagen_portada,
+      precio: row.precio_base,
+    },
+  }
+}
+
+async function enrichReservationsWithProperties(reservations) {
+  const propertyIds = [
+    ...new Set((reservations || []).map(item => item.id_propiedad).filter(Boolean)),
+  ]
+
+  if (propertyIds.length === 0) {
+    return reservations || []
+  }
+
+  let propertiesById = {}
+
+  const { data: properties, error: propertiesError } = await supabase
+    .from('propiedad')
+    .select('*')
+    .in('id_propiedad', propertyIds)
+
+  if (propertiesError) {
+    console.error('Error al obtener propiedades de reservas:', propertiesError.message)
+  } else {
+    propertiesById = Object.fromEntries((properties || []).map(item => [item.id_propiedad, item]))
+  }
+
+  const { data: images, error: imagesError } = await supabase
+    .from('propiedad_imagen')
+    .select('id_propiedad,url,orden,es_principal')
+    .in('id_propiedad', propertyIds)
+
+  if (imagesError) {
+    console.error('Error al obtener imagenes de propiedades reservadas:', imagesError.message)
+  }
+
+  const principalImageByProperty = getPrincipalImageByProperty(images)
+
+  return (reservations || []).map(reserva => {
+    const propiedad = propertiesById[reserva.id_propiedad] || reserva.propiedad || null
+    const imagenPrincipal =
+      reserva.imagen_principal ||
+      propiedad?.imagen_principal ||
+      principalImageByProperty[reserva.id_propiedad] ||
+      null
+    const tituloPropiedad =
+      reserva.titulo_propiedad ||
+      getPropertyTitle(propiedad, reserva.id_propiedad) ||
+      `Propiedad ${reserva.id_propiedad || ''}`.trim()
+    const ubicacionPropiedad =
+      reserva.ubicacion_propiedad ||
+      getPropertyLocation(propiedad) ||
+      reserva.ubicacion ||
+      reserva.direccion ||
+      ''
+    const storedDescription = splitStoredPropertyDescription(propiedad?.descripcion)
+
+    return {
+      ...reserva,
+      id: resolveReservationId(reserva),
+      id_reserva: resolveReservationId(reserva),
+      titulo_propiedad: tituloPropiedad,
+      ubicacion_propiedad: ubicacionPropiedad,
+      imagen_principal: imagenPrincipal,
+      propiedad: propiedad
+        ? {
+            ...propiedad,
+            titulo: tituloPropiedad,
+            descripcion_detalle: storedDescription.descripcion || propiedad.descripcion || null,
+            ubicacion: ubicacionPropiedad,
+            imagen_principal: imagenPrincipal,
+          }
+        : null,
+    }
+  })
+}
+
 export async function getTenantProfile(idInquilino) {
   const tenantId = parsePositiveInteger(idInquilino, 'id_inquilino')
 
@@ -180,26 +367,79 @@ export async function getTenantReservations(idInquilino) {
     .from('reserva')
     .select('*')
     .eq('id_inquilino', tenantId)
-    .order('fecha_inicio', { ascending: false })
+    .order('fecha_entrada', { ascending: false })
 
-  if (fallbackError) {
+  if (!fallbackError) {
+    return (fallbackData || []).map(withReservationPropertyCapacity)
+  }
+
+  const { data: profileData, error: profileError } = await supabase
+    .from('vista_perfil_reservas')
+    .select('*')
+    .eq('id_inquilino', tenantId)
+    .order('fecha_entrada', { ascending: false })
+
+  if (profileError) {
     throw new Error('No se pudieron cargar las reservas.')
   }
 
-  return fallbackData || []
+  const normalized = (profileData || []).map(normalizeProfileReservation)
+  return enrichReservationsWithProperties(normalized)
 }
 
 export async function getTenantReservationById(idReserva) {
-  const reservationId = parsePositiveInteger(idReserva, 'id_reserva')
+  const rawReservationId = decodeURIComponent(String(idReserva || '').trim())
+  const parsedReservationId = Number(rawReservationId)
+  const reservationId = Number.isInteger(parsedReservationId) && parsedReservationId > 0
+    ? parsedReservationId
+    : null
   const baseSelect =
     '*, propiedad:propiedad(id_propiedad,descripcion,titulo,ubicacion,precio_noche,precio,direccion,estado,resena,latitud,longitud,capacidad,numero_habitaciones,numero_banos)'
 
-  let query = supabase.from('reserva').select(baseSelect).eq('id_reserva', reservationId).maybeSingle()
-  let { data, error } = await query
+  let data = null
+  let error = null
 
-  if (error) {
-    query = supabase.from('reserva').select(baseSelect).eq('id', reservationId).maybeSingle()
+  if (reservationId) {
+    let query = supabase.from('reserva').select(baseSelect).eq('id_reserva', reservationId).maybeSingle()
     ;({ data, error } = await query)
+
+    if (error || !data) {
+      query = supabase.from('reserva').select(baseSelect).eq('id', reservationId).maybeSingle()
+      ;({ data, error } = await query)
+    }
+  }
+
+  if (!data) {
+    const compositeId = parseReservationCompositeId(rawReservationId)
+
+    if (compositeId) {
+      const compositeQuery = supabase
+        .from('reserva')
+        .select(baseSelect)
+        .eq('id_propiedad', compositeId.id_propiedad)
+        .eq('id_inquilino', compositeId.id_inquilino)
+        .eq('fecha_inicio', compositeId.fecha_inicio)
+        .maybeSingle()
+
+      ;({ data, error } = await compositeQuery)
+    }
+  }
+
+  if (!data) {
+    const { data: profileData, error: profileError } = await supabase
+      .from('vista_perfil_reservas')
+      .select('*')
+      .eq('id_reserva', rawReservationId)
+      .maybeSingle()
+
+    if (!profileError && profileData) {
+      const [enriched] = await enrichReservationsWithProperties([
+        normalizeProfileReservation(profileData),
+      ])
+      return enriched
+    }
+
+    error = profileError || error
   }
 
   if (error) {
@@ -252,8 +492,35 @@ export async function getTenantProperties() {
     return []
   }
 
-  // Obtener todas las imágenes para las propiedades encontradas
-  const propertyIds = properties.map(p => p.id_propiedad)
+  // Identificar propiedades con reservas activas para excluirlas del catálogo
+  const today = new Date().toISOString().split('T')[0]
+  const { data: activeReservations, error: reservationsError } = await supabase
+    .from('reserva')
+    .select('id_propiedad')
+    .in('estado', ['pendiente', 'confirmada', 'confirmed'])
+    .gte('fecha_fin', today)
+
+  if (reservationsError) {
+    // No bloqueamos la carga, pero advertimos que el filtro de disponibilidad falló
+    console.error(
+      'Error al verificar reservas activas, se mostrarán todas las propiedades:',
+      reservationsError.message
+    )
+  }
+
+  const reservedPropertyIds = new Set((activeReservations || []).map(r => r.id_propiedad))
+
+  // Filtrar el arreglo de propiedades para DEJAR ÚNICAMENTE las que no están reservadas
+  const availableProperties = properties.filter(
+    property => !reservedPropertyIds.has(property.id_propiedad)
+  )
+
+  if (availableProperties.length === 0) {
+    return []
+  }
+
+  // Obtener todas las imágenes para las propiedades disponibles
+  const propertyIds = availableProperties.map(p => p.id_propiedad)
   const { data: images, error: imagesError } = await supabase
     .from('propiedad_imagen')
     .select('id_imagen, id_propiedad, url, storage_path, orden, es_principal')
@@ -275,15 +542,12 @@ export async function getTenantProperties() {
     })
   }
 
-  // Para cada propiedad, asignar su imagen principal
-  const propertiesWithImages = properties.map(property => {
+  // Para cada propiedad disponible, asignar su imagen principal
+  const propertiesWithImages = availableProperties.map(property => {
     const propertyImages = imagesByProperty[property.id_propiedad] || []
-    
+
     // Regla: buscar imagen con es_principal = true, sino la primera ordenada
-    const mainImage =
-      propertyImages.find(img => img.es_principal) ||
-      propertyImages[0] ||
-      null
+    const mainImage = propertyImages.find(img => img.es_principal) || propertyImages[0] || null
 
     return {
       ...withCapacityFields(property),
@@ -324,10 +588,7 @@ export async function getTenantPropertyById(idPropiedad) {
 
   // Encontrar imagen principal
   const propertyImages = images || []
-  const mainImage =
-    propertyImages.find(img => img.es_principal) ||
-    propertyImages[0] ||
-    null
+  const mainImage = propertyImages.find(img => img.es_principal) || propertyImages[0] || null
 
   return {
     ...withCapacityFields(property),
@@ -351,6 +612,26 @@ export async function createTenantReservation(reservationData) {
     throw new ValidationError('El pago debe ser mayor a 0.')
   }
 
+  // Validar disponibilidad para evitar solapamiento de reservas
+  const { data: conflictingReservations, error: conflictCheckError } = await supabase
+    .from('reserva')
+    .select('id_propiedad, fecha_inicio, fecha_fin', { count: 'exact', head: true })
+    .eq('id_propiedad', idPropiedad)
+    .in('estado', ['pendiente', 'confirmada', 'confirmed'])
+    .lt('fecha_inicio', fechaFin) // Una reserva existente comienza antes de que termine la nueva
+    .gt('fecha_fin', fechaInicio) // Y termina después de que comience la nueva
+
+  if (conflictCheckError) {
+    console.error('Error al verificar conflictos de reserva:', conflictCheckError.message)
+    throw new Error('No se pudo verificar la disponibilidad de la propiedad.')
+  }
+
+  if (conflictingReservations && conflictingReservations.length > 0) {
+    throw new Error(
+      'La propiedad ya se encuentra reservada o apartada para las fechas seleccionadas.'
+    )
+  }
+
   const payload = {
     id_inquilino: idInquilino,
     id_propiedad: idPropiedad,
@@ -367,6 +648,63 @@ export async function createTenantReservation(reservationData) {
   }
 
   return data
+}
+
+export async function cancelTenantReservation(idReserva, idInquilino, motivoCancelacion) {
+  const reservationId = decodeURIComponent(String(idReserva || '').trim())
+  const tenantId = parsePositiveInteger(idInquilino, 'id_inquilino')
+  const motivo = normalizeText(motivoCancelacion)
+
+  if (!motivo) {
+    throw new ValidationError('El motivo de cancelación es obligatorio.')
+  }
+
+  const compositeId = parseReservationCompositeId(reservationId)
+
+  if (!compositeId) {
+    throw new ValidationError('Identificador de reserva no válido.')
+  }
+
+  if (compositeId.id_inquilino !== tenantId) {
+    throw new ValidationError('No tienes permiso para cancelar esta reserva.')
+  }
+
+  const { data: reservation, error: fetchError } = await supabase
+    .from('reserva')
+    .select('estado')
+    .eq('id_propiedad', compositeId.id_propiedad)
+    .eq('id_inquilino', compositeId.id_inquilino)
+    .eq('fecha_inicio', compositeId.fecha_inicio)
+    .single()
+
+  if (fetchError || !reservation) {
+    throw new Error('Reserva no encontrada.')
+  }
+
+  const currentState = String(reservation.estado || '')
+    .trim()
+    .toLowerCase()
+  const cancellableStates = ['pendiente', 'confirmada', 'confirmed']
+  if (!cancellableStates.includes(currentState)) {
+    throw new ValidationError(
+      `Transición de estado inválida. La reserva ya está en estado "${reservation.estado}".`
+    )
+  }
+
+  const { data: updatedReservation, error: updateError } = await supabase
+    .from('reserva')
+    .update({ estado: 'cancelada', motivo_cancelacion: motivo })
+    .eq('id_propiedad', compositeId.id_propiedad)
+    .eq('id_inquilino', compositeId.id_inquilino)
+    .eq('fecha_inicio', compositeId.fecha_inicio)
+    .select()
+    .single()
+
+  if (updateError) {
+    throw new Error('No se pudo cancelar la reserva.')
+  }
+
+  return updatedReservation
 }
 
 export async function confirmTenantReservation(identifier) {

@@ -1,5 +1,6 @@
 import {
   confirmTenantReservation,
+  cancelTenantReservation,
   createTenantReservation,
   getTenantFavorites,
   getTenantProfile,
@@ -69,7 +70,9 @@ export async function getTenantPropertyHandler(req, res) {
 
 export async function listTenantReservationsHandler(req, res) {
   try {
-    const reservations = await getTenantReservations(req.query?.id_inquilino || req.query?.inquilinoId)
+    const reservations = await getTenantReservations(
+      req.query?.id_inquilino || req.query?.inquilinoId
+    )
 
     return res.json({ ok: true, reservations })
   } catch (error) {
@@ -112,5 +115,29 @@ export async function confirmTenantReservationHandler(req, res) {
     })
   } catch (error) {
     return sendError(res, error, 'No se pudo confirmar la reserva.')
+  }
+}
+
+export const cancelarReserva = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { id_inquilino, motivo_cancelacion } = req.body
+
+    if (!id_inquilino) {
+      return sendError(res, new ValidationError('Se requiere el ID del inquilino.'))
+    }
+
+    const reservaCancelada = await cancelTenantReservation(id, id_inquilino, motivo_cancelacion)
+
+    // [POLÍTICA DE NEGOCIO] Cancelación exitosa. No se dispara reembolso automático vía API de PayPal. Requiere validación manual.
+    console.log(`[INFO] Reserva ${id} cancelada. No se emite reembolso automático.`)
+
+    return res.status(200).json({
+      ok: true,
+      message: 'Reserva cancelada correctamente.',
+      data: reservaCancelada,
+    })
+  } catch (error) {
+    return sendError(res, error, 'No se pudo cancelar la reserva.')
   }
 }

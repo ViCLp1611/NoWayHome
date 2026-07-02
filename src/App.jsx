@@ -16,6 +16,7 @@ import { ProfilePage as InquilinoProfile } from '@/views/inquilino/pages/Profile
 import { ExplorarPage } from '@/views/inquilino/pages/ExplorarPage.jsx'
 import { PropertyDetailPage } from '@/views/inquilino/pages/PropertyDetailPage.jsx'
 import { ReservaPage } from '@/views/inquilino/pages/ReservaPage.jsx'
+import DetalleReservaPage from '@/views/inquilino/pages/DetalleReservaPage.jsx'
 
 export default function App() {
   return (
@@ -87,6 +88,7 @@ export default function App() {
           <Route path="/inquilino/explorar" element={<ExplorarPage />} />
           <Route path="/inquilino/propiedad/:id" element={<PropertyDetailPage />} />
           <Route path="/inquilino/reserva/:id" element={<ReservaPage />} />
+          <Route path="/inquilino/reserva-detalle/:idReserva" element={<DetalleReservaPage />} />
 
           <Route path="/arrendatario" element={<Navigate to="/arrendatario/perfil" replace />} />
           <Route path="/arrendatario/perfil" element={<ProfilePage />} />
