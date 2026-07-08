@@ -82,7 +82,7 @@ export function PropertyLocationMap({
   if (!editable && !hasCoordinates) {
     return (
       <div
-        className={`flex min-h-56 items-center justify-center rounded-xl border border-[#6B8E23]/15 bg-[#F2E8CF]/55 text-[#5F5F5F] ${className}`}
+        className={`flex min-h-[260px] items-center justify-center rounded-xl border border-[#6B8E23]/15 bg-[#F2E8CF]/55 text-[#5F5F5F] ${className}`}
       >
         <div className="flex flex-col items-center gap-2 text-center">
           <MapPin className="h-6 w-6 text-[#A67C52]" />
@@ -93,12 +93,14 @@ export function PropertyLocationMap({
   }
 
   return (
-    <div className={`overflow-hidden rounded-xl border border-[#6B8E23]/15 bg-white ${className}`}>
+    <div
+      className={`min-h-[260px] overflow-hidden rounded-xl border border-[#6B8E23]/15 bg-white ${className}`}
+    >
       <MapContainer
         center={center}
         zoom={position ? DEFAULT_ZOOM : 5}
         scrollWheelZoom={editable}
-        className="h-72 w-full"
+        className="h-[260px] w-full md:h-[320px]"
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'

@@ -52,18 +52,6 @@ function validateTransition(currentStatus, nextStatus) {
   )
 }
 
-function resolveReservationId(reserva) {
-  if (reserva?.id_reserva || reserva?.id) {
-    return reserva.id_reserva ?? reserva.id
-  }
-
-  if (reserva?.id_propiedad && reserva?.id_inquilino && reserva?.fecha_inicio) {
-    return `${reserva.id_propiedad}:${reserva.id_inquilino}:${reserva.fecha_inicio}`
-  }
-
-  return null
-}
-
 function resolvePropertyPrice(propiedad) {
   const candidates = [propiedad?.precio_por_noche, propiedad?.precio_noche, propiedad?.precio]
 
@@ -163,21 +151,51 @@ export async function getLandlordReservations(idArrendatario) {
 
   const principalImageByProperty = getPrincipalImageByProperty(propertyImages)
 
-  // Obtener reservas de estas propiedades
-  const { data: reservas, error: reservasError } = await supabase
+  // Obtener reservas de estas propiedades con id_reserva real.
+  let reservas = []
+  let reservasError = null
+
+  const primaryReservationsQuery = await supabase
     .from('reserva')
     .select(
       `
+      id_reserva,
       id_propiedad,
       id_inquilino,
       fecha_inicio,
       fecha_fin,
       pago,
-      estado
+      estado,
+      estado_pago
       `
     )
     .in('id_propiedad', propertyIds)
     .order('fecha_inicio', { ascending: false })
+
+  reservas = primaryReservationsQuery.data || []
+  reservasError = primaryReservationsQuery.error || null
+
+  // Fallback por compatibilidad con esquemas sin estado_pago.
+  if (reservasError) {
+    const fallbackReservationsQuery = await supabase
+      .from('reserva')
+      .select(
+        `
+        id_reserva,
+        id_propiedad,
+        id_inquilino,
+        fecha_inicio,
+        fecha_fin,
+        pago,
+        estado
+        `
+      )
+      .in('id_propiedad', propertyIds)
+      .order('fecha_inicio', { ascending: false })
+
+    reservas = fallbackReservationsQuery.data || []
+    reservasError = fallbackReservationsQuery.error || null
+  }
 
   if (reservasError) {
     throw new Error(`No se pudieron cargar las reservas. ${reservasError.message}`)
@@ -202,7 +220,7 @@ export async function getLandlordReservations(idArrendatario) {
   return (reservas || []).map(reserva => {
     const propiedad = propertiesById[reserva.id_propiedad] || null
     const inquilino = tenantsById[reserva.id_inquilino] || null
-    const idReserva = resolveReservationId(reserva)
+    const idReserva = reserva.id_reserva ?? null
     const imagenPrincipal = principalImageByProperty[reserva.id_propiedad] || null
     const total = calculateTotalFallback(reserva, propiedad)
     const estadoNormalizado = String(reserva.estado || 'pendiente').toLowerCase()
@@ -222,6 +240,7 @@ export async function getLandlordReservations(idArrendatario) {
       total,
       pago: Number.isFinite(Number(reserva.pago)) ? Number(reserva.pago) : null,
       estado: estadoNormalizado,
+      estado_pago: reserva.estado_pago || null,
       fecha_creacion: reserva.fecha_creacion || null,
       created_at: reserva.fecha_creacion || null,
       propiedad: {
@@ -240,32 +259,17 @@ export async function getLandlordReservations(idArrendatario) {
   })
 }
 
-function parseReservationCompositeId(idReserva) {
-  const raw = String(idReserva || '').trim()
-  // Se modifica la regex para aceptar tanto ':' como '-' como separadores.
-  const match = raw.match(/^(\d+)[:|-](\d+)[:|-](\d{4}-\d{2}-\d{2})$/)
-
-  if (!match) {
-    throw new ValidationError('Identificador de reserva invÃ¡lido.')
-  }
-
-  return {
-    id_propiedad: Number(match[1]),
-    id_inquilino: Number(match[2]),
-    fecha_inicio: match[3],
-  }
-}
-
 export async function updateReservationStatus(idReserva, idArrendatario, nuevoEstado) {
   const landlordId = parsePositiveInteger(idArrendatario, 'id_arrendatario')
   const estado = validateStatus(nuevoEstado)
-  const reservationIdentifier = parseReservationCompositeId(idReserva)
+  const reservationId = parsePositiveInteger(idReserva, 'id_reserva')
 
   // Obtener la reserva
   const { data: reserva, error: reservaError } = await supabase
     .from('reserva')
     .select(
       `
+      id_reserva,
       id_propiedad,
       id_inquilino,
       fecha_inicio,
@@ -273,9 +277,7 @@ export async function updateReservationStatus(idReserva, idArrendatario, nuevoEs
       propiedad:propiedad(id_arrendatario)
       `
     )
-    .eq('id_propiedad', reservationIdentifier.id_propiedad)
-    .eq('id_inquilino', reservationIdentifier.id_inquilino)
-    .eq('fecha_inicio', reservationIdentifier.fecha_inicio)
+    .eq('id_reserva', reservationId)
     .maybeSingle()
 
   if (reservaError) {
@@ -298,9 +300,7 @@ export async function updateReservationStatus(idReserva, idArrendatario, nuevoEs
   const { data: updatedReserva, error: updateError } = await supabase
     .from('reserva')
     .update({ estado })
-    .eq('id_propiedad', reservationIdentifier.id_propiedad)
-    .eq('id_inquilino', reservationIdentifier.id_inquilino)
-    .eq('fecha_inicio', reservationIdentifier.fecha_inicio)
+    .eq('id_reserva', reservationId)
     .select()
     .single()
 

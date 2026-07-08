@@ -24,7 +24,12 @@ export const landlordBookingService = {
   },
 
   cambiarEstadoReserva: async (idReserva, idArrendatario, estado) => {
-    const encodedId = encodeURIComponent(String(idReserva))
+    const parsedIdReserva = Number(idReserva)
+    if (!Number.isInteger(parsedIdReserva) || parsedIdReserva <= 0) {
+      throw new Error('La reserva no tiene un id_reserva valido.')
+    }
+
+    const encodedId = encodeURIComponent(String(parsedIdReserva))
     const data = await requestJson(`/api/arrendatario/reservas/${encodedId}/estado`, {
       method: 'PATCH',
       body: JSON.stringify({ id_arrendatario: idArrendatario, estado }),

@@ -118,9 +118,9 @@ export function PropertyDetailPage() {
             />
           )}
 
-          <div className="grid grid-cols-1 gap-y-8 lg:grid-cols-12 lg:gap-x-6">
+          <div className="grid grid-cols-1 gap-y-8 lg:grid-cols-12 lg:gap-x-8">
             {/* Columna de Contenido Principal */}
-            <div className="lg:col-span-7">
+            <div className="space-y-6 lg:col-span-7">
               <header>
                 <h1 className="font-poppins text-[28px] font-semibold text-[#5F5F5F] lg:text-[36px]">
                   {title}
@@ -175,11 +175,70 @@ export function PropertyDetailPage() {
                   </>
                 )}
               </div>
+
+              <Card className="rounded-2xl border border-[#6B8E23]/10 bg-white p-6 shadow-sm sm:p-8">
+                <div className="space-y-6">
+                  <section>
+                    <p className="text-sm text-[#5F5F5F]/70">Reserva esta propiedad</p>
+                    <h2 className="text-2xl font-semibold text-[#5F5F5F]">Preparate para tu estancia</h2>
+                  </section>
+
+                  <section className="space-y-3 border-t border-[#6B8E23]/10 pt-5">
+                    <h3 className="text-sm font-semibold text-[#5F5F5F]/70">Características</h3>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {hasValue(propiedad.capacidad) && (
+                        <div className="flex items-center gap-2 rounded-lg bg-[#F2E8CF] p-3">
+                          <Users className="h-4 w-4 text-[#6B8E23]" />
+                          <div>
+                            <p className="text-xs text-[#5F5F5F]/70">Capacidad</p>
+                            <p className="font-semibold text-[#5F5F5F]">{propiedad.capacidad}</p>
+                          </div>
+                        </div>
+                      )}
+                      {hasValue(propiedad.numero_habitaciones) && (
+                        <div className="flex items-center gap-2 rounded-lg bg-[#F2E8CF] p-3">
+                          <Bed className="h-4 w-4 text-[#6B8E23]" />
+                          <div>
+                            <p className="text-xs text-[#5F5F5F]/70">Habitaciones</p>
+                            <p className="font-semibold text-[#5F5F5F]">{propiedad.numero_habitaciones}</p>
+                          </div>
+                        </div>
+                      )}
+                      {hasValue(propiedad.numero_banos) && (
+                        <div className="flex items-center gap-2 rounded-lg bg-[#F2E8CF] p-3">
+                          <Bath className="h-4 w-4 text-[#6B8E23]" />
+                          <div>
+                            <p className="text-xs text-[#5F5F5F]/70">Baños</p>
+                            <p className="font-semibold text-[#5F5F5F]">{propiedad.numero_banos}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+
+                  <section className="space-y-4 border-t border-[#6B8E23]/10 pt-5">
+                    <div>
+                      <p className="text-sm text-[#5F5F5F]/70">Ubicacion</p>
+                      <p className="text-base font-medium text-[#5F5F5F]">{location}</p>
+                    </div>
+                    <PropertyLocationMap
+                      latitud={propiedad.latitud}
+                      longitud={propiedad.longitud}
+                      className="min-h-[260px]"
+                    />
+                  </section>
+
+                  <section className="border-t border-[#6B8E23]/10 pt-5">
+                    <p className="text-sm text-[#5F5F5F]/70">Precio por noche</p>
+                    <p className="text-xl font-semibold text-[#6B8E23]">{formatPrice(price)}</p>
+                  </section>
+                </div>
+              </Card>
             </div>
 
             {/* Columna de Reserva (Sticky) */}
             <div className="lg:col-span-5">
-              <div className="sticky top-28">
+              <div className="lg:sticky lg:top-28">
                 <Card className="rounded-xl border-0 bg-[#F2E8CF] p-6 shadow-none">
                   <div className="flex items-baseline justify-between">
                     <div className="flex items-baseline gap-2">
@@ -212,6 +271,14 @@ export function PropertyDetailPage() {
                     >
                       Reservar ahora
                     </Button>
+
+                    <Button
+                      variant="outline"
+                      onClick={() => navigate('/inquilino/perfil')}
+                      className="h-auto min-h-[44px] w-full rounded-lg border-2 border-[#6B8E23] px-4 py-3 text-base font-medium text-[#6B8E23] transition hover:bg-[#F2E8CF]"
+                    >
+                      Ir a mi perfil
+                    </Button>
                   </div>
 
                   <div className="mt-6 rounded-lg bg-white/50 p-4 text-sm text-[#5F5F5F]/90">
@@ -223,91 +290,9 @@ export function PropertyDetailPage() {
                   </div>
                 </Card>
               </div>
-
-            <Card className="rounded-3xl border border-[#6B8E23]/10 bg-white p-8 shadow-sm">
-              <div className="space-y-6">
-                <div>
-                  <p className="text-sm text-[#5F5F5F]/70">Reserva esta propiedad</p>
-                  <h2 className="text-2xl font-semibold text-[#5F5F5F]">
-                    Preparate para tu estancia
-                  </h2>
-                </div>
-
-                <div className="space-y-3 border-t border-[#6B8E23]/10 pt-4">
-                  <h3 className="text-sm font-semibold text-[#5F5F5F]/70">Características</h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    {hasValue(propiedad.capacidad) && (
-                      <div className="flex items-center gap-2 rounded-lg bg-[#F2E8CF] p-3">
-                        <Users className="h-4 w-4 text-[#6B8E23]" />
-                        <div>
-                          <p className="text-xs text-[#5F5F5F]/70">Capacidad</p>
-                          <p className="font-semibold text-[#5F5F5F]">{propiedad.capacidad}</p>
-                        </div>
-                      </div>
-                    )}
-                    {hasValue(propiedad.numero_habitaciones) && (
-                      <div className="flex items-center gap-2 rounded-lg bg-[#F2E8CF] p-3">
-                        <Bed className="h-4 w-4 text-[#6B8E23]" />
-                        <div>
-                          <p className="text-xs text-[#5F5F5F]/70">Habitaciones</p>
-                          <p className="font-semibold text-[#5F5F5F]">{propiedad.numero_habitaciones}</p>
-                        </div>
-                      </div>
-                    )}
-                    {hasValue(propiedad.numero_banos) && (
-                      <div className="flex items-center gap-2 rounded-lg bg-[#F2E8CF] p-3">
-                        <Bath className="h-4 w-4 text-[#6B8E23]" />
-                        <div>
-                          <p className="text-xs text-[#5F5F5F]/70">Baños</p>
-                          <p className="font-semibold text-[#5F5F5F]">{propiedad.numero_banos}</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-4 border-t border-[#6B8E23]/10 pt-4">
-                  <div>
-                    <p className="text-sm text-[#5F5F5F]/70">Ubicacion</p>
-                    <p className="text-base font-medium text-[#5F5F5F]">{location}</p>
-                  </div>
-                  <PropertyLocationMap
-                    latitud={propiedad.latitud}
-                    longitud={propiedad.longitud}
-                    className="min-h-56"
-                  />
-                  <div>
-                    <p className="text-sm text-[#5F5F5F]/70">Precio por noche</p>
-                    <p className="text-xl font-semibold text-[#6B8E23]">{formatPrice(price)}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-3 border-t border-[#6B8E23]/10 pt-4">
-                  <Button
-                    onClick={() => navigate(`/inquilino/reserva/${id}`)}
-                    className="h-12 w-full rounded-xl bg-[#6B8E23] text-white shadow-none hover:bg-[#5a7a1e]"
-                  >
-                    Reservar ahora
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    onClick={() => navigate('/inquilino/perfil')}
-                    className="h-12 w-full rounded-xl border-2 border-[#6B8E23] text-[#6B8E23] shadow-none hover:bg-[#F2E8CF]"
-                  >
-                    Ir a mi perfil
-                  </Button>
-                </div>
-
-                <div className="rounded-xl bg-[#F2E8CF]/50 p-4 text-xs text-[#5F5F5F]/80">
-                  <p className="font-semibold text-[#5F5F5F] mb-1">Información importante</p>
-                  <p>Tu reserva será registrada y podrás consultarla desde tu perfil. Se confirmará conforme a disponibilidad.</p>
-                </div>
-              </div>
-            </Card>
+            </div>
           </div>
         </div>
-      </div>
       </main>
     </>
   )

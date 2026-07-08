@@ -63,6 +63,16 @@ export function ReservasArrendatario() {
   }, [navigate])
 
   const handleEstadoChange = async (idReserva, nuevoEstado) => {
+    const parsedIdReserva = Number(idReserva)
+    if (!Number.isInteger(parsedIdReserva) || parsedIdReserva <= 0) {
+      setMessage({
+        type: 'error',
+        title: 'Reserva invalida',
+        text: 'No se puede actualizar esta reserva porque no tiene id_reserva valido.',
+      })
+      return
+    }
+
     const storedUser = sessionStorage.getItem('user') || localStorage.getItem('user')
     if (!storedUser) return
 
@@ -89,16 +99,16 @@ export function ReservasArrendatario() {
       return
     }
 
-    setProcessingId(idReserva)
+    setProcessingId(parsedIdReserva)
     setMessage({ type: '', title: '', text: '' })
 
     try {
-      await landlordBookingService.cambiarEstadoReserva(idReserva, idArrendatario, nuevoEstado)
+      await landlordBookingService.cambiarEstadoReserva(parsedIdReserva, idArrendatario, nuevoEstado)
       
       // Actualizar lista local
       setReservas(prev =>
         prev.map(r =>
-          r.id_reserva === idReserva ? { ...r, estado: nuevoEstado } : r
+          Number(r.id_reserva) === parsedIdReserva ? { ...r, estado: nuevoEstado } : r
         )
       )
 
@@ -194,6 +204,8 @@ export function ReservasArrendatario() {
         ) : (
           <div className="space-y-6">
             {reservas.map(reserva => {
+              const parsedReservaId = Number(reserva.id_reserva)
+              const hasValidReservationId = Number.isInteger(parsedReservaId) && parsedReservaId > 0
               const nights = calculateNights(reserva.fecha_inicio, reserva.fecha_fin)
               const styles = ESTADO_STYLES[reserva.estado] || ESTADO_STYLES.pendiente
               const inquilino = reserva.inquilino || {}
@@ -207,7 +219,7 @@ export function ReservasArrendatario() {
 
               return (
                 <Card
-                  key={reserva.id_reserva}
+                  key={hasValidReservationId ? parsedReservaId : `${reserva.id_propiedad || 'prop'}-${reserva.id_inquilino || 'inq'}-${reserva.fecha_inicio || 'fecha'}-${reserva.fecha_fin || 'fin'}`}
                   className={`overflow-hidden rounded-3xl border border-[#6B8E23]/10 shadow-sm ${styles.bg}`}
                 >
                   <div className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-3">
@@ -285,6 +297,12 @@ export function ReservasArrendatario() {
                           {reserva.estado}
                         </span>
                       </div>
+
+                      {!hasValidReservationId && (
+                        <div className="rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">
+                          Esta reserva no tiene id_reserva valido. No se pueden ejecutar acciones.
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -293,16 +311,16 @@ export function ReservasArrendatario() {
                     {reserva.estado === 'pendiente' && (
                       <>
                         <Button
-                          onClick={() => handleEstadoChange(reserva.id_reserva, 'confirmada')}
-                          disabled={processingId === reserva.id_reserva}
+                          onClick={() => handleEstadoChange(parsedReservaId, 'confirmada')}
+                          disabled={!hasValidReservationId || processingId === parsedReservaId}
                           className="flex items-center gap-2 rounded-xl bg-green-600 text-white shadow-none hover:bg-green-700 text-sm"
                         >
                           <CheckCircle className="h-4 w-4" />
-                          {processingId === reserva.id_reserva ? 'Procesando...' : 'Confirmar'}
+                          {processingId === parsedReservaId ? 'Procesando...' : 'Confirmar'}
                         </Button>
                         <Button
-                          onClick={() => handleEstadoChange(reserva.id_reserva, 'rechazada')}
-                          disabled={processingId === reserva.id_reserva}
+                          onClick={() => handleEstadoChange(parsedReservaId, 'rechazada')}
+                          disabled={!hasValidReservationId || processingId === parsedReservaId}
                           className="flex items-center gap-2 rounded-xl bg-red-600 text-white shadow-none hover:bg-red-700 text-sm"
                         >
                           <XCircle className="h-4 w-4" />
@@ -313,12 +331,12 @@ export function ReservasArrendatario() {
 
                     {reserva.estado === 'confirmada' && (
                       <Button
-                        onClick={() => handleEstadoChange(reserva.id_reserva, 'cancelada')}
-                        disabled={processingId === reserva.id_reserva}
+                        onClick={() => handleEstadoChange(parsedReservaId, 'cancelada')}
+                        disabled={!hasValidReservationId || processingId === parsedReservaId}
                         className="flex items-center gap-2 rounded-xl bg-orange-600 text-white shadow-none hover:bg-orange-700 text-sm"
                       >
                         <AlertCircle className="h-4 w-4" />
-                        {processingId === reserva.id_reserva ? 'Procesando...' : 'Cancelar'}
+                        {processingId === parsedReservaId ? 'Procesando...' : 'Cancelar'}
                       </Button>
                     )}
 

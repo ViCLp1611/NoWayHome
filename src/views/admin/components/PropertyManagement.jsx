@@ -54,6 +54,15 @@ const normalizeStatusValue = (status) => {
 
   return trimmedStatus;
 };
+
+const getPropertyTitle = (description) => {
+  const lines = String(description || '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  return lines[0] || 'Propiedad sin título';
+};
 // Componente principal de la gestión de propiedades, que incluye funcionalidades para listar, buscar, filtrar, editar y eliminar propiedades.
 export function PropertyManagement({ onNavigate }) {
   const [loading, setLoading] = useState(true);
@@ -403,14 +412,20 @@ export function PropertyManagement({ onNavigate }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredProperties.map((property) => (
+                {filteredProperties.map((property) => {
+                  const propertyTitle = getPropertyTitle(property.descripcion);
+                  const propertyLocation = property.direccion || 'Ubicación no disponible';
+
+                  return (
                   <TableRow key={property.id} className="hover:bg-[#F2E8CF]/20">
                     <TableCell>
-                      <div>
-                        <p className="text-[#5F5F5F]">{property.descripcion}</p>
-                        <p className="text-sm text-[#5F5F5F]/60 flex items-center gap-1">
+                      <div className="max-w-[340px]">
+                        <p className="truncate font-medium text-[#5F5F5F]" title={propertyTitle}>
+                          {propertyTitle}
+                        </p>
+                        <p className="mt-1 flex items-center gap-1 text-sm text-[#5F5F5F]/60">
                           <MapPin className="w-3 h-3" />
-                          {property.direccion}
+                          <span className="truncate" title={propertyLocation}>{propertyLocation}</span>
                         </p>
                       </div>
                     </TableCell>
@@ -427,7 +442,7 @@ export function PropertyManagement({ onNavigate }) {
                     <TableCell className="text-[#5F5F5F]">{property.resena}</TableCell>
                     <TableCell>
                       <ActionMenu
-                        label={`Acciones de ${property.descripcion}`}
+                        label={`Acciones de ${propertyTitle}`}
                         actions={[
                           {
                             label: 'Editar',
@@ -443,7 +458,8 @@ export function PropertyManagement({ onNavigate }) {
                       />
                     </TableCell>
                   </TableRow>
-                ))}
+                  )
+                })}
               </TableBody>
             </Table>
           </div>
