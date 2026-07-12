@@ -1,3 +1,4 @@
+import { supabase } from '../config/supabase.js'
 import {
   getLandlordReservations,
   updateReservationStatus,
@@ -34,7 +35,66 @@ export async function listLandlordReservationsHandler(req, res) {
 export async function updateReservationStatusHandler(req, res) {
   try {
     const { idReserva } = req.params
-    const { id_arrendatario, estado } = req.body // estado debe ser 'CONFIRMADA' o 'RECHAZADA' o 'CANCELADA'
+    const { id_arrendatario } = req.body
+    const estado = String(req.body.estado || '').toUpperCase() // Normalizamos el estado a mayúsculas.
+    // Solución de robustez: Acepta el motivo tanto si llega como 'motivo_rechazo' o como 'motivo'.
+    // Esto soluciona el problema si el frontend envía el campo con un nombre incorrecto.
+    const motivo_rechazo = req.body.motivo_rechazo || req.body.motivo
+
+    // Solución para permitir cancelación por parte del arrendatario con motivo.
+    // Esto evita el error "Estado no válido" del servicio para el caso 'CANCELADA'.
+    if (estado === 'CANCELADA') {
+      // Ahora la comparación es segura.
+      if (!id_arrendatario) {
+        return sendError(res, new ValidationError('Se requiere el ID del arrendatario.'))
+      }
+      if (!motivo_rechazo || !motivo_rechazo.trim()) {
+        return sendError(
+          res,
+          new ValidationError('Se requiere un motivo para cancelar la reserva.')
+        )
+      }
+
+      // Verificación de propiedad de la reserva
+      const { data: reserva, error: findError } = await supabase
+        .from('reserva')
+        .select('id_reserva, estado, propiedad (id_arrendatario)')
+        .eq('id_reserva', idReserva)
+        .single()
+
+      if (findError) throw new Error(`Error al verificar la reserva: ${findError.message}`)
+      if (!reserva) return sendError(res, new ValidationError('Reserva no encontrada.'))
+
+      if (reserva.propiedad.id_arrendatario !== Number(id_arrendatario)) {
+        return res
+          .status(403)
+          .json({ ok: false, message: 'No tienes permiso para modificar esta reserva.' })
+      }
+
+      // Solo se pueden cancelar reservas que ya estaban confirmadas.
+      const estadoActual = String(reserva.estado || '').toUpperCase()
+      if (estadoActual !== 'CONFIRMADA') {
+        return sendError(
+          res,
+          new ValidationError(`No se puede cancelar una reserva en estado '${reserva.estado}'.`)
+        )
+      }
+
+      const { data: updatedReserva, error: updateError } = await supabase
+        .from('reserva')
+        .update({ estado: 'CANCELADA', motivo_rechazo: motivo_rechazo.trim() })
+        .eq('id_reserva', idReserva)
+        .select()
+        .single()
+
+      if (updateError) throw updateError
+
+      return res.json({
+        ok: true,
+        message: `Estado de reserva actualizado a ${estado} correctamente`,
+        reserva: updatedReserva,
+      })
+    }
 
     // Delegamos toda la lógica de validación, permisos y actualización al servicio.
     // El servicio ya valida el ID, el estado, la transición y la propiedad del arrendatario.

@@ -174,7 +174,10 @@ export function ReservasArrendatario() {
     setRejectReason('')
   }
 
-  const handleEstadoChange = async (idReserva, nuevoEstado) => {
+  // Se extrae la URL de la API para reutilizarla.
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+
+  const handleEstadoChange = async (idReserva, nuevoEstado, motivo = '') => {
     const parsedIdReserva = Number(idReserva)
     if (!Number.isInteger(parsedIdReserva) || parsedIdReserva <= 0) {
       setMessage({
@@ -215,11 +218,39 @@ export function ReservasArrendatario() {
     setMessage({ type: '', title: '', text: '' })
 
     try {
-      await landlordBookingService.cambiarEstadoReserva(
-        parsedIdReserva,
-        idArrendatario,
-        nuevoEstado
-      )
+      // SOLUCIÓN: Para el caso de 'cancelada', se usa un fetch directo para asegurar que el 'motivo' se envíe correctamente.
+      // Esto evita problemas si la función del servicio no está preparada para manejar el motivo.
+      // Los otros estados (confirmada, rechazada) siguen usando la lógica original para no romper nada.
+      if (String(nuevoEstado).toLowerCase() === 'cancelada') {
+        const response = await fetch(
+          `${API_URL}/api/arrendatario/reservas/${parsedIdReserva}/status`,
+          {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              // Aquí podrías necesitar agregar headers de autenticación si los usas
+            },
+            body: JSON.stringify({
+              id_arrendatario: idArrendatario,
+              estado: 'CANCELADA', // Se envía en mayúsculas como espera el backend
+              motivo_rechazo: motivo, // Se envía el motivo con la clave correcta
+            }),
+          }
+        )
+
+        const result = await response.json()
+        if (!response.ok) {
+          // Si el servidor responde con un error, lo lanzamos para que el bloque catch lo maneje.
+          throw new Error(result.message || 'Respuesta del servidor no fue exitosa.')
+        }
+      } else {
+        // Lógica original para otros cambios de estado.
+        await landlordBookingService.cambiarEstadoReserva(
+          parsedIdReserva,
+          idArrendatario,
+          nuevoEstado
+        )
+      }
 
       // Actualizar lista local
       setReservas(prev =>
@@ -259,7 +290,21 @@ export function ReservasArrendatario() {
   const confirmPendingAction = async () => {
     if (!pendingAction) return
 
-    const wasUpdated = await handleEstadoChange(pendingAction.idReserva, pendingAction.nuevoEstado)
+    // Validar que se provea un motivo si se está cancelando
+    if (pendingAction.nuevoEstado === 'cancelada' && !rejectReason.trim()) {
+      setMessage({
+        type: 'error',
+        title: 'Motivo requerido',
+        text: 'Debes proporcionar un motivo para cancelar la reserva.',
+      })
+      return
+    }
+
+    const wasUpdated = await handleEstadoChange(
+      pendingAction.idReserva,
+      pendingAction.nuevoEstado,
+      rejectReason
+    )
     if (wasUpdated) {
       setPendingAction(null)
       setRejectReason('')
@@ -319,17 +364,30 @@ export function ReservasArrendatario() {
     pendingAction?.nuevoEstado === 'confirmada' || pendingAction?.nuevoEstado === 'CONFIRMADA'
   const isRejectingAction =
     pendingAction?.nuevoEstado === 'rechazada' || pendingAction?.nuevoEstado === 'RECHAZADA'
-  const modalTitle = isConfirmingAction ? 'Confirmar reserva' : 'Rechazar reserva'
+  const isCancellingAction =
+    pendingAction?.nuevoEstado === 'cancelada' || pendingAction?.nuevoEstado === 'CANCELADA'
+
+  const modalTitle = isConfirmingAction
+    ? 'Confirmar reserva'
+    : isRejectingAction
+      ? 'Rechazar reserva'
+      : 'Cancelar Reserva'
   const modalMessage = isConfirmingAction
     ? '¿Deseas confirmar esta reserva? El inquilino podrá continuar con el proceso correspondiente.'
-    : '¿Deseas rechazar esta reserva? El inquilino no podrá continuar con esta solicitud.'
+    : isRejectingAction
+      ? '¿Deseas rechazar esta reserva? El inquilino no podrá continuar con esta solicitud.'
+      : 'Para cancelar una reserva confirmada, debes indicar el motivo. Esta acción no se puede deshacer.'
   const modalConfirmLabel = processingId
     ? isConfirmingAction
       ? 'Confirmando...'
-      : 'Rechazando...'
+      : isRejectingAction
+        ? 'Rechazando...'
+        : 'Cancelando...'
     : isConfirmingAction
       ? 'Sí, confirmar'
-      : 'Sí, rechazar'
+      : isRejectingAction
+        ? 'Sí, rechazar'
+        : 'Sí, cancelar reserva'
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] px-4 py-8">
@@ -641,7 +699,7 @@ export function ReservasArrendatario() {
 
                           {(estado === 'confirmada' || estadoActual === 'CONFIRMADA') && (
                             <Button
-                              onClick={() => handleEstadoChange(parsedReservaId, 'cancelada')}
+                              onClick={() => openActionModal(reserva, 'cancelada')}
                               disabled={!hasValidReservationId || processingId === parsedReservaId}
                               className="h-10 min-w-0 rounded-xl bg-[#A67C52] px-3 text-white shadow-none hover:bg-[#8f6844] xl:col-span-2"
                             >
@@ -680,10 +738,12 @@ export function ReservasArrendatario() {
               <p className="mt-2 text-sm leading-6 text-[#5F5F5F]/80">{modalMessage}</p>
             </div>
 
-            {isRejectingAction && (
+            {(isRejectingAction || isCancellingAction) && (
               <div className="mb-5">
                 <label htmlFor="reject-reason" className="text-sm font-medium text-[#5F5F5F]">
-                  Motivo del rechazo (opcional)
+                  {isCancellingAction
+                    ? 'Motivo de la cancelación (obligatorio)'
+                    : 'Motivo del rechazo (opcional)'}
                 </label>
                 <textarea
                   id="reject-reason"
@@ -692,7 +752,11 @@ export function ReservasArrendatario() {
                   disabled={Boolean(processingId)}
                   rows={4}
                   className="mt-2 w-full resize-none rounded-xl border border-[#A67C52]/25 bg-white px-3 py-2 text-sm text-[#5F5F5F] outline-none transition focus:border-[#6B8E23] focus:ring-2 focus:ring-[#6B8E23]/20 disabled:opacity-70"
-                  placeholder="Escribe un motivo breve si deseas conservarlo para seguimiento interno."
+                  placeholder={
+                    isCancellingAction
+                      ? 'Ej: El inquilino solicitó cancelar, hubo un imprevisto con la propiedad, etc.'
+                      : 'Escribe un motivo breve si deseas conservarlo para seguimiento interno.'
+                  }
                 />
               </div>
             )}
@@ -711,13 +775,11 @@ export function ReservasArrendatario() {
                 type="button"
                 onClick={confirmPendingAction}
                 disabled={Boolean(processingId)}
-                className={`h-10 rounded-xl px-4 text-white shadow-none ${
-                  isConfirmingAction
-                    ? 'bg-[#6B8E23] hover:bg-[#5a7a1e]'
-                    : 'bg-red-600 hover:bg-red-700'
-                }`}
+                className={`h-10 rounded-xl px-4 text-white shadow-none ${isConfirmingAction ? 'bg-[#6B8E23] hover:bg-[#5a7a1e]' : isRejectingAction ? 'bg-red-600 hover:bg-red-700' : 'bg-[#A67C52] hover:bg-[#8f6844]'}`}
               >
-                {isConfirmingAction ? (
+                {isCancellingAction ? (
+                  <AlertCircle className="h-4 w-4" />
+                ) : isConfirmingAction ? (
                   <CheckCircle className="h-4 w-4" />
                 ) : (
                   <XCircle className="h-4 w-4" />
