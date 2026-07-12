@@ -655,47 +655,6 @@ export function ReservasArrendatario() {
                       )}
                     </div>
                   </div>
-
-                  {/* Botones de acción adicionales de la cabecera HEAD */}
-                  <div className="border-t border-[#6B8E23]/10 px-6 py-4 flex flex-wrap gap-2">
-                    {estadoActual === 'PENDIENTE' && (
-                      <>
-                        <Button
-                          onClick={() => handleEstadoChange(parsedReservaId, 'CONFIRMADA')}
-                          disabled={!hasValidReservationId || processingId === parsedReservaId}
-                          className="flex items-center gap-2 rounded-xl bg-green-600 text-white shadow-none hover:bg-green-700 text-sm"
-                        >
-                          <CheckCircle className="h-4 w-4" />
-                          {processingId === parsedReservaId ? 'Procesando...' : 'Confirmar'}
-                        </Button>
-                        <Button
-                          onClick={() => handleEstadoChange(parsedReservaId, 'RECHAZADA')}
-                          disabled={!hasValidReservationId || processingId === parsedReservaId}
-                          className="flex items-center gap-2 rounded-xl bg-red-600 text-white shadow-none hover:bg-red-700 text-sm"
-                        >
-                          <XCircle className="h-4 w-4" />
-                          Rechazar
-                        </Button>
-                      </>
-                    )}
-
-                    {estadoActual === 'CONFIRMADA' && (
-                      <Button
-                        onClick={() => handleEstadoChange(parsedReservaId, 'RECHAZADA')}
-                        disabled={!hasValidReservationId || processingId === parsedReservaId}
-                        className="flex items-center gap-2 rounded-xl bg-orange-600 text-white shadow-none hover:bg-orange-700 text-sm"
-                      >
-                        <AlertCircle className="h-4 w-4" />
-                        {processingId === parsedReservaId ? 'Procesando...' : 'Cancelar Reserva'}
-                      </Button>
-                    )}
-
-                    {estadoActual === 'RECHAZADA' && (
-                      <div className="text-xs text-[#5F5F5F]/60 italic">
-                        Esta reserva no puede modificarse
-                      </div>
-                    )}
-                  </div>
                 </Card>
               )
             })}
