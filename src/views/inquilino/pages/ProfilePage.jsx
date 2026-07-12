@@ -41,10 +41,16 @@ export function ProfilePage() {
       const result = await inquilinoController.cargarPerfilCompleto(userId)
       if (result.success) {
         setUserData({ ...parsedUser, ...result.data.perfil })
-        const normalizedReservas = (result.data.reservas || []).map(reserva => {
-          const reservaId =
+
+        // Filtra las reservas que el inquilino ha marcado como ocultas.
+        const reservasVisibles = (result.data.reservas || []).filter(
+          reserva => !reserva.oculto_para_inquilino
+        )
+        const normalizedReservas = reservasVisibles.map(reserva => {
+          // Genera un ID único para la navegación, priorizando el id_reserva numérico.
+          // Si no existe, usa la clave compuesta como fallback.
+          const navigationId =
             reserva.id_reserva ||
-            reserva.id ||
             (reserva.id_propiedad &&
             reserva.id_inquilino &&
             (reserva.fecha_entrada || reserva.fecha_inicio)
@@ -53,8 +59,8 @@ export function ProfilePage() {
 
           return {
             ...reserva,
-            id: reservaId,
-            id_reserva: reservaId,
+            // Usamos una propiedad 'id_navegacion' para no sobreescribir el id_reserva original.
+            id_navegacion: navigationId,
             fecha_entrada: reserva.fecha_entrada || reserva.fecha_inicio,
             fecha_salida: reserva.fecha_salida || reserva.fecha_fin,
             estado: reserva.estado_reserva || reserva.estado,
@@ -316,9 +322,8 @@ export function ProfilePage() {
                   return (
                     <Card
                       key={
-                        booking.id_reserva ||
-                        booking.id ||
-                        `${booking.id_propiedad || 'prop'}-${booking.id_inquilino || 'inqu'}-${getBookingStartDate(booking) || 'fecha'}`
+                        booking.id_navegacion ||
+                        `${booking.id_propiedad}-${booking.id_inquilino}-${getBookingStartDate(booking)}`
                       }
                       className="p-6 bg-[#F2E8CF] border-none shadow-none rounded-2xl"
                     >
@@ -359,14 +364,14 @@ export function ProfilePage() {
                             type="button"
                             variant="outline"
                             onClick={() => {
-                              const reservaId = booking.id_reserva ?? booking.id
+                              const reservaId = booking.id_navegacion
                               if (reservaId) {
                                 navigate(
                                   `/inquilino/reserva-detalle/${encodeURIComponent(reservaId)}`
                                 )
                               }
                             }}
-                            disabled={!(booking.id_reserva || booking.id)}
+                            disabled={!booking.id_navegacion}
                             className="border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#6B8E23] hover:text-white shadow-none rounded-xl transition-all"
                           >
                             Ver Detalles

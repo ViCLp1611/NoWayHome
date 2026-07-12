@@ -390,9 +390,8 @@ export async function getTenantReservations(idInquilino) {
 export async function getTenantReservationById(idReserva) {
   const rawReservationId = decodeURIComponent(String(idReserva || '').trim())
   const parsedReservationId = Number(rawReservationId)
-  const reservationId = Number.isInteger(parsedReservationId) && parsedReservationId > 0
-    ? parsedReservationId
-    : null
+  const reservationId =
+    Number.isInteger(parsedReservationId) && parsedReservationId > 0 ? parsedReservationId : null
   const baseSelect =
     '*, propiedad:propiedad(id_propiedad,descripcion,titulo,ubicacion,precio_noche,precio,direccion,estado,resena,latitud,longitud,capacidad,numero_habitaciones,numero_banos)'
 
@@ -400,7 +399,11 @@ export async function getTenantReservationById(idReserva) {
   let error = null
 
   if (reservationId) {
-    let query = supabase.from('reserva').select(baseSelect).eq('id_reserva', reservationId).maybeSingle()
+    let query = supabase
+      .from('reserva')
+      .select(baseSelect)
+      .eq('id_reserva', reservationId)
+      .maybeSingle()
     ;({ data, error } = await query)
 
     if (error || !data) {
@@ -450,6 +453,31 @@ export async function getTenantReservationById(idReserva) {
     throw new ValidationError('La reserva no existe.')
   }
 
+  const propertyId = data.propiedad?.id_propiedad
+  if (propertyId && data.propiedad) {
+    const { data: images, error: imagesError } = await supabase
+      .from('propiedad_imagen')
+      .select('id_imagen, url, orden, es_principal')
+      .eq('id_propiedad', propertyId)
+      .order('orden', { ascending: true })
+
+    if (imagesError) {
+      console.error(
+        `Error al obtener imágenes para la propiedad ${propertyId}:`,
+        imagesError.message
+      )
+      data.propiedad.imagenes = []
+    } else {
+      data.propiedad.imagenes = images || []
+    }
+
+    if (!data.propiedad.imagen_principal) {
+      const mainImage = (images || []).find(img => img.es_principal) || (images || [])[0] || null
+      if (mainImage) {
+        data.propiedad.imagen_principal = mainImage.url
+      }
+    }
+  }
   return withReservationPropertyCapacity(data)
 }
 

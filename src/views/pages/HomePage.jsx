@@ -1,13 +1,79 @@
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, MapPin, Calendar, Users } from 'lucide-react'
 import { Button } from '@/app/components/ui/button'
 import { Input } from '@/app/components/ui/input'
 import { PropertyCard } from '@/views/components/PropertyCard'
-import { mockFeaturedProperties } from '@/models/propertyModel'
+import { PLACEHOLDER_PROPERTY_IMAGE } from '@/views/inquilino/constants.js'
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
 export function HomePage() {
   const navigate = useNavigate()
-  const featuredProperties = mockFeaturedProperties.map(prop => prop.toJSON())
+  const [properties, setProperties] = useState([])
+  const [destino, setDestino] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    const fetchProperties = async () => {
+      setIsLoading(true)
+      setError(null)
+      try {
+        // Se corrige el puerto de la API a 3001 para que coincida con la configuración del backend.
+        // El error 'net::ERR_CONNECTION_REFUSED' indica que el servidor no está escuchando en el puerto 4000.
+        // Otros servicios del proyecto usan el puerto 3001 como predeterminado.
+        const response = await fetch(`${API_URL}/api/inquilino/properties`)
+        if (!response.ok) {
+          throw new Error(
+            `No se pudieron cargar las propiedades. Estado del servidor: ${response.status}`
+          )
+        }
+        const result = await response.json()
+
+        // Se ajusta la extracción de datos para que coincida con la estructura de respuesta de la API.
+        // Otros componentes como ExplorarPage y ProfilePage esperan un objeto { success: true, data: [...] }.
+        // Si la API devuelve { "data": [...] } o { "properties": [...] }, esta lógica lo manejará.
+        let propertiesData = []
+        if (result && result.success && Array.isArray(result.data)) {
+          propertiesData = result.data
+        } else if (result && Array.isArray(result.properties)) {
+          propertiesData = result.properties
+        } else if (Array.isArray(result)) {
+          propertiesData = result
+        }
+
+        const getPropertyTitle = description => {
+          const lines = String(description || '')
+            .split('\n')
+            .map(line => line.trim())
+            .filter(Boolean)
+          return lines[0] || 'Propiedad sin título'
+        }
+
+        const mappedProperties = propertiesData.map(prop => ({
+          ...prop,
+          id: prop.id_propiedad,
+          title: getPropertyTitle(prop.descripcion),
+          location: prop.direccion,
+          price: prop.precio,
+          image: prop.imagen_principal || PLACEHOLDER_PROPERTY_IMAGE,
+        }))
+
+        setProperties(mappedProperties)
+      } catch (err) {
+        setError(err.message)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchProperties()
+  }, [])
+
+  const handleSearch = () => {
+    navigate('/inquilino/explorar', { state: { searchTerm: destino } })
+  }
 
   return (
     <div className="min-h-screen">
@@ -39,6 +105,8 @@ export function HomePage() {
                   <label className="text-xs text-[#5F5F5F]/70 block mb-1">Destino</label>
                   <Input
                     placeholder="¿Dónde vas?"
+                    value={destino}
+                    onChange={e => setDestino(e.target.value)}
                     className="border-none p-0 h-auto focus-visible:ring-0 text-[#5F5F5F] placeholder:text-[#5F5F5F]/40"
                   />
                 </div>
@@ -66,7 +134,10 @@ export function HomePage() {
                 </div>
               </div>
 
-              <Button className="bg-[#6B8E23] text-white hover:bg-[#5a7a1e] h-12 shadow-none rounded-xl">
+              <Button
+                onClick={handleSearch}
+                className="bg-[#6B8E23] text-white hover:bg-[#5a7a1e] h-12 shadow-none rounded-xl"
+              >
                 <Search className="h-5 w-5 mr-2" />
                 Buscar
               </Button>
@@ -80,26 +151,20 @@ export function HomePage() {
         <div className="container mx-auto px-4">
           <div className="mb-10">
             <h2 className="font-poppins font-semibold text-3xl md:text-4xl text-[#5F5F5F] mb-3">
-              Propiedades Destacadas
+              Propiedades Disponibles
             </h2>
             <p className="text-[#5F5F5F]/70 text-lg">Las mejores opciones seleccionadas para ti</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-            {featuredProperties.map(property => (
-              <PropertyCard key={property.id} {...property} />
-            ))}
-          </div>
-
-          <div className="text-center mt-12">
-            <Button
-              variant="outline"
-              onClick={() => navigate('/inquilino/explorar')}
-              className="border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#6B8E23] hover:text-white transition-all shadow-none rounded-xl px-8 h-12"
-            >
-              Ver más propiedades
-            </Button>
-          </div>
+          {isLoading && <p className="text-center text-[#5F5F5F]">Cargando propiedades...</p>}
+          {error && <p className="text-center text-red-600">Error: {error}</p>}
+          {!isLoading && !error && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+              {properties.map(property => (
+                <PropertyCard key={property.id} {...property} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

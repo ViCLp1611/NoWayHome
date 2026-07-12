@@ -19,31 +19,27 @@ function parsePositiveInteger(value, fieldName) {
 }
 
 function validateStatus(status) {
-  const validStatuses = ['confirmada', 'rechazada', 'cancelada']
+  const validStatuses = ['CONFIRMADA', 'RECHAZADA']
 
-  if (!validStatuses.includes(status)) {
+  if (!validStatuses.includes(String(status || '').toUpperCase())) {
     throw new ValidationError(`Estado no válido. Debe ser: ${validStatuses.join(', ')}.`)
   }
 
-  return status
+  return String(status).toUpperCase()
 }
 
 function validateTransition(currentStatus, nextStatus) {
-  const normalizedCurrent = String(currentStatus || '').toLowerCase()
-  const normalizedNext = String(nextStatus || '').toLowerCase()
+  const normalizedCurrent = String(currentStatus || 'PENDIENTE').toUpperCase()
+  const normalizedNext = String(nextStatus || '').toUpperCase()
 
   if (normalizedCurrent === normalizedNext) {
     throw new ValidationError('La reserva ya tiene ese estado.')
   }
 
   if (
-    normalizedCurrent === 'pendiente' &&
-    (normalizedNext === 'confirmada' || normalizedNext === 'rechazada')
+    normalizedCurrent === 'PENDIENTE' &&
+    (normalizedNext === 'CONFIRMADA' || normalizedNext === 'RECHAZADA')
   ) {
-    return
-  }
-
-  if (normalizedCurrent === 'confirmada' && normalizedNext === 'cancelada') {
     return
   }
 
@@ -223,7 +219,7 @@ export async function getLandlordReservations(idArrendatario) {
     const idReserva = reserva.id_reserva ?? null
     const imagenPrincipal = principalImageByProperty[reserva.id_propiedad] || null
     const total = calculateTotalFallback(reserva, propiedad)
-    const estadoNormalizado = String(reserva.estado || 'pendiente').toLowerCase()
+    const estadoNormalizado = String(reserva.estado || 'PENDIENTE').toUpperCase()
 
     return {
       id: idReserva,
@@ -308,7 +304,54 @@ export async function updateReservationStatus(idReserva, idArrendatario, nuevoEs
     throw new Error('No se pudo actualizar la reserva.')
   }
 
-  return updatedReserva
+  // --- ENRIQUECER LA RESERVA ACTUALIZADA ---
+  // Para asegurar que el frontend reciba un objeto con todos los datos necesarios (propiedad, inquilino, etc.)
+  // y no solo los datos planos de la tabla 'reserva'.
+
+  const propertyId = updatedReserva.id_propiedad
+  const tenantId = updatedReserva.id_inquilino
+
+  const [propertyResult, imagesResult, tenantResult] = await Promise.all([
+    supabase.from('propiedad').select('*').eq('id_propiedad', propertyId).maybeSingle(),
+    supabase
+      .from('propiedad_imagen')
+      .select('id_propiedad,url,orden,es_principal')
+      .eq('id_propiedad', propertyId),
+    tenantId
+      ? supabase
+          .from('inquilino')
+          .select('id_inquilino,nombre,correo,telefono')
+          .eq('id_inquilino', tenantId)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ])
+
+  // No se interrumpe la ejecución si falla el enriquecimiento, solo se registra en consola.
+  if (propertyResult.error) {
+    console.error('Error al enriquecer la reserva (propiedad):', propertyResult.error.message)
+  }
+  if (imagesResult.error) {
+    console.error('Error al enriquecer la reserva (imágenes):', imagesResult.error.message)
+  }
+  if (tenantResult.error) {
+    console.error('Error al enriquecer la reserva (inquilino):', tenantResult.error.message)
+  }
+
+  const propiedad = propertyResult.data || null
+  const inquilino = tenantResult.data || null
+  const principalImageByProperty = getPrincipalImageByProperty(imagesResult.data)
+  const imagenPrincipal = principalImageByProperty[propertyId] || null
+
+  return {
+    ...updatedReserva,
+    id: updatedReserva.id_reserva,
+    titulo_propiedad: propiedad?.titulo || propiedad?.descripcion || 'Propiedad',
+    imagen_principal: imagenPrincipal,
+    nombre_inquilino: inquilino?.nombre || null,
+    total: calculateTotalFallback(updatedReserva, propiedad),
+    propiedad: propiedad ? { ...propiedad, imagen_principal: imagenPrincipal } : null,
+    inquilino,
+  }
 }
 
 export { ValidationError }

@@ -1,18 +1,48 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, CheckCircle, XCircle, AlertCircle, Calendar, DollarSign, Mail, Phone } from 'lucide-react'
+import {
+  ArrowLeft,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Calendar,
+  DollarSign,
+  Mail,
+  Phone,
+} from 'lucide-react'
 import { Button } from '@/app/components/ui/button'
 import { Card } from '@/app/components/ui/card'
 import { AlertMessage } from '@/app/components/ui/AlertMessage'
 import { EmptyState } from '@/app/components/ui/EmptyState'
 import { LoadingState } from '@/app/components/ui/LoadingState'
 import { landlordBookingService } from '@/services/landlordBookingService'
+import { formatDateLong } from '@/utils/dateUtils'
 
 const ESTADO_STYLES = {
-  pendiente: { bg: 'bg-amber-50', text: 'text-amber-800', badge: 'bg-amber-200 text-amber-900' },
-  confirmada: { bg: 'bg-green-50', text: 'text-green-800', badge: 'bg-green-200 text-green-900' },
-  rechazada: { bg: 'bg-gray-50', text: 'text-gray-800', badge: 'bg-gray-200 text-gray-900' },
-  cancelada: { bg: 'bg-orange-50', text: 'text-orange-800', badge: 'bg-orange-200 text-orange-900' },
+  PENDIENTE: {
+    label: 'Pendiente',
+    bg: 'bg-amber-50',
+    text: 'text-amber-800',
+    badge: 'bg-amber-200 text-amber-900',
+  },
+  CONFIRMADA: {
+    label: 'Confirmada',
+    bg: 'bg-green-50',
+    text: 'text-green-800',
+    badge: 'bg-green-200 text-green-900',
+  },
+  RECHAZADA: {
+    label: 'Rechazada',
+    bg: 'bg-gray-50',
+    text: 'text-gray-800',
+    badge: 'bg-gray-200 text-gray-900',
+  },
+  default: {
+    label: 'Desconocido',
+    bg: 'bg-gray-50',
+    text: 'text-gray-800',
+    badge: 'bg-gray-200 text-gray-900',
+  },
 }
 
 export function ReservasArrendatario() {
@@ -103,8 +133,12 @@ export function ReservasArrendatario() {
     setMessage({ type: '', title: '', text: '' })
 
     try {
-      await landlordBookingService.cambiarEstadoReserva(parsedIdReserva, idArrendatario, nuevoEstado)
-      
+      await landlordBookingService.cambiarEstadoReserva(
+        parsedIdReserva,
+        idArrendatario,
+        nuevoEstado
+      )
+
       // Actualizar lista local
       setReservas(prev =>
         prev.map(r =>
@@ -113,9 +147,8 @@ export function ReservasArrendatario() {
       )
 
       const mensajes = {
-        confirmada: 'Reserva confirmada correctamente.',
-        rechazada: 'Reserva rechazada correctamente.',
-        cancelada: 'Reserva cancelada correctamente.',
+        CONFIRMADA: 'Reserva confirmada correctamente.',
+        RECHAZADA: 'Reserva rechazada o cancelada correctamente.',
       }
 
       setMessage({
@@ -136,14 +169,6 @@ export function ReservasArrendatario() {
 
   const formatPrice = price => {
     return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(price || 0)
-  }
-
-  const formatDate = dateString => {
-    return new Date(dateString).toLocaleDateString('es-MX', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    })
   }
 
   const calculateNights = (inicio, fin) => {
@@ -204,22 +229,51 @@ export function ReservasArrendatario() {
         ) : (
           <div className="space-y-6">
             {reservas.map(reserva => {
+              // ACCIÓN OBLIGATORIA: Log para inspeccionar la data cruda de la reserva
+              console.log('Reserva raw:', reserva)
+
               const parsedReservaId = Number(reserva.id_reserva)
               const hasValidReservationId = Number.isInteger(parsedReservaId) && parsedReservaId > 0
               const nights = calculateNights(reserva.fecha_inicio, reserva.fecha_fin)
-              const styles = ESTADO_STYLES[reserva.estado] || ESTADO_STYLES.pendiente
-              const inquilino = reserva.inquilino || {}
-              const propiedad = reserva.propiedad || {}
-              const tituloPropiedad = reserva.titulo_propiedad || propiedad.titulo || propiedad.descripcion || 'Propiedad'
-              const imagenPrincipal = reserva.imagen_principal || propiedad.imagen_principal || null
-              const nombreInquilino = reserva.nombre_inquilino || inquilino.nombre || 'No disponible'
-              const correoInquilino = reserva.correo_inquilino || inquilino.correo || 'No disponible'
-              const telefonoInquilino = reserva.telefono_inquilino || inquilino.telefono || null
+
+              // PASO 2: Estandarización del Catálogo de Estados
+              // Normaliza y mapea estados obsoletos como 'cancelada' a 'RECHAZADA'.
+              let estadoActual = (reserva.estado || 'PENDIENTE').toUpperCase()
+              if (estadoActual === 'CANCELADA') {
+                estadoActual = 'RECHAZADA'
+              }
+              const styles = ESTADO_STYLES[estadoActual] || ESTADO_STYLES.default
+
+              // PASO 1: Formateo y Separación de Fechas
+              const fechaInicioFormateada = formatDateLong(reserva.fecha_inicio)
+              const fechaFinFormateada = formatDateLong(reserva.fecha_fin)
+              const displayFechaInicio =
+                fechaInicioFormateada === 'N/A' ? 'Fecha no disponible' : fechaInicioFormateada
+              const displayFechaFin =
+                fechaFinFormateada === 'N/A' ? 'Fecha no disponible' : fechaFinFormateada
+              // Acceso seguro a propiedades anidadas usando Optional Chaining (?.)
+              const tituloPropiedad =
+                reserva.propiedad?.titulo ||
+                reserva.propiedad?.nombre ||
+                reserva.titulo_propiedad ||
+                'Propiedad sin título'
+              const imagenPrincipal =
+                reserva.propiedad?.imagen_principal || reserva.imagen_principal || null
+              const nombreInquilino =
+                reserva.inquilino?.nombre || reserva.nombre_inquilino || 'Huésped no disponible'
+              const correoInquilino =
+                reserva.inquilino?.correo || reserva.correo_inquilino || 'No disponible'
+              const telefonoInquilino =
+                reserva.inquilino?.telefono || reserva.telefono_inquilino || null
               const totalReserva = reserva.total ?? reserva.pago ?? 0
 
               return (
                 <Card
-                  key={hasValidReservationId ? parsedReservaId : `${reserva.id_propiedad || 'prop'}-${reserva.id_inquilino || 'inq'}-${reserva.fecha_inicio || 'fecha'}-${reserva.fecha_fin || 'fin'}`}
+                  key={
+                    hasValidReservationId
+                      ? parsedReservaId
+                      : `${reserva.id_propiedad || 'prop'}-${reserva.id_inquilino || 'inq'}-${reserva.fecha_inicio || 'fecha'}-${reserva.fecha_fin || 'fin'}`
+                  }
                   className={`overflow-hidden rounded-3xl border border-[#6B8E23]/10 shadow-sm ${styles.bg}`}
                 >
                   <div className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-3">
@@ -274,7 +328,7 @@ export function ReservasArrendatario() {
                           Fechas
                         </div>
                         <p className="text-sm text-[#5F5F5F]">
-                          {formatDate(reserva.fecha_inicio)} - {formatDate(reserva.fecha_fin)}
+                          {displayFechaInicio} - {displayFechaFin}
                         </p>
                         <p className="text-xs text-[#5F5F5F]/60">{nights} noche(s)</p>
                       </div>
@@ -288,13 +342,17 @@ export function ReservasArrendatario() {
                           {formatPrice(totalReserva)}
                         </p>
                         {/* TODO: El contrato se generará después del flujo de pago. */}
-                        <p className="text-xs text-[#5F5F5F]/60">El contrato se generará después del flujo de pago.</p>
+                        <p className="text-xs text-[#5F5F5F]/60">
+                          El contrato se generará después del flujo de pago.
+                        </p>
                       </div>
 
                       <div>
                         <p className="text-xs font-medium text-[#5F5F5F]/70 mb-1">Estado</p>
-                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${styles.badge}`}>
-                          {reserva.estado}
+                        <span
+                          className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${styles.badge}`}
+                        >
+                          {styles.label}
                         </span>
                       </div>
 
@@ -308,10 +366,10 @@ export function ReservasArrendatario() {
 
                   {/* Botones de acción */}
                   <div className="border-t border-[#6B8E23]/10 px-6 py-4 flex flex-wrap gap-2">
-                    {reserva.estado === 'pendiente' && (
+                    {estadoActual === 'PENDIENTE' && (
                       <>
                         <Button
-                          onClick={() => handleEstadoChange(parsedReservaId, 'confirmada')}
+                          onClick={() => handleEstadoChange(parsedReservaId, 'CONFIRMADA')}
                           disabled={!hasValidReservationId || processingId === parsedReservaId}
                           className="flex items-center gap-2 rounded-xl bg-green-600 text-white shadow-none hover:bg-green-700 text-sm"
                         >
@@ -319,7 +377,7 @@ export function ReservasArrendatario() {
                           {processingId === parsedReservaId ? 'Procesando...' : 'Confirmar'}
                         </Button>
                         <Button
-                          onClick={() => handleEstadoChange(parsedReservaId, 'rechazada')}
+                          onClick={() => handleEstadoChange(parsedReservaId, 'RECHAZADA')}
                           disabled={!hasValidReservationId || processingId === parsedReservaId}
                           className="flex items-center gap-2 rounded-xl bg-red-600 text-white shadow-none hover:bg-red-700 text-sm"
                         >
@@ -329,18 +387,18 @@ export function ReservasArrendatario() {
                       </>
                     )}
 
-                    {reserva.estado === 'confirmada' && (
+                    {estadoActual === 'CONFIRMADA' && (
                       <Button
-                        onClick={() => handleEstadoChange(parsedReservaId, 'cancelada')}
+                        onClick={() => handleEstadoChange(parsedReservaId, 'RECHAZADA')}
                         disabled={!hasValidReservationId || processingId === parsedReservaId}
                         className="flex items-center gap-2 rounded-xl bg-orange-600 text-white shadow-none hover:bg-orange-700 text-sm"
                       >
                         <AlertCircle className="h-4 w-4" />
-                        {processingId === parsedReservaId ? 'Procesando...' : 'Cancelar'}
+                        {processingId === parsedReservaId ? 'Procesando...' : 'Cancelar Reserva'}
                       </Button>
                     )}
 
-                    {(reserva.estado === 'rechazada' || reserva.estado === 'cancelada') && (
+                    {estadoActual === 'RECHAZADA' && (
                       <div className="text-xs text-[#5F5F5F]/60 italic">
                         Esta reserva no puede modificarse
                       </div>

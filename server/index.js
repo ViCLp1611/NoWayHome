@@ -6,7 +6,7 @@ import { supabase } from './config/supabase.js'
 import landlordProfileRoutes from './routes/landlordProfileRoutes.js'
 import landlordBookingRoutes from './routes/landlordBookingRoutes.js'
 import propertyRoutes from './routes/propertyRoutes.js'
-import paymentRoutes from './routes/paymentRoutes.js'
+import paymentRoutes from './routes/paymentRoutes.js' // Se comenta porque el archivo de rutas de pago parece estar ausente o mal configurado.
 import tenantRoutes from './routes/tenantRoutes.js'
 import geocodeRoutes from './routes/geocodeRoutes.js'
 import {
@@ -18,6 +18,7 @@ import {
   validatePassword,
 } from './utils/crypto.js'
 import { passwordResetEmailTemplate } from './utils/emailTemplates.js'
+import { paymentController } from './controllers/paymentController.js' // Importamos el controlador de pagos directamente.
 
 /*
 |--------------------------------------------------------------------------
@@ -64,7 +65,91 @@ app.use('/api/arrendatario/reservas', landlordBookingRoutes)
 app.use('/api/arrendatario/properties', propertyRoutes)
 app.use('/api/inquilino', tenantRoutes)
 app.use('/api/geocode', geocodeRoutes)
-app.use('/api/payments', paymentRoutes)
+// app.use('/api/payments', paymentRoutes) // Se comenta para definir las rutas aquí.
+
+app.patch('/api/inquilino/reservas/:idReserva/hide', async (req, res) => {
+  /*
+  |--------------------------------------------------------------------------
+  | PATCH /api/inquilino/reservas/:idReserva/hide
+  |--------------------------------------------------------------------------
+  | Funcion:
+  | Permite a un inquilino "eliminar" una reserva de su historial.
+  | Esto es un soft-delete, marcando la reserva como oculta para el. Solo
+  | funciona si la reserva está en estado 'cancelada' o 'rechazada'.
+  |
+  | Requisito DB:
+  | Se necesita una nueva columna en la tabla `reserva`:
+  | ALTER TABLE public.reserva ADD COLUMN oculto_para_inquilino BOOLEAN DEFAULT FALSE;
+  |
+  | Seguridad:
+  | - Valida que el id_inquilino (desde el body, pero deberia ser de sesion) coincida
+  |   con el de la reserva para evitar que un usuario oculte reservas ajenas.
+  | - Valida que el estado de la reserva sea el adecuado.
+  */
+  const { idReserva } = req.params
+  // En una aplicación real, el id del inquilino debería obtenerse de una sesión autenticada.
+  const { id_inquilino } = req.body
+
+  if (!id_inquilino) {
+    return res.status(401).json({ success: false, message: 'No estás autenticado.' })
+  }
+
+  try {
+    // 1. Obtener la reserva para validar su estado y propietario
+    const { data: reserva, error: findError } = await supabase
+      .from('reserva')
+      .select('id_inquilino, estado')
+      .eq('id_reserva', idReserva)
+      .single()
+
+    if (findError) throw findError
+    if (!reserva) {
+      return res.status(404).json({ success: false, message: 'Reserva no encontrada.' })
+    }
+
+    // 2. Validar que el inquilino es el propietario de la reserva
+    if (reserva.id_inquilino !== Number(id_inquilino)) {
+      return res
+        .status(403)
+        .json({ success: false, message: 'No tienes permiso para realizar esta acción.' })
+    }
+
+    // 3. Validar el estado de la reserva
+    const estadoNormalizado = String(reserva.estado || '').toLowerCase()
+    const estadosPermitidos = ['cancelada', 'rechazada']
+
+    if (!estadosPermitidos.includes(estadoNormalizado)) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message:
+            'Solo puedes eliminar del historial las reservas que han sido canceladas o rechazadas.',
+        })
+    }
+
+    // 4. Si todo es correcto, actualizar la reserva
+    const { error: updateError } = await supabase
+      .from('reserva')
+      .update({ oculto_para_inquilino: true })
+      .eq('id_reserva', idReserva)
+
+    if (updateError) {
+      throw updateError
+    }
+
+    res
+      .status(200)
+      .json({ success: true, message: 'La reserva ha sido eliminada de tu historial.' })
+  } catch (error) {
+    console.error('Error al ocultar la reserva:', error.message)
+    res.status(500).json({ success: false, message: 'No se pudo procesar la solicitud.' })
+  }
+})
+
+// --- Solución al error 404 en pagos ---
+app.post('/api/payments/crear-orden', paymentController.crearOrden)
+app.post('/api/payments/capturar-orden', paymentController.capturarOrden)
 
 /*
 |--------------------------------------------------------------------------

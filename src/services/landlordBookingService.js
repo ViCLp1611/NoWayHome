@@ -30,7 +30,7 @@ export const landlordBookingService = {
     }
 
     const encodedId = encodeURIComponent(String(parsedIdReserva))
-    const data = await requestJson(`/api/arrendatario/reservas/${encodedId}/estado`, {
+    const data = await requestJson(`/api/arrendatario/reservas/${encodedId}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ id_arrendatario: idArrendatario, estado }),
     })

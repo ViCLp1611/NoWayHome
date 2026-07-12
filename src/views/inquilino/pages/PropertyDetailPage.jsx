@@ -180,7 +180,9 @@ export function PropertyDetailPage() {
                 <div className="space-y-6">
                   <section>
                     <p className="text-sm text-[#5F5F5F]/70">Reserva esta propiedad</p>
-                    <h2 className="text-2xl font-semibold text-[#5F5F5F]">Preparate para tu estancia</h2>
+                    <h2 className="text-2xl font-semibold text-[#5F5F5F]">
+                      Preparate para tu estancia
+                    </h2>
                   </section>
 
                   <section className="space-y-3 border-t border-[#6B8E23]/10 pt-5">
@@ -200,7 +202,9 @@ export function PropertyDetailPage() {
                           <Bed className="h-4 w-4 text-[#6B8E23]" />
                           <div>
                             <p className="text-xs text-[#5F5F5F]/70">Habitaciones</p>
-                            <p className="font-semibold text-[#5F5F5F]">{propiedad.numero_habitaciones}</p>
+                            <p className="font-semibold text-[#5F5F5F]">
+                              {propiedad.numero_habitaciones}
+                            </p>
                           </div>
                         </div>
                       )}
@@ -270,14 +274,6 @@ export function PropertyDetailPage() {
                       className="h-auto min-h-[44px] w-full rounded-lg bg-[#6B8E23] px-4 py-3 text-base font-medium text-white transition hover:bg-[#5a7a1e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6B8E23] focus-visible:ring-offset-2"
                     >
                       Reservar ahora
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      onClick={() => navigate('/inquilino/perfil')}
-                      className="h-auto min-h-[44px] w-full rounded-lg border-2 border-[#6B8E23] px-4 py-3 text-base font-medium text-[#6B8E23] transition hover:bg-[#F2E8CF]"
-                    >
-                      Ir a mi perfil
                     </Button>
                   </div>
 

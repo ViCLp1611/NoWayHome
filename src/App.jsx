@@ -16,7 +16,7 @@ import { ProfilePage as InquilinoProfile } from '@/views/inquilino/pages/Profile
 import { ExplorarPage } from '@/views/inquilino/pages/ExplorarPage.jsx'
 import { PropertyDetailPage } from '@/views/inquilino/pages/PropertyDetailPage.jsx'
 import { ReservaPage } from '@/views/inquilino/pages/ReservaPage.jsx'
-import DetalleReservaPage from '@/views/inquilino/pages/DetalleReservaPage.jsx'
+import { DetalleReservaPage } from '@/views/inquilino/pages/DetalleReservaPage.jsx'
 
 export default function App() {
   return (

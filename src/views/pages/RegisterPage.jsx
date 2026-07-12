@@ -6,6 +6,8 @@ import { Input } from '@/app/components/ui/input'
 import { Card } from '@/app/components/ui/card'
 import { Alert, AlertDescription } from '@/app/components/ui/alert'
 // Asegúrate de que la ruta de importación coincida con tu configuración de alias o usa la relativa: '../../controllers/authController'
+import terminosPdf from '@/assets/terminos-y-condiciones.pdf'
+import politicaPdf from '@/assets/politica-de-privacidad.pdf'
 import { authController } from '../../controllers/authController'
 
 // El componente RegisterPage es la pantalla de registro para nuevos usuarios, que permite ingresar información personal y seleccionar un rol para crear una cuenta en la plataforma.
@@ -244,6 +246,7 @@ export function RegisterPage() {
             </div>
           </div>
 
+          {/* CHECKBOX MODIFICADO CON ENLACES A PDFs */}
           <div className="flex items-start gap-2 pt-2">
             <input
               type="checkbox"
@@ -256,19 +259,23 @@ export function RegisterPage() {
             />
             <label htmlFor="terms" className="text-sm text-[#5F5F5F] leading-relaxed">
               Acepto los{' '}
-              <button
-                type="button"
-                className="text-[#6B8E23] hover:text-[#5a7a1e] transition-colors"
+              <a
+                href={terminosPdf}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#6B8E23] hover:text-[#5a7a1e] hover:underline transition-colors font-medium"
               >
                 términos y condiciones
-              </button>{' '}
+              </a>{' '}
               y la{' '}
-              <button
-                type="button"
-                className="text-[#6B8E23] hover:text-[#5a7a1e] transition-colors"
+              <a
+                href={politicaPdf}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#6B8E23] hover:text-[#5a7a1e] hover:underline transition-colors font-medium"
               >
                 política de privacidad
-              </button>
+              </a>
             </label>
           </div>
 
