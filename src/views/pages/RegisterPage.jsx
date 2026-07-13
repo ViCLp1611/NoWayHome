@@ -1,10 +1,23 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Mail, Lock, User, Phone, ArrowRight, AlertCircle, Eye, EyeOff } from 'lucide-react'
+import {
+  Mail,
+  Lock,
+  User,
+  Phone,
+  ArrowRight,
+  AlertCircle,
+  Eye,
+  EyeOff,
+  Facebook,
+  Twitter,
+  Instagram,
+} from 'lucide-react'
 import { Button } from '@/app/components/ui/button'
 import { Input } from '@/app/components/ui/input'
 import { Card } from '@/app/components/ui/card'
 import { Alert, AlertDescription } from '@/app/components/ui/alert'
+
 // Asegúrate de que la ruta de importación coincida con tu configuración de alias o usa la relativa: '../../controllers/authController'
 import terminosPdf from '@/assets/terminos-y-condiciones.pdf'
 import politicaPdf from '@/assets/politica-de-privacidad.pdf'
@@ -117,228 +130,370 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-[#FAFAFA]">
-      <Card className="w-full max-w-md p-8 md:p-10 bg-white border border-[#6B8E23]/10 shadow-sm rounded-2xl">
-        <div className="text-center mb-10">
-          <h1 className="font-poppins font-semibold text-3xl md:text-4xl text-[#5F5F5F] mb-3">
-            Crear Cuenta
-          </h1>
-          <p className="text-[#5F5F5F]/70 text-lg">Únete a nuestra comunidad</p>
-        </div>
-
-        {/* Mostrar alerta de error si falla la validación o el registro en BD */}
-        {error && (
-          <Alert className="mb-6 border-red-200 bg-red-50">
-            <AlertCircle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-800">{error}</AlertDescription>
-          </Alert>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-2">
-            <label htmlFor="name" className="text-[#5F5F5F] font-medium">
-              Nombre Completo
-            </label>
-            <div className="relative">
-              <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
-              <Input
-                id="name"
-                name="name"
-                type="text"
-                placeholder="Juan Pérez"
-                value={formData.name}
-                onChange={handleInputChange}
-                className="pl-12 h-12 bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] rounded-xl transition-colors"
-                required
-              />
-            </div>
+    <div className="min-h-screen flex flex-col bg-[#FAFAFA]">
+      {/* Contenedor principal flex-grow para centrar el formulario */}
+      <main className="flex-grow flex items-center justify-center px-4 py-12">
+        <Card className="w-full max-w-md p-8 md:p-10 bg-white border border-[#6B8E23]/10 shadow-sm rounded-2xl">
+          <div className="text-center mb-10">
+            <h1 className="font-poppins font-semibold text-3xl md:text-4xl text-[#5F5F5F] mb-3">
+              Crear Cuenta
+            </h1>
+            <p className="text-[#5F5F5F]/70 text-lg">Únete a nuestra comunidad</p>
           </div>
 
-          <div className="space-y-2">
-            <label htmlFor="email" className="text-[#5F5F5F] font-medium">
-              Correo Electrónico
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="correo@ejemplo.com"
-                value={formData.email}
-                onChange={handleInputChange}
-                className="pl-12 h-12 bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] rounded-xl transition-colors"
-                required
-              />
-            </div>
-          </div>
+          {/* Mostrar alerta de error si falla la validación o el registro en BD */}
+          {error && (
+            <Alert className="mb-6 border-red-200 bg-red-50">
+              <AlertCircle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-800">{error}</AlertDescription>
+            </Alert>
+          )}
 
-          <div className="space-y-2">
-            <label htmlFor="phone" className="text-[#5F5F5F] font-medium">
-              Teléfono
-            </label>
-            <div className="relative">
-              <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
-              <Input
-                id="phone"
-                name="phone"
-                type="tel"
-                placeholder="+52 0000 0000 0000"
-                value={formData.phone}
-                onChange={handleInputChange}
-                className="pl-12 h-12 bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] rounded-xl transition-colors"
-                required
-              />
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <label htmlFor="name" className="text-[#5F5F5F] font-medium">
+                Nombre Completo
+              </label>
+              <div className="relative">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
+                <Input
+                  id="name"
+                  name="name"
+                  type="text"
+                  placeholder="Juan Pérez"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  className="pl-12 h-12 bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] rounded-xl transition-colors"
+                  required
+                />
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <label htmlFor="password" className="text-[#5F5F5F] font-medium">
-              Contraseña
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
-              <Input
-                id="password"
-                name="password"
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Ingresa tu contraseña"
-                value={formData.password}
+            <div className="space-y-2">
+              <label htmlFor="email" className="text-[#5F5F5F] font-medium">
+                Correo Electrónico
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="correo@ejemplo.com"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className="pl-12 h-12 bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] rounded-xl transition-colors"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="phone" className="text-[#5F5F5F] font-medium">
+                Teléfono
+              </label>
+              <div className="relative">
+                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
+                <Input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  placeholder="+52 0000 0000 0000"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  className="pl-12 h-12 bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] rounded-xl transition-colors"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="password" className="text-[#5F5F5F] font-medium">
+                Contraseña
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
+                <Input
+                  id="password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Ingresa tu contraseña"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className="pl-12 pr-10 h-12 bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] rounded-xl transition-colors"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#5F5F5F]/50 hover:text-[#5F5F5F] transition-colors"
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="confirm-password" className="text-[#5F5F5F] font-medium">
+                Confirmar Contraseña
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
+                <Input
+                  id="confirm-password"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  placeholder="Confirma tu contraseña"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  className="pl-12 pr-10 h-12 bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] rounded-xl transition-colors"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#5F5F5F]/50 hover:text-[#5F5F5F] transition-colors"
+                  aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* CHECKBOX MODIFICADO CON ENLACES A PDFs */}
+            <div className="flex items-start gap-2 pt-2">
+              <input
+                type="checkbox"
+                id="terms"
+                name="acceptTerms"
+                checked={formData.acceptTerms}
                 onChange={handleInputChange}
-                className="pl-12 pr-10 h-12 bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] rounded-xl transition-colors"
+                className="mt-1 rounded border-[#6B8E23]/30 text-[#6B8E23] focus:ring-[#6B8E23] focus:ring-offset-0"
                 required
               />
+              <label htmlFor="terms" className="text-sm text-[#5F5F5F] leading-relaxed">
+                Acepto los{' '}
+                <a
+                  href={terminosPdf}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#6B8E23] hover:text-[#5a7a1e] hover:underline transition-colors font-medium"
+                >
+                  términos y condiciones
+                </a>{' '}
+                y la{' '}
+                <a
+                  href={politicaPdf}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#6B8E23] hover:text-[#5a7a1e] hover:underline transition-colors font-medium"
+                >
+                  política de privacidad
+                </a>
+              </label>
+            </div>
+
+            {/* Selector de rol */}
+            <div className="space-y-3 pt-4 border-t border-[#6B8E23]/10">
+              <label className="text-[#5F5F5F] font-medium block">¿Cómo usarás NoWayHome?</label>
+              <div className="space-y-3">
+                <label className="flex items-start gap-3 p-4 border-2 border-[#6B8E23]/20 rounded-xl cursor-pointer hover:border-[#6B8E23] hover:bg-[#F2E8CF]/20 transition-all has-[:checked]:border-[#6B8E23] has-[:checked]:bg-[#F2E8CF]/30">
+                  <input
+                    type="radio"
+                    name="role"
+                    value="guest"
+                    checked={formData.role === 'guest'}
+                    onChange={handleInputChange}
+                    className="mt-0.5 text-[#6B8E23] focus:ring-[#6B8E23] focus:ring-offset-0"
+                  />
+                  <div>
+                    <span className="text-[#5F5F5F] font-medium block">Huésped</span>
+                    <span className="text-sm text-[#5F5F5F]/70">Reservar alojamiento</span>
+                  </div>
+                </label>
+                <label className="flex items-start gap-3 p-4 border-2 border-[#6B8E23]/20 rounded-xl cursor-pointer hover:border-[#6B8E23] hover:bg-[#F2E8CF]/20 transition-all has-[:checked]:border-[#6B8E23] has-[:checked]:bg-[#F2E8CF]/30">
+                  <input
+                    type="radio"
+                    name="role"
+                    value="host"
+                    checked={formData.role === 'host'}
+                    onChange={handleInputChange}
+                    className="mt-0.5 text-[#6B8E23] focus:ring-[#6B8E23] focus:ring-offset-0"
+                  />
+                  <div>
+                    <span className="text-[#5F5F5F] font-medium block">Anfitrión</span>
+                    <span className="text-sm text-[#5F5F5F]/70">Publicar alojamiento</span>
+                  </div>
+                </label>
+              </div>
+              <p className="text-xs text-[#5F5F5F]/70 italic">
+                El rol podrá modificarse posteriormente desde el perfil
+              </p>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-[#6B8E23] text-white hover:bg-[#5a7a1e] h-12 shadow-none rounded-xl mt-6 disabled:opacity-50"
+            >
+              {isLoading ? 'Creando cuenta...' : 'Crear Cuenta'}
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+          </form>
+
+          <div className="mt-8 text-center">
+            <p className="text-[#5F5F5F]">
+              ¿Ya tienes cuenta?{' '}
               <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-[#5F5F5F]/50 hover:text-[#5F5F5F] transition-colors"
-                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                onClick={() => navigate('/login')}
+                className="text-[#6B8E23] font-medium hover:text-[#5a7a1e] transition-colors"
               >
-                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                Inicia sesión
               </button>
+            </p>
+          </div>
+        </Card>
+      </main>
+
+      {/* Footer Profesional */}
+      <footer className="bg-white border-t border-[#6B8E23]/10 pt-16 pb-8">
+        <div className="container mx-auto px-4 max-w-7xl">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+            {/* Branding & Descripción */}
+            <div className="md:col-span-1 space-y-4">
+              <h3 className="font-poppins text-2xl font-bold text-[#6B8E23]">No Way Home</h3>
+              <p className="text-[#5F5F5F]/70 text-sm leading-relaxed">
+                Tu plataforma de confianza para encontrar los mejores alojamientos temporales.
+                Siéntete en casa, sin importar a dónde vayas.
+              </p>
+              <div className="flex space-x-4 pt-2">
+                <a href="#" className="text-[#A67C52] hover:text-[#6B8E23] transition-colors">
+                  <Facebook className="h-5 w-5" />
+                </a>
+                <a href="#" className="text-[#A67C52] hover:text-[#6B8E23] transition-colors">
+                  <Instagram className="h-5 w-5" />
+                </a>
+                <a href="#" className="text-[#A67C52] hover:text-[#6B8E23] transition-colors">
+                  <Twitter className="h-5 w-5" />
+                </a>
+              </div>
+            </div>
+
+            {/* Enlaces Rápidos */}
+            <div>
+              <h4 className="font-poppins font-semibold text-[#5F5F5F] mb-4">Descubre</h4>
+              <ul className="space-y-3">
+                <li>
+                  <button
+                    onClick={() => navigate('/')}
+                    className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left"
+                  >
+                    Inicio
+                  </button>
+                </li>
+                <li>
+                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                    Alojamientos destacados
+                  </button>
+                </li>
+                <li>
+                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                    Ofertas especiales
+                  </button>
+                </li>
+                <li>
+                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                    Cómo funciona
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            {/* Anfitriones */}
+            <div>
+              <h4 className="font-poppins font-semibold text-[#5F5F5F] mb-4">Anfitriones</h4>
+              <ul className="space-y-3">
+                <li>
+                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                    Recursos para anfitriones
+                  </button>
+                </li>
+                <li>
+                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                    Foro de la comunidad
+                  </button>
+                </li>
+                <li>
+                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                    Protección para anfitriones
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            {/* Soporte */}
+            <div>
+              <h4 className="font-poppins font-semibold text-[#5F5F5F] mb-4">Soporte</h4>
+              <ul className="space-y-3">
+                <li>
+                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                    Centro de ayuda
+                  </button>
+                </li>
+                <li>
+                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                    Opciones de cancelación
+                  </button>
+                </li>
+                <li>
+                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                    Medidas de seguridad
+                  </button>
+                </li>
+                <li className="flex items-center gap-2 mt-4">
+                  <Mail className="h-4 w-4 text-[#A67C52]" />
+                  <a
+                    href="mailto:nowayhomeadmin@gmail.com"
+                    className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors"
+                  >
+                    nowayhomeadmin@gmail.com
+                  </a>
+                </li>
+              </ul>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label htmlFor="confirm-password" className="text-[#5F5F5F] font-medium">
-              Confirmar Contraseña
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
-              <Input
-                id="confirm-password"
-                name="confirmPassword"
-                type={showConfirmPassword ? 'text' : 'password'}
-                placeholder="Confirma tu contraseña"
-                value={formData.confirmPassword}
-                onChange={handleInputChange}
-                className="pl-12 pr-10 h-12 bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] rounded-xl transition-colors"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-[#5F5F5F]/50 hover:text-[#5F5F5F] transition-colors"
-                aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-              >
-                {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-              </button>
-            </div>
-          </div>
-
-          {/* CHECKBOX MODIFICADO CON ENLACES A PDFs */}
-          <div className="flex items-start gap-2 pt-2">
-            <input
-              type="checkbox"
-              id="terms"
-              name="acceptTerms"
-              checked={formData.acceptTerms}
-              onChange={handleInputChange}
-              className="mt-1 rounded border-[#6B8E23]/30 text-[#6B8E23] focus:ring-[#6B8E23] focus:ring-offset-0"
-              required
-            />
-            <label htmlFor="terms" className="text-sm text-[#5F5F5F] leading-relaxed">
-              Acepto los{' '}
-              <a
-                href={terminosPdf}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[#6B8E23] hover:text-[#5a7a1e] hover:underline transition-colors font-medium"
-              >
-                términos y condiciones
-              </a>{' '}
-              y la{' '}
+          {/* Copyright y Políticas usando Etiquetas <a> con importación */}
+          <div className="border-t border-[#6B8E23]/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-[#5F5F5F]/60 text-sm">
+              © {new Date().getFullYear()} No Way Home. Todos los derechos reservados.
+            </p>
+            <div className="flex gap-6">
               <a
                 href={politicaPdf}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[#6B8E23] hover:text-[#5a7a1e] hover:underline transition-colors font-medium"
+                className="text-[#5F5F5F]/60 hover:text-[#6B8E23] text-sm transition-colors font-medium"
               >
-                política de privacidad
+                Privacidad
               </a>
-            </label>
-          </div>
-
-          {/* Selector de rol */}
-          <div className="space-y-3 pt-4 border-t border-[#6B8E23]/10">
-            <label className="text-[#5F5F5F] font-medium block">¿Cómo usarás NoWayHome?</label>
-            <div className="space-y-3">
-              <label className="flex items-start gap-3 p-4 border-2 border-[#6B8E23]/20 rounded-xl cursor-pointer hover:border-[#6B8E23] hover:bg-[#F2E8CF]/20 transition-all has-[:checked]:border-[#6B8E23] has-[:checked]:bg-[#F2E8CF]/30">
-                <input
-                  type="radio"
-                  name="role"
-                  value="guest"
-                  checked={formData.role === 'guest'}
-                  onChange={handleInputChange}
-                  className="mt-0.5 text-[#6B8E23] focus:ring-[#6B8E23] focus:ring-offset-0"
-                />
-                <div>
-                  <span className="text-[#5F5F5F] font-medium block">Huésped</span>
-                  <span className="text-sm text-[#5F5F5F]/70">Reservar alojamiento</span>
-                </div>
-              </label>
-              <label className="flex items-start gap-3 p-4 border-2 border-[#6B8E23]/20 rounded-xl cursor-pointer hover:border-[#6B8E23] hover:bg-[#F2E8CF]/20 transition-all has-[:checked]:border-[#6B8E23] has-[:checked]:bg-[#F2E8CF]/30">
-                <input
-                  type="radio"
-                  name="role"
-                  value="host"
-                  checked={formData.role === 'host'}
-                  onChange={handleInputChange}
-                  className="mt-0.5 text-[#6B8E23] focus:ring-[#6B8E23] focus:ring-offset-0"
-                />
-                <div>
-                  <span className="text-[#5F5F5F] font-medium block">Anfitrión</span>
-                  <span className="text-sm text-[#5F5F5F]/70">Publicar alojamiento</span>
-                </div>
-              </label>
+              <a
+                href={terminosPdf}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#5F5F5F]/60 hover:text-[#6B8E23] text-sm transition-colors font-medium"
+              >
+                Términos
+              </a>
             </div>
-            <p className="text-xs text-[#5F5F5F]/70 italic">
-              El rol podrá modificarse posteriormente desde el perfil
-            </p>
           </div>
-
-          <Button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-[#6B8E23] text-white hover:bg-[#5a7a1e] h-12 shadow-none rounded-xl mt-6 disabled:opacity-50"
-          >
-            {isLoading ? 'Creando cuenta...' : 'Crear Cuenta'}
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </Button>
-        </form>
-
-        <div className="mt-8 text-center">
-          <p className="text-[#5F5F5F]">
-            ¿Ya tienes cuenta?{' '}
-            <button
-              onClick={() => navigate('/login')}
-              className="text-[#6B8E23] font-medium hover:text-[#5a7a1e] transition-colors"
-            >
-              Inicia sesión
-            </button>
-          </p>
         </div>
-      </Card>
+      </footer>
     </div>
   )
 }

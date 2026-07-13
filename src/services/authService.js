@@ -117,6 +117,20 @@ class AuthService {
       }
     }
   }
+
+  async updatePassword(data) {
+    // Llama al endpoint del backend para actualizar la contraseña.
+    // El backend se encarga de hashear la contraseña y actualizar la DB.
+    try {
+      return await postJson('/api/auth/update-password', data)
+    } catch (error) {
+      console.error('Error en updatePassword:', error)
+      return {
+        success: false,
+        message: error.message || 'Error al actualizar la contraseña.',
+      }
+    }
+  }
 }
 
 export const authService = new AuthService()

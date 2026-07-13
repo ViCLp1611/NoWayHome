@@ -7,6 +7,7 @@ import {
   CalendarCheck,
   Edit,
   LogOut,
+  Lock,
   Mail,
   MapPin,
   Phone,
@@ -20,14 +21,12 @@ import { Button } from '@/app/components/ui/button'
 import { Card } from '@/app/components/ui/card'
 import { Input } from '@/app/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs'
-import {
-  getLandlordProfile,
-  updateLandlordProfile,
-} from '@/services/landlordProfileService'
+import { getLandlordProfile, updateLandlordProfile } from '@/services/landlordProfileService'
 import { getLandlordProperties } from '@/services/propertyService'
 import { landlordBookingService } from '@/services/landlordBookingService'
 import { ConfirmActionModal } from '@/views/admin/components/ConfirmActionModal'
 import { UserNavbar } from '@/views/user/components/UserNavbar.jsx'
+import { ChangePasswordModal } from '@/views/inquilino/pages/ChangePasswordModal.jsx'
 
 const statusStyles = {
   activa: 'bg-[#6B8E23] text-white',
@@ -38,6 +37,7 @@ const statusStyles = {
 export function PerfilArrendatario({ userData, onUserUpdate }) {
   const navigate = useNavigate()
   const [profile, setProfile] = useState(userData)
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [editForm, setEditForm] = useState({
     nombre: userData?.nombre || '',
@@ -45,7 +45,12 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
   })
   const [editErrors, setEditErrors] = useState({})
   const [isSavingProfile, setIsSavingProfile] = useState(false)
-  const [actionMessage, setActionMessage] = useState({ open: false, type: '', title: '', description: '' })
+  const [actionMessage, setActionMessage] = useState({
+    open: false,
+    type: '',
+    title: '',
+    description: '',
+  })
   const [recentProperties, setRecentProperties] = useState([])
   const [isLoadingProperties, setIsLoadingProperties] = useState(true)
   const [propertiesError, setPropertiesError] = useState('')
@@ -548,7 +553,8 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
                       </div>
 
                       <p className="pt-1 text-xs text-[#5F5F5F]/75">
-                        Estos montos son estimados y se calculan con base en las reservas registradas. Los pagos reales se habilitarán más adelante.
+                        Estos montos son estimados y se calculan con base en las reservas
+                        registradas. Los pagos reales se habilitarán más adelante.
                       </p>
                     </div>
                   )}
@@ -568,40 +574,71 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div>
                     <h3 className="font-poppins font-semibold text-lg text-[#5F5F5F] mb-2">
-                      Informacion personal
+                      Rol actual
                     </h3>
-                    <div className="space-y-2 text-sm text-[#5F5F5F]/80">
-                      <p>{profile?.correo || 'Correo no registrado'}</p>
-                      <p>{profile?.telefono || 'Telefono no registrado'}</p>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center px-3 py-1 rounded-lg bg-white text-[#6B8E23] font-medium text-sm">
+                        Arrendatario
+                      </span>
+                      <span className="text-sm text-[#5F5F5F]/70">
+                        Publicar y gestionar alojamientos
+                      </span>
                     </div>
                   </div>
-                  <span className="inline-flex items-center px-3 py-1 rounded-lg bg-white text-[#6B8E23] font-medium text-sm">
-                    Arrendatario
-                  </span>
+                  <Button
+                    variant="outline"
+                    className="border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#6B8E23] hover:text-white shadow-none rounded-xl transition-all whitespace-nowrap"
+                  >
+                    Convertirme en huésped
+                  </Button>
                 </div>
               </Card>
 
               <Card className="p-6 md:p-8 bg-white border border-[#6B8E23]/10 shadow-sm rounded-2xl">
                 <div className="space-y-8">
                   <div>
-                    <h3 className="font-poppins font-semibold text-lg text-[#5F5F5F] mb-5 flex items-center gap-2">
-                      <ShieldCheck className="h-5 w-5 text-[#6B8E23]" />
-                      Seguridad de cuenta
+                    <h3 className="font-poppins font-semibold text-lg text-[#5F5F5F] mb-5">
+                      Preferencias de Notificaciones
+                    </h3>
+                    <div className="space-y-4">
+                      <label className="flex items-center justify-between cursor-pointer p-3 hover:bg-[#F2E8CF]/30 rounded-lg transition-colors">
+                        <span className="text-[#5F5F5F]">Ofertas especiales</span>
+                        <input
+                          type="checkbox"
+                          className="rounded border-[#6B8E23]/30 text-[#6B8E23] focus:ring-[#6B8E23] focus:ring-offset-0"
+                          defaultChecked
+                        />
+                      </label>
+                      <label className="flex items-center justify-between cursor-pointer p-3 hover:bg-[#F2E8CF]/30 rounded-lg transition-colors">
+                        <span className="text-[#5F5F5F]">Recordatorios de reserva</span>
+                        <input
+                          type="checkbox"
+                          className="rounded border-[#6B8E23]/30 text-[#6B8E23] focus:ring-[#6B8E23] focus:ring-offset-0"
+                          defaultChecked
+                        />
+                      </label>
+                      <label className="flex items-center justify-between cursor-pointer p-3 hover:bg-[#F2E8CF]/30 rounded-lg transition-colors">
+                        <span className="text-[#5F5F5F]">Newsletter</span>
+                        <input
+                          type="checkbox"
+                          className="rounded border-[#6B8E23]/30 text-[#6B8E23] focus:ring-[#6B8E23] focus:ring-offset-0"
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="pt-8 border-t border-[#6B8E23]/10">
+                    <h3 className="font-poppins font-semibold text-lg text-[#5F5F5F] mb-5">
+                      Seguridad
                     </h3>
                     <div className="space-y-3">
                       <Button
+                        onClick={() => setIsChangePasswordOpen(true)}
                         variant="outline"
-                        className="w-full justify-start border-2 border-[#6B8E23]/20 text-[#5F5F5F] hover:border-[#6B8E23] hover:bg-[#F2E8CF]/30 shadow-none rounded-xl h-12 transition-all"
+                        className="w-full justify-start border-2 border-[#6B8E23]/20 text-[#5F5F5F] hover:border-[#6B8E23] hover:bg-[#6B8E23] hover:text-white shadow-none rounded-xl h-12 transition-all"
                       >
-                        Cambiar contrasena
-                      </Button>
-                      <Button
-                        onClick={handleLogout}
-                        variant="outline"
-                        className="w-full justify-start border-2 border-[#6B8E23]/20 text-[#5F5F5F] hover:border-[#6B8E23] hover:bg-[#F2E8CF]/30 shadow-none rounded-xl h-12 transition-all"
-                      >
-                        <LogOut className="h-4 w-4 mr-2" />
-                        Cerrar sesion
+                        <Lock className="h-4 w-4 mr-2" />
+                        Cambiar contraseña
                       </Button>
                     </div>
                   </div>
@@ -611,6 +648,12 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
           </Tabs>
         </div>
       </div>
+
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+        userData={profile}
+      />
 
       {isEditOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

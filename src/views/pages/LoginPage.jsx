@@ -1,11 +1,27 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertCircle, ArrowRight, Eye, EyeOff, Key, Lock, Mail, ShieldCheck } from 'lucide-react'
+import {
+  AlertCircle,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  Key,
+  Lock,
+  Mail,
+  ShieldCheck,
+  Facebook,
+  Twitter,
+  Instagram,
+} from 'lucide-react'
 import { Alert, AlertDescription } from '@/app/components/ui/alert'
 import { Button } from '@/app/components/ui/button'
 import { Card } from '@/app/components/ui/card'
 import { Input } from '@/app/components/ui/input'
 import { authController } from '../../controllers/authController'
+
+// Importación de los PDFs legales desde la carpeta assets
+import politicaPdf from '@/assets/politica-de-privacidad.pdf'
+import terminosPdf from '@/assets/terminos-y-condiciones.pdf'
 
 /*
 |--------------------------------------------------------------------------
@@ -135,162 +151,308 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-[#FAFAFA]">
-      <Card className="w-full max-w-md p-8 md:p-10 bg-white border border-[#6B8E23]/10 shadow-sm rounded-2xl">
-        <div className="text-center mb-10">
-          <h1 className="font-poppins font-semibold text-3xl md:text-4xl text-[#5F5F5F] mb-3">
-            Bienvenido de nuevo
-          </h1>
-          <p className="text-[#5F5F5F]/70 text-lg">Inicia sesion para continuar</p>
-        </div>
+    <div className="min-h-screen flex flex-col bg-[#FAFAFA]">
+      {/* Contenedor principal para centrar el login y ocupar el espacio disponible */}
+      <main className="flex-grow flex items-center justify-center px-4 py-12">
+        <Card className="w-full max-w-md p-8 md:p-10 bg-white border border-[#6B8E23]/10 shadow-sm rounded-2xl">
+          <div className="text-center mb-10">
+            <h1 className="font-poppins font-semibold text-3xl md:text-4xl text-[#5F5F5F] mb-3">
+              Bienvenido de nuevo
+            </h1>
+            <p className="text-[#5F5F5F]/70 text-lg">Inicia sesion para continuar</p>
+          </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {step === 'credentials' ? (
-            <>
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-[#5F5F5F] font-medium">
-                  Correo electronico
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="correo@ejemplo.com"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    className="pl-12 h-12 bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] rounded-xl transition-colors"
-                    required
-                  />
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {step === 'credentials' ? (
+              <>
+                <div className="space-y-2">
+                  <label htmlFor="email" className="text-[#5F5F5F] font-medium">
+                    Correo electronico
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="correo@ejemplo.com"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      className="pl-12 h-12 bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] rounded-xl transition-colors"
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <label htmlFor="password" className="text-[#5F5F5F] font-medium">
-                  Contrasena
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="Escribe tu contrasena"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    className="pl-12 pr-12 h-12 bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] placeholder:text-[#5F5F5F]/50 rounded-xl transition-colors"
-                    required
-                  />
-                  <button
+                <div className="space-y-2">
+                  <label htmlFor="password" className="text-[#5F5F5F] font-medium">
+                    Contrasena
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Escribe tu contrasena"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      className="pl-12 pr-12 h-12 bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] placeholder:text-[#5F5F5F]/50 rounded-xl transition-colors"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-[#5F5F5F]/50 hover:text-[#5F5F5F] transition-colors focus:outline-none"
+                      aria-label={showPassword ? 'Ocultar contrasena' : 'Mostrar contrasena'}
+                    >
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-sm">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={e => setRememberMe(e.target.checked)}
+                      className="rounded border-[#6B8E23]/30 text-[#6B8E23] focus:ring-[#6B8E23] focus:ring-offset-0"
+                    />
+                    <span className="text-[#5F5F5F]">Recordarme</span>
+                  </label>
+
+                  <Button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[#5F5F5F]/50 hover:text-[#5F5F5F] transition-colors focus:outline-none"
-                    aria-label={showPassword ? 'Ocultar contrasena' : 'Mostrar contrasena'}
+                    variant="ghost"
+                    className="text-[#6B8E23] hover:text-[#5a7a1e] hover:bg-[#6B8E23]/10 h-8 px-3 rounded-lg transition-all font-medium text-xs sm:text-sm flex items-center shadow-none"
+                    onClick={() => navigate('/forgot-password')}
                   >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
+                    <Key className="w-3.5 h-3.5 mr-1.5" />
+                    Olvide mi contrasena
+                  </Button>
                 </div>
-              </div>
-
-              <div className="flex items-center justify-between text-sm">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={e => setRememberMe(e.target.checked)}
-                    className="rounded border-[#6B8E23]/30 text-[#6B8E23] focus:ring-[#6B8E23] focus:ring-offset-0"
-                  />
-                  <span className="text-[#5F5F5F]">Recordarme</span>
-                </label>
-
+              </>
+            ) : (
+              <div className="space-y-5 text-center">
+                <ShieldCheck className="mx-auto h-12 w-12 text-[#6B8E23]" />
+                <div className="space-y-2">
+                  <h2 className="font-poppins font-semibold text-xl text-[#5F5F5F]">
+                    Verificacion en dos pasos
+                  </h2>
+                  <p className="text-sm text-[#5F5F5F]/75">
+                    Ingresa el codigo de 6 digitos enviado a {email}.
+                  </p>
+                </div>
+                <Input
+                  id="verification-code"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="000000"
+                  value={verificationCode}
+                  onChange={e => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+                  className="h-14 text-center text-2xl tracking-[0.4em] bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] rounded-xl transition-colors font-semibold"
+                  required
+                />
                 <Button
                   type="button"
                   variant="ghost"
-                  className="text-[#6B8E23] hover:text-[#5a7a1e] hover:bg-[#6B8E23]/10 h-8 px-3 rounded-lg transition-all font-medium text-xs sm:text-sm flex items-center shadow-none"
-                  onClick={() => navigate('/forgot-password')}
+                  onClick={() => {
+                    clearPending2FA()
+                    setStep('credentials')
+                    setVerificationCode('')
+                    setPendingRole('')
+                    setError('')
+                  }}
+                  className="text-[#6B8E23] hover:text-[#5a7a1e] hover:bg-[#6B8E23]/10 h-9 rounded-lg shadow-none"
                 >
-                  <Key className="w-3.5 h-3.5 mr-1.5" />
-                  Olvide mi contrasena
+                  Volver al login
                 </Button>
               </div>
-            </>
-          ) : (
-            <div className="space-y-5 text-center">
-              <ShieldCheck className="mx-auto h-12 w-12 text-[#6B8E23]" />
-              <div className="space-y-2">
-                <h2 className="font-poppins font-semibold text-xl text-[#5F5F5F]">
-                  Verificacion en dos pasos
-                </h2>
-                <p className="text-sm text-[#5F5F5F]/75">
-                  Ingresa el codigo de 6 digitos enviado a {email}.
-                </p>
-              </div>
-              <Input
-                id="verification-code"
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                placeholder="000000"
-                value={verificationCode}
-                onChange={e => setVerificationCode(e.target.value.replace(/\D/g, ''))}
-                className="h-14 text-center text-2xl tracking-[0.4em] bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] rounded-xl transition-colors font-semibold"
-                required
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => {
-                  clearPending2FA()
-                  setStep('credentials')
-                  setVerificationCode('')
-                  setPendingRole('')
-                  setError('')
-                }}
-                className="text-[#6B8E23] hover:text-[#5a7a1e] hover:bg-[#6B8E23]/10 h-9 rounded-lg shadow-none"
-              >
-                Volver al login
-              </Button>
-            </div>
-          )}
+            )}
 
-          <Button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-[#6B8E23] text-white hover:bg-[#5a7a1e] h-12 shadow-none rounded-xl disabled:opacity-50"
-          >
-            {isLoading
-              ? step === 'credentials'
-                ? 'Enviando codigo...'
-                : 'Verificando codigo...'
-              : step === 'credentials'
-                ? 'Iniciar sesion'
-                : 'Verificar y entrar'}
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </Button>
-
-          {error && (
-            <Alert className="border-red-200 bg-red-50">
-              <AlertCircle className="h-4 w-4 text-red-600" />
-              <AlertDescription className="text-red-800">{error}</AlertDescription>
-            </Alert>
-          )}
-
-          <p className="text-xs text-center text-[#5F5F5F]/70 mt-2">
-            El acceso es valido para huespedes, anfitriones y administradores
-          </p>
-        </form>
-
-        <div className="mt-8 text-center">
-          <p className="text-[#5F5F5F]">
-            No tienes cuenta?{' '}
-            <button
-              onClick={() => navigate('/register')}
-              className="text-[#6B8E23] font-medium hover:text-[#5a7a1e] transition-colors"
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-[#6B8E23] text-white hover:bg-[#5a7a1e] h-12 shadow-none rounded-xl disabled:opacity-50"
             >
-              Registrate aqui
-            </button>
-          </p>
+              {isLoading
+                ? step === 'credentials'
+                  ? 'Enviando codigo...'
+                  : 'Verificando codigo...'
+                : step === 'credentials'
+                  ? 'Iniciar sesion'
+                  : 'Verificar y entrar'}
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+
+            {error && (
+              <Alert className="border-red-200 bg-red-50">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-800">{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <p className="text-xs text-center text-[#5F5F5F]/70 mt-2">
+              El acceso es valido para huespedes, anfitriones y administradores
+            </p>
+          </form>
+
+          <div className="mt-8 text-center">
+            <p className="text-[#5F5F5F]">
+              No tienes cuenta?{' '}
+              <button
+                onClick={() => navigate('/register')}
+                className="text-[#6B8E23] font-medium hover:text-[#5a7a1e] transition-colors"
+              >
+                Registrate aqui
+              </button>
+            </p>
+          </div>
+        </Card>
+      </main>
+
+      {/* Footer Profesional */}
+      <footer className="bg-white border-t border-[#6B8E23]/10 pt-16 pb-8">
+        <div className="container mx-auto px-4 max-w-7xl">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+            {/* Branding & Descripción */}
+            <div className="md:col-span-1 space-y-4">
+              <h3 className="font-poppins text-2xl font-bold text-[#6B8E23]">No Way Home</h3>
+              <p className="text-[#5F5F5F]/70 text-sm leading-relaxed">
+                Tu plataforma de confianza para encontrar los mejores alojamientos temporales.
+                Siéntete en casa, sin importar a dónde vayas.
+              </p>
+              <div className="flex space-x-4 pt-2">
+                <a href="#" className="text-[#A67C52] hover:text-[#6B8E23] transition-colors">
+                  <Facebook className="h-5 w-5" />
+                </a>
+                <a href="#" className="text-[#A67C52] hover:text-[#6B8E23] transition-colors">
+                  <Instagram className="h-5 w-5" />
+                </a>
+                <a href="#" className="text-[#A67C52] hover:text-[#6B8E23] transition-colors">
+                  <Twitter className="h-5 w-5" />
+                </a>
+              </div>
+            </div>
+
+            {/* Enlaces Rápidos */}
+            <div>
+              <h4 className="font-poppins font-semibold text-[#5F5F5F] mb-4">Descubre</h4>
+              <ul className="space-y-3">
+                <li>
+                  <button
+                    onClick={() => navigate('/')}
+                    className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left"
+                  >
+                    Inicio
+                  </button>
+                </li>
+                <li>
+                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                    Alojamientos destacados
+                  </button>
+                </li>
+                <li>
+                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                    Ofertas especiales
+                  </button>
+                </li>
+                <li>
+                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                    Cómo funciona
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            {/* Anfitriones */}
+            <div>
+              <h4 className="font-poppins font-semibold text-[#5F5F5F] mb-4">Anfitriones</h4>
+              <ul className="space-y-3">
+                <li>
+                  <button
+                    onClick={() => navigate('/register')}
+                    className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left"
+                  >
+                    Publica tu espacio
+                  </button>
+                </li>
+                <li>
+                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                    Recursos para anfitriones
+                  </button>
+                </li>
+                <li>
+                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                    Foro de la comunidad
+                  </button>
+                </li>
+                <li>
+                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                    Protección para anfitriones
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            {/* Soporte */}
+            <div>
+              <h4 className="font-poppins font-semibold text-[#5F5F5F] mb-4">Soporte</h4>
+              <ul className="space-y-3">
+                <li>
+                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                    Centro de ayuda
+                  </button>
+                </li>
+                <li>
+                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                    Opciones de cancelación
+                  </button>
+                </li>
+                <li>
+                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                    Medidas de seguridad
+                  </button>
+                </li>
+                <li className="flex items-center gap-2 mt-4">
+                  <Mail className="h-4 w-4 text-[#A67C52]" />
+                  <a
+                    href="mailto:nowayhomeadmin@gmail.com"
+                    className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors"
+                  >
+                    nowayhomeadmin@gmail.com
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Copyright y Políticas usando Etiquetas <a> con importación */}
+          <div className="border-t border-[#6B8E23]/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-[#5F5F5F]/60 text-sm">
+              © {new Date().getFullYear()} No Way Home. Todos los derechos reservados.
+            </p>
+            <div className="flex gap-6">
+              <a
+                href={politicaPdf}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#5F5F5F]/60 hover:text-[#6B8E23] text-sm transition-colors font-medium"
+              >
+                Privacidad
+              </a>
+              <a
+                href={terminosPdf}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#5F5F5F]/60 hover:text-[#6B8E23] text-sm transition-colors font-medium"
+              >
+                Términos
+              </a>
+            </div>
+          </div>
         </div>
-      </Card>
+      </footer>
     </div>
   )
 }

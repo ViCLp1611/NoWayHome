@@ -353,9 +353,7 @@ export async function getTenantReservations(idInquilino) {
 
   const { data, error } = await supabase
     .from('reserva')
-    .select(
-      '*, propiedad:propiedad(id_propiedad,descripcion,titulo,ubicacion,precio_noche,precio,direccion,estado,resena,latitud,longitud,capacidad,numero_habitaciones,numero_banos)'
-    )
+    .select('*, propiedad(*)')
     .eq('id_inquilino', tenantId)
     .order('fecha_inicio', { ascending: false })
 
@@ -392,8 +390,7 @@ export async function getTenantReservationById(idReserva) {
   const parsedReservationId = Number(rawReservationId)
   const reservationId =
     Number.isInteger(parsedReservationId) && parsedReservationId > 0 ? parsedReservationId : null
-  const baseSelect =
-    '*, propiedad:propiedad(id_propiedad,descripcion,titulo,ubicacion,precio_noche,precio,direccion,estado,resena,latitud,longitud,capacidad,numero_habitaciones,numero_banos)'
+  const baseSelect = '*, propiedad(*)'
 
   let data = null
   let error = null
@@ -486,9 +483,7 @@ export async function getTenantFavorites(idInquilino) {
 
   const { data, error } = await supabase
     .from('favoritos')
-    .select(
-      '*, propiedad:propiedad(id_propiedad,descripcion,titulo,ubicacion,precio_noche,precio,direccion,resena,latitud,longitud,capacidad,numero_habitaciones,numero_banos)'
-    )
+    .select('*, propiedad(*)')
     .eq('id_inquilino', tenantId)
     .order('created_at', { ascending: false })
 
@@ -525,7 +520,7 @@ export async function getTenantProperties() {
   const { data: activeReservations, error: reservationsError } = await supabase
     .from('reserva')
     .select('id_propiedad')
-    .in('estado', ['pendiente', 'confirmada', 'confirmed'])
+    .in('estado', ['pendiente', 'PENDIENTE', 'confirmada', 'CONFIRMADA', 'confirmed'])
     .gte('fecha_fin', today)
 
   if (reservationsError) {

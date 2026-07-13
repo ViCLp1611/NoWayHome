@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Mail, Phone, MapPin, Calendar, Settings, Heart, Star, Edit } from 'lucide-react'
+import { Mail, Phone, MapPin, Calendar, Settings, Heart, Star, Edit, Lock } from 'lucide-react'
 import { Button } from '@/app/components/ui/button'
 import { Card } from '@/app/components/ui/card'
 import { Avatar, AvatarFallback } from '@/app/components/ui/avatar'
@@ -9,7 +9,9 @@ import { AlertMessage } from '@/app/components/ui/AlertMessage'
 import { LoadingState } from '@/app/components/ui/LoadingState'
 import { InquilinoNavbar } from '@/views/inquilino/components/InquilinoNavbar.jsx'
 import { EditInquilinoModal } from '@/views/inquilino/pages/EditInquilinoModal.jsx'
+import { ChangePasswordModal } from '@/views/inquilino/pages/ChangePasswordModal.jsx'
 import { inquilinoController } from '@/controllers/inquilinoController'
+import { toast } from 'sonner'
 import { formatDateLong } from '@/utils/dateUtils'
 
 export function ProfilePage() {
@@ -20,6 +22,7 @@ export function ProfilePage() {
   const [favoritos, setFavoritos] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [isEditOpen, setIsEditOpen] = useState(false)
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false)
   const [loadError, setLoadError] = useState('')
 
   useEffect(() => {
@@ -124,6 +127,48 @@ export function ProfilePage() {
     setUserData(updatedUser)
   }
 
+  const handleRemoveFavorito = async propiedadId => {
+    const currentUserId = userData?.id_inquilino || userData?.id
+    if (!currentUserId) {
+      toast.error('No se pudo identificar al usuario para esta acción.')
+      return
+    }
+
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+
+    try {
+      const response = await fetch(`${API_URL}/api/inquilino/favoritos`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id_inquilino: currentUserId,
+          id_propiedad: propiedadId,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Ocurrió un error en el servidor.')
+      }
+
+      setFavoritos(prevFavoritos =>
+        prevFavoritos.filter(fav => fav.propiedad?.id_propiedad !== propiedadId)
+      )
+      toast.success('Propiedad eliminada de tus favoritos.')
+    } catch (error) {
+      toast.error(error.message || 'No se pudo eliminar de favoritos. Intenta de nuevo.')
+      console.error('Error al eliminar favorito:', error)
+    }
+  }
+
+  const reservasPorPropiedadId = useMemo(
+    () => new Map(reservas.map(reserva => [reserva.id_propiedad, reserva])),
+    [reservas]
+  )
+
   if (isLoading || !userData) {
     return (
       <div className="min-h-screen bg-[#FAFAFA]">
@@ -153,6 +198,17 @@ export function ProfilePage() {
       .split('\n')
       .map(part => part.trim())
       .find(Boolean) || ''
+
+  const getFavoriteTitle = favorite =>
+    favorite.propiedad?.titulo ||
+    getTitleFromDescription(favorite.propiedad?.descripcion) ||
+    `Propiedad ${favorite.propiedad?.id_propiedad || ''}`.trim()
+
+  const getFavoriteLocation = favorite =>
+    favorite.propiedad?.ubicacion ||
+    favorite.propiedad?.ciudad ||
+    favorite.propiedad?.direccion ||
+    'Ubicación no especificada'
 
   const getBookingTitle = booking =>
     booking.titulo ||
@@ -234,10 +290,6 @@ export function ProfilePage() {
                     </div>
                   )}
                   <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-[#A67C52]" />
-                    <span className="text-sm">Ubicación no definida</span>
-                  </div>
-                  <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-[#A67C52]" />
                     <span className="text-sm">Miembro verificado</span>
                   </div>
@@ -261,6 +313,11 @@ export function ProfilePage() {
             onClose={() => setIsEditOpen(false)}
             userData={userData}
             onUpdateSuccess={handleUpdateSuccess}
+          />
+          <ChangePasswordModal
+            isOpen={isChangePasswordOpen}
+            onClose={() => setIsChangePasswordOpen(false)}
+            userData={userData}
           />
 
           {/* Tabs Section */}
@@ -398,40 +455,72 @@ export function ProfilePage() {
                   Tu lista de favoritos está vacía.
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {favoritos.map(favorite => (
-                    <Card
-                      key={favorite.id_favorito || favorite.id}
-                      className="p-6 bg-white border border-[#6B8E23]/10 shadow-sm rounded-2xl"
-                    >
-                      <div className="flex justify-between items-start mb-4">
-                        <h3 className="font-poppins font-semibold text-[#5F5F5F]">
-                          {favorite.propiedad?.titulo || 'Propiedad sin título'}
-                        </h3>
-                        <Heart className="h-5 w-5 fill-[#6B8E23] text-[#6B8E23] cursor-pointer hover:scale-110 transition-transform" />
-                      </div>
-                      <div className="flex items-center gap-2 text-[#5F5F5F] mb-5">
-                        <MapPin className="h-4 w-4 text-[#A67C52]" />
-                        <span className="text-sm">
-                          {favorite.propiedad?.ubicacion || 'Ubicación no especificada'}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between pt-4 border-t border-[#6B8E23]/10">
-                        <span className="font-poppins font-semibold text-lg text-[#6B8E23]">
-                          {formatPrice(favorite.propiedad?.precio_noche)} / noche
-                        </span>
-                        <Button
-                          size="sm"
-                          onClick={() =>
-                            navigate(`/inquilino/reserva/${favorite.propiedad?.id_propiedad}`)
-                          }
-                          className="bg-[#6B8E23] text-white hover:bg-[#5a7a1e] shadow-none rounded-lg"
-                        >
-                          Reservar
-                        </Button>
-                      </div>
-                    </Card>
-                  ))}
+                <div className="space-y-6">
+                  {favoritos.map(favorite => {
+                    const propiedadId = favorite.propiedad?.id_propiedad
+                    const reservaAsociada = reservasPorPropiedadId.get(propiedadId)
+
+                    return (
+                      <Card
+                        key={favorite.id_favorito || propiedadId}
+                        className="p-6 bg-[#F2E8CF] border-none shadow-none rounded-2xl"
+                      >
+                        <div className="flex flex-col md:flex-row justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex justify-between items-start gap-4 mb-3">
+                              <h3 className="font-poppins font-semibold text-lg text-[#5F5F5F] flex-1">
+                                {getFavoriteTitle(favorite)}
+                              </h3>
+                              <button
+                                onClick={() => handleRemoveFavorito(propiedadId)}
+                                className="shrink-0"
+                                aria-label="Eliminar de favoritos"
+                                disabled={!propiedadId}
+                              >
+                                <Heart className="h-5 w-5 fill-[#6B8E23] text-[#6B8E23] cursor-pointer hover:fill-red-500 hover:text-red-500 transition-colors" />
+                              </button>
+                            </div>
+                            <div className="space-y-2 text-[#5F5F5F]">
+                              <div className="flex items-center gap-2">
+                                <MapPin className="h-4 w-4 text-[#A67C52]" />
+                                <span className="text-sm">{getFavoriteLocation(favorite)}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col items-start md:items-end justify-between gap-3">
+                            <div className="text-left md:text-right">
+                              <span className="font-poppins font-semibold text-2xl text-[#6B8E23]">
+                                {formatPrice(
+                                  favorite.propiedad?.precio_noche || favorite.propiedad?.precio
+                                )}
+                              </span>
+                              <span className="block text-sm text-[#5F5F5F] mt-1">/ noche</span>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => {
+                                if (reservaAsociada && reservaAsociada.id_navegacion) {
+                                  navigate(
+                                    `/inquilino/reserva-detalle/${encodeURIComponent(
+                                      reservaAsociada.id_navegacion
+                                    )}`
+                                  )
+                                } else if (propiedadId) {
+                                  navigate(`/inquilino/propiedad/${propiedadId}`)
+                                }
+                              }}
+                              disabled={!propiedadId}
+                              className="border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#6B8E23] hover:text-white shadow-none rounded-xl transition-all"
+                            >
+                              Ver Detalles
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    )
+                  })}
                 </div>
               )}
             </TabsContent>
@@ -509,8 +598,10 @@ export function ProfilePage() {
                     <div className="space-y-3">
                       <Button
                         variant="outline"
-                        className="w-full justify-start border-2 border-[#6B8E23]/20 text-[#5F5F5F] hover:border-[#6B8E23] hover:bg-[#F2E8CF]/30 shadow-none rounded-xl h-12 transition-all"
+                        onClick={() => setIsChangePasswordOpen(true)}
+                        className="w-full justify-start border-2 border-[#6B8E23]/20 text-[#5F5F5F] hover:border-[#6B8E23] hover:bg-[#6B8E23] hover:text-white shadow-none rounded-xl h-12 transition-all"
                       >
+                        <Lock className="h-4 w-4 mr-2" />
                         Cambiar contraseña
                       </Button>
                     </div>

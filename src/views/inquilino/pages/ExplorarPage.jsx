@@ -8,9 +8,10 @@ import { AlertMessage } from '@/app/components/ui/AlertMessage'
 import { EmptyState } from '@/app/components/ui/EmptyState'
 import { LoadingState } from '@/app/components/ui/LoadingState'
 import { InquilinoNavbar } from '@/views/inquilino/components/InquilinoNavbar.jsx'
-import { PLACEHOLDER_PROPERTY_IMAGE } from '@/views/inquilino/constants.js'
 import { propiedadController } from '@/controllers/propiedadController.js'
-import { inquilinoService } from '@/services/inquilinoService'
+import { supabase } from '@/lib/supabaseClient'
+import { toast } from 'sonner'
+import { PLACEHOLDER_PROPERTY_IMAGE } from '@/views/inquilino/constants.js'
 
 export function ExplorarPage() {
   const navigate = useNavigate()
@@ -18,6 +19,8 @@ export function ExplorarPage() {
   const [filtro, setFiltro] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
+  const [favoritos, setFavoritos] = useState(new Set())
+  const [userId, setUserId] = useState(null)
 
   useEffect(() => {
     const storedUser = sessionStorage.getItem('user') || localStorage.getItem('user')
@@ -25,64 +28,67 @@ export function ExplorarPage() {
       navigate('/')
       return
     }
+    const parsedUser = JSON.parse(storedUser)
+    const currentUserId = parsedUser?.id_inquilino || parsedUser?.id
+    setUserId(currentUserId)
 
-    const fetchPropiedades = async () => {
+    const fetchPageData = async () => {
+      if (!currentUserId) return
+
       try {
         setError('')
-        const result = await propiedadController.cargarPropiedades()
+        setIsLoading(true)
 
-        // obtener propiedades sin procesar
-        let propiedadesRaw = []
-        if (result && result.success && Array.isArray(result.data)) {
-          propiedadesRaw = result.data
-        } else if (Array.isArray(result)) {
-          propiedadesRaw = result
-        } else {
-          setError('No se pudieron cargar las propiedades disponibles.')
-        }
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
-        // intentar obtener reservas activas del inquilino y filtrar las propiedades
-        try {
-          const storedUser = sessionStorage.getItem('user') || localStorage.getItem('user')
-          const parsedUser = storedUser ? JSON.parse(storedUser) : null
-          const userId = parsedUser?.id_inquilino || parsedUser?.id
+        // Las propiedades ya vienen filtradas desde el backend para no mostrar las que
+        // tienen una reserva activa ('pendiente' o 'confirmada').
+        const [propiedadesResult, favoritosResponse] = await Promise.all([
+          propiedadController.cargarPropiedades(),
+          fetch(`${API_URL}/api/inquilino/${currentUserId}/favoritos`),
+        ])
 
-          if (userId) {
-            const reservas = await inquilinoService.obtenerReservas(userId)
-            // estados activos que bloquean nueva reserva (soportar variantes en ES/EN)
-            const estadosActivos = new Set(['pendiente', 'pending', 'confirmada', 'confirmed'])
-            const propiedadIdsBloqueadas = new Set(
-              (reservas || [])
-                .filter(r => estadosActivos.has(String(r.estado || '').toLowerCase()))
-                .map(
-                  r =>
-                    r.id_propiedad || r.propiedad?.id_propiedad || r.propiedad?.id || r.id_propiedad
-                )
-                .filter(Boolean)
-            )
-
-            const filtradas = (propiedadesRaw || []).filter(prop => {
-              const pid = prop.id_propiedad || prop.id
-              return !propiedadIdsBloqueadas.has(pid)
-            })
-
-            setPropiedades(filtradas)
+        // Process favorites
+        if (favoritosResponse.ok) {
+          const favoritosData = await favoritosResponse.json()
+          if (favoritosData.success && Array.isArray(favoritosData.data)) {
+            const favIds = new Set(favoritosData.data)
+            setFavoritos(favIds)
           } else {
-            setPropiedades(propiedadesRaw)
+            console.error(
+              'Error al procesar favoritos:',
+              favoritosData.message || 'Respuesta no válida'
+            )
           }
-        } catch (reservasErr) {
-          // si falla la obtencion de reservas, mostrar el catalogo completo pero registrar el error
-          console.error('Error al obtener reservas del inquilino:', reservasErr)
-          setPropiedades(propiedadesRaw)
+        } else {
+          console.error('Error al cargar favoritos:', favoritosResponse.statusText)
         }
+
+        // Process properties
+        let propiedadesRaw = []
+        if (
+          propiedadesResult &&
+          propiedadesResult.success &&
+          Array.isArray(propiedadesResult.data)
+        ) {
+          propiedadesRaw = propiedadesResult.data
+        } else if (Array.isArray(propiedadesResult)) {
+          propiedadesRaw = propiedadesResult
+        } else {
+          throw new Error(
+            propiedadesResult.error || 'No se pudieron cargar las propiedades disponibles.'
+          )
+        }
+
+        setPropiedades(propiedadesRaw)
       } catch (err) {
-        setError(err.message || 'No se pudieron cargar las propiedades disponibles.')
+        setError(err.message || 'No se pudieron cargar los datos de la página.')
       } finally {
         setIsLoading(false)
       }
     }
 
-    fetchPropiedades()
+    fetchPageData()
   }, [navigate])
 
   const propiedadesFiltradas = propiedades.filter(prop => {
@@ -99,6 +105,53 @@ export function ExplorarPage() {
 
   const formatPrice = price => {
     return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(price || 0)
+  }
+
+  const handleToggleFavorito = async (e, propiedadId) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (!userId) {
+      toast.error('Debes iniciar sesión para gestionar tus favoritos.')
+      return
+    }
+
+    const isFavorito = favoritos.has(propiedadId)
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+
+    try {
+      const response = await fetch(`${API_URL}/api/inquilino/favoritos`, {
+        method: isFavorito ? 'DELETE' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id_inquilino: userId,
+          id_propiedad: propiedadId,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Ocurrió un error en el servidor.')
+      }
+
+      if (isFavorito) {
+        setFavoritos(prev => {
+          const newFavs = new Set(prev)
+          newFavs.delete(propiedadId)
+          return newFavs
+        })
+        toast.success('Propiedad eliminada de tus favoritos.')
+      } else {
+        setFavoritos(prev => new Set(prev).add(propiedadId))
+        toast.success('Propiedad agregada a tus favoritos.')
+      }
+    } catch (error) {
+      toast.error(error.message || 'No se pudo actualizar tus favoritos. Intenta de nuevo.')
+      console.error('Error al gestionar favoritos:', error)
+    }
   }
 
   if (isLoading) {
@@ -166,6 +219,7 @@ export function ExplorarPage() {
                     prop.ubicacion || prop.direccion || prop.ciudad || 'Ubicación no especificada'
                   const precio = prop.precio_noche || prop.precio || prop.costo || 0
                   const imagen = prop.imagen_principal || PLACEHOLDER_PROPERTY_IMAGE
+                  const isFavorito = favoritos.has(id)
 
                   return (
                     <Card
@@ -181,8 +235,17 @@ export function ExplorarPage() {
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
-                        <button className="absolute right-3 top-3 rounded-full bg-white/90 p-2.5 backdrop-blur-md transition-all hover:scale-110 hover:bg-white shadow-sm">
-                          <Heart className="h-5 w-5 text-[#5F5F5F] transition-colors hover:fill-[#ff4757] hover:text-[#ff4757]" />
+                        <button
+                          onClick={e => handleToggleFavorito(e, id)}
+                          className="absolute right-3 top-3 rounded-full bg-white/90 p-2.5 backdrop-blur-md transition-all hover:scale-110 hover:bg-white shadow-sm"
+                        >
+                          <Heart
+                            className={`h-5 w-5 transition-colors ${
+                              isFavorito
+                                ? 'fill-[#ff4757] text-[#ff4757]'
+                                : 'text-[#5F5F5F] hover:fill-[#ff4757] hover:text-[#ff4757]'
+                            }`}
+                          />
                         </button>
                       </div>
 

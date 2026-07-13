@@ -11,7 +11,9 @@ export function EditInquilinoModal({ isOpen, onClose, userData, onUpdateSuccess 
   })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [success, setSuccess] = useState(null)
 
+  // Efecto para poblar el formulario cuando el modal se abre o los datos del usuario cambian.
   useEffect(() => {
     if (userData) {
       setFormData({
@@ -19,8 +21,17 @@ export function EditInquilinoModal({ isOpen, onClose, userData, onUpdateSuccess 
         telefono: userData.telefono || '',
       })
     }
-    setError(null)
   }, [userData, isOpen])
+
+  // Efecto para limpiar los mensajes de error/éxito solo cuando el modal se abre.
+  // Esto previene que el mensaje de "Cambios realizados" se borre inmediatamente
+  // después de una actualización exitosa, que es cuando `userData` cambia.
+  useEffect(() => {
+    if (isOpen) {
+      setError(null)
+      setSuccess(null)
+    }
+  }, [isOpen])
 
   if (!isOpen) return null
 
@@ -33,6 +44,7 @@ export function EditInquilinoModal({ isOpen, onClose, userData, onUpdateSuccess 
     e.preventDefault()
     setIsLoading(true)
     setError(null)
+    setSuccess(null)
 
     try {
       const userId = userData?.id_inquilino || userData?.id
@@ -57,11 +69,15 @@ export function EditInquilinoModal({ isOpen, onClose, userData, onUpdateSuccess 
       }
 
       onUpdateSuccess(updatedUser)
-      onClose()
+      setSuccess('Cambios realizados')
+      setIsLoading(false)
+
+      setTimeout(() => {
+        onClose()
+      }, 2000)
     } catch (err) {
       console.error('Error durante la actualización del perfil:', err)
       setError(err.message || 'Hubo un problema al actualizar tu perfil.')
-    } finally {
       setIsLoading(false)
     }
   }
@@ -75,7 +91,7 @@ export function EditInquilinoModal({ isOpen, onClose, userData, onUpdateSuccess 
           </h2>
           <button
             onClick={onClose}
-            disabled={isLoading}
+            disabled={isLoading || !!success}
             className="text-[#5F5F5F] hover:text-[#6B8E23] transition-colors rounded-full p-1.5 hover:bg-[#F2E8CF]/50 disabled:opacity-50"
           >
             <X className="h-5 w-5" />
@@ -86,6 +102,7 @@ export function EditInquilinoModal({ isOpen, onClose, userData, onUpdateSuccess 
           {error && (
             <AlertMessage type="error" title="No se pudo guardar el perfil" message={error} />
           )}
+          {success && <AlertMessage type="success" title="Éxito" message={success} />}
 
           <div className="space-y-1.5">
             <label htmlFor="nombre" className="text-sm font-medium text-[#5F5F5F] block">
@@ -98,7 +115,7 @@ export function EditInquilinoModal({ isOpen, onClose, userData, onUpdateSuccess 
               required
               value={formData.nombre}
               onChange={handleChange}
-              disabled={isLoading}
+              disabled={isLoading || !!success}
               className="w-full px-4 py-2.5 border border-[#6B8E23]/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6B8E23] focus:border-transparent text-[#5F5F5F] transition-all disabled:opacity-50 disabled:bg-gray-50"
               placeholder="Tu nombre completo"
             />
@@ -114,7 +131,7 @@ export function EditInquilinoModal({ isOpen, onClose, userData, onUpdateSuccess 
               name="telefono"
               value={formData.telefono}
               onChange={handleChange}
-              disabled={isLoading}
+              disabled={isLoading || !!success}
               className="w-full px-4 py-2.5 border border-[#6B8E23]/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6B8E23] focus:border-transparent text-[#5F5F5F] transition-all disabled:opacity-50 disabled:bg-gray-50"
               placeholder="Ej. 5512345678"
             />
@@ -138,7 +155,7 @@ export function EditInquilinoModal({ isOpen, onClose, userData, onUpdateSuccess 
               type="button"
               variant="outline"
               onClick={onClose}
-              disabled={isLoading}
+              disabled={isLoading || !!success}
               className="border-2 border-[#5F5F5F]/20 text-[#5F5F5F] shadow-none rounded-xl hover:bg-gray-50 hover:text-[#5F5F5F] transition-all disabled:opacity-50"
             >
               Cancelar
@@ -146,7 +163,7 @@ export function EditInquilinoModal({ isOpen, onClose, userData, onUpdateSuccess 
 
             <Button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !!success}
               className="bg-[#6B8E23] text-white hover:bg-[#5a7a1e] shadow-none rounded-xl min-w-[140px] transition-all disabled:opacity-70"
             >
               {isLoading ? (

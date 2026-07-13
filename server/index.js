@@ -19,6 +19,7 @@ import {
 } from './utils/crypto.js'
 import { passwordResetEmailTemplate } from './utils/emailTemplates.js'
 import { paymentController } from './controllers/paymentController.js' // Importamos el controlador de pagos directamente.
+import { getTenantFavorites } from './services/tenantService.js'
 
 /*
 |--------------------------------------------------------------------------
@@ -119,13 +120,11 @@ app.patch('/api/inquilino/reservas/:idReserva/hide', async (req, res) => {
     const estadosPermitidos = ['cancelada', 'rechazada']
 
     if (!estadosPermitidos.includes(estadoNormalizado)) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message:
-            'Solo puedes eliminar del historial las reservas que han sido canceladas o rechazadas.',
-        })
+      return res.status(400).json({
+        success: false,
+        message:
+          'Solo puedes eliminar del historial las reservas que han sido canceladas o rechazadas.',
+      })
     }
 
     // 4. Si todo es correcto, actualizar la reserva
@@ -144,6 +143,93 @@ app.patch('/api/inquilino/reservas/:idReserva/hide', async (req, res) => {
   } catch (error) {
     console.error('Error al ocultar la reserva:', error.message)
     res.status(500).json({ success: false, message: 'No se pudo procesar la solicitud.' })
+  }
+})
+
+// Rutas para gestionar favoritos
+app.post('/api/inquilino/favoritos', async (req, res) => {
+  /*
+  |--------------------------------------------------------------------------
+  | POST /api/inquilino/favoritos
+  |--------------------------------------------------------------------------
+  | Funcion:
+  | Permite a un inquilino agregar una propiedad a su lista de favoritos.
+  |
+  | Seguridad:
+  | - El id_inquilino debería obtenerse de una sesión de usuario autenticada
+  |   en un entorno de producción, en lugar de confiar en el cuerpo de la
+  |   solicitud para prevenir que un usuario agregue favoritos en nombre de otro.
+  */
+  const { id_inquilino, id_propiedad } = req.body
+
+  if (!id_inquilino || !id_propiedad) {
+    return res.status(400).json({ success: false, message: 'Faltan datos requeridos.' })
+  }
+
+  try {
+    const { error } = await supabase.from('favoritos').insert({ id_inquilino, id_propiedad })
+
+    if (error) {
+      if (error.code === '23505') {
+        return res
+          .status(409)
+          .json({ success: false, message: 'La propiedad ya está en favoritos.' })
+      }
+      throw error
+    }
+
+    res.status(201).json({ success: true, message: 'Propiedad agregada a favoritos.' })
+  } catch (error) {
+    console.error('Error al agregar favorito:', error.message)
+    res
+      .status(500)
+      .json({ success: false, message: 'No se pudo agregar la propiedad a favoritos.' })
+  }
+})
+
+app.delete('/api/inquilino/favoritos', async (req, res) => {
+  const { id_inquilino, id_propiedad } = req.body
+
+  if (!id_inquilino || !id_propiedad) {
+    return res.status(400).json({ success: false, message: 'Faltan datos requeridos.' })
+  }
+
+  try {
+    const { error } = await supabase
+      .from('favoritos')
+      .delete()
+      .match({ id_inquilino, id_propiedad })
+
+    if (error) throw error
+
+    res.status(200).json({ success: true, message: 'Propiedad eliminada de favoritos.' })
+  } catch (error) {
+    console.error('Error al eliminar favorito:', error.message)
+    res
+      .status(500)
+      .json({ success: false, message: 'No se pudo eliminar la propiedad de favoritos.' })
+  }
+})
+
+app.get('/api/inquilino/:id/favoritos', async (req, res) => {
+  /*
+  |--------------------------------------------------------------------------
+  | GET /api/inquilino/:id/favoritos
+  |--------------------------------------------------------------------------
+  | Funcion:
+  | Obtiene la lista de IDs de propiedades favoritas de un inquilino.
+  */
+  const { id } = req.params
+  try {
+    const favorites = await getTenantFavorites(id)
+    // El frontend solo necesita los IDs de las propiedades para el estado inicial
+    const favoritePropertyIds = favorites.map(
+      fav => fav.propiedad?.id_propiedad || fav.id_propiedad
+    )
+    res.json({ success: true, data: favoritePropertyIds })
+  } catch (error) {
+    console.error('Error al obtener favoritos de inquilino:', error.message)
+    res.status(500).json({ success: false, message: 'No se pudieron cargar los favoritos.' })
   }
 })
 
@@ -964,6 +1050,59 @@ app.post('/api/auth/reset-password', async (req, res) => {
   } catch (error) {
     console.error('Error en reset-password:', error.message)
     return res.status(500).json({ message: 'El enlace no es valido o ha expirado.' })
+  }
+})
+
+app.post('/api/auth/update-password', async (req, res) => {
+  /*
+  |--------------------------------------------------------------------------
+  | POST /api/auth/update-password
+  |--------------------------------------------------------------------------
+  | Funcion:
+  | Permite a un usuario autenticado (inquilino o arrendatario) cambiar
+  | su propia contraseña desde su perfil.
+  |
+  | Seguridad:
+  | - El `userId` y `role` deben ser validados contra la sesión del usuario
+  |   en un entorno de producción para evitar que un usuario cambie la
+  |   contraseña de otro.
+  */
+  const { userId, newPassword, role } = req.body
+
+  if (!userId || !newPassword || !role) {
+    return res
+      .status(400)
+      .json({ success: false, message: 'Faltan datos requeridos (userId, newPassword, role).' })
+  }
+
+  if (newPassword.length < 6) {
+    return res
+      .status(400)
+      .json({ success: false, message: 'La contraseña debe tener al menos 6 caracteres.' })
+  }
+
+  const roleConfig = {
+    inquilino: { table: 'inquilino', idField: 'id_inquilino' },
+    arrendatario: { table: 'arrendatario', idField: 'id_arrendatario' },
+  }
+
+  const config = roleConfig[role]
+
+  if (!config) {
+    return res.status(400).json({ success: false, message: 'Rol de usuario no válido.' })
+  }
+
+  try {
+    const hashedPassword = await hashPassword(newPassword)
+    const { error } = await supabase
+      .from(config.table)
+      .update({ contrasena: hashedPassword })
+      .eq(config.idField, userId)
+    if (error) throw error
+    res.json({ success: true, message: 'Contraseña actualizada con éxito.' })
+  } catch (error) {
+    console.error(`Error al actualizar contraseña de ${role}:`, error.message)
+    res.status(500).json({ success: false, message: 'No se pudo actualizar la contraseña.' })
   }
 })
 

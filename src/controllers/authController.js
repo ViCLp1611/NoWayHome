@@ -155,6 +155,44 @@ export class AuthController {
     }
   }
 
+  async updatePassword(data) {
+    const { userId, role, password, confirmPassword } = data
+
+    if (!password || !confirmPassword) {
+      return { success: false, message: 'Debes completar ambos campos de contraseña.' }
+    }
+
+    if (password.length < 6) {
+      return {
+        success: false,
+        message: 'La contraseña debe tener al menos 6 caracteres.',
+      }
+    }
+
+    if (password !== confirmPassword) {
+      return { success: false, message: 'Las contraseñas no coinciden.' }
+    }
+
+    if (!userId || !role) {
+      return { success: false, message: 'No se pudo identificar al usuario.' }
+    }
+
+    try {
+      // Asumiendo que authService tendrá este método que llama al backend
+      const result = await authService.updatePassword({
+        userId,
+        role,
+        newPassword: password,
+      })
+      return result
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || 'Ocurrió un error inesperado al actualizar la contraseña.',
+      }
+    }
+  }
+
   // Método para cerrar sesión
   logout() {
     this.currentUser = null
