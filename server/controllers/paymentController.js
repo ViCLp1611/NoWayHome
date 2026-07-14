@@ -1,5 +1,6 @@
 // server/controllers/paymentController.js
 import { supabase } from '../config/supabase.js' // ⚠️ IMPORTANTE: Ajusta esta ruta a donde tengas tu archivo de conexión a Supabase en el backend
+import { sendReservationReceiptEmail } from '../services/emailNotificationService.js'
 
 const { PAYPAL_CLIENT_ID, PAYPAL_SECRET_KEY, PAYPAL_API_URL } = process.env
 
@@ -96,7 +97,7 @@ export const paymentController = {
         // Antes de registrar el pago, nos aseguramos que la reserva está en el estado correcto ('CONFIRMADA' por el anfitrión)
         const { data: reservaParaPagar, error: findError } = await supabase
           .from('reserva')
-          .select('estado, id_propiedad, id_inquilino, fecha_inicio')
+          .select('estado, id_propiedad, id_inquilino, fecha_inicio, fecha_fin, pago')
           .eq('id_reserva', idReserva)
           .single()
 
@@ -111,7 +112,7 @@ export const paymentController = {
             .json({ success: false, error: 'La reserva asociada al pago no fue encontrada.' })
         }
 
-        if (reservaParaPagar.estado !== 'CONFIRMADA') {
+        if (String(reservaParaPagar.estado || '').toUpperCase() !== 'CONFIRMADA') {
           // Otro caso grave. Se intentó pagar una reserva no aprobada.
           console.error(
             `[PAYMENT-CRITICAL] Pago capturado para reserva no aprobada. ID: ${idReserva}. Estado: ${reservaParaPagar.estado}. ORDEN PAYPAL: ${orderID}. REQUIERE REEMBOLSO MANUAL.`
@@ -146,23 +147,67 @@ export const paymentController = {
           throw new Error('El pago se completó, pero no se pudo registrar en la base de datos.')
         }
 
-        // --- PASO 2: Crear el contrato automáticamente tras el pago exitoso ---
-        const { error: errorContrato } = await supabase.from('contrato').insert({
-          id_propiedad: reservaParaPagar.id_propiedad,
-          id_inquilino: reservaParaPagar.id_inquilino,
-          fecha_inicio: reservaParaPagar.fecha_inicio,
-          fecha_contrato: new Date().toISOString().split('T')[0],
-          estado: 'FIRMADO', // El pago se considera una firma/aceptación
-        })
-
-        if (errorContrato) {
-          // El pago y su registro fueron exitosos, pero la creación del contrato falló.
-          // Esto es un estado inconsistente que requiere atención manual.
-          console.error(
-            `[CONTRACT-CRITICAL] Pago para reserva ${idReserva} registrado, pero falló la creación del contrato.`,
-            errorContrato
-          )
+        const [propertyResult, tenantResult] = await Promise.all([
+          supabase
+            .from('propiedad')
+            .select('*')
+            .eq('id_propiedad', reservaParaPagar.id_propiedad)
+            .maybeSingle(),
+          supabase
+            .from('inquilino')
+            .select('nombre,correo')
+            .eq('id_inquilino', reservaParaPagar.id_inquilino)
+            .maybeSingle(),
+        ])
+        const property = propertyResult.data || null
+        const propertyTitle =
+          property?.titulo ||
+          property?.titulo_propiedad ||
+          property?.nombre_propiedad ||
+          String(property?.descripcion || '')
+            .split('\n')
+            .map(part => part.trim())
+            .find(Boolean) ||
+          'Propiedad sin título'
+        let landlord = null
+        if (property?.id_arrendatario) {
+          const landlordResult = await supabase
+            .from('arrendatario')
+            .select('nombre,correo')
+            .eq('id_arrendatario', property.id_arrendatario)
+            .maybeSingle()
+          landlord = landlordResult.data || null
         }
+        const capture = data?.purchase_units?.[0]?.payments?.captures?.[0]
+        const commonReceiptData = {
+          reservationId: idReserva,
+          propertyTitle,
+          propertyAddress: property?.direccion || property?.ubicacion || property?.ciudad,
+          startDate: reservaParaPagar?.fecha_inicio,
+          endDate: reservaParaPagar?.fecha_fin,
+          total: montoCobrado,
+          tenantName: tenantResult.data?.nombre,
+          tenantEmail: tenantResult.data?.correo,
+          landlordName: landlord?.nombre,
+          landlordEmail: landlord?.correo,
+          paymentStatus: capture?.status || data.status,
+          paymentDate: capture?.create_time || capture?.update_time || new Date().toISOString(),
+          issuedAt: new Date().toISOString(),
+        }
+        await Promise.all([
+          sendReservationReceiptEmail({
+            ...commonReceiptData,
+            to: tenantResult.data?.correo,
+            name: tenantResult.data?.nombre,
+            role: 'inquilino',
+          }),
+          sendReservationReceiptEmail({
+            ...commonReceiptData,
+            to: landlord?.correo,
+            name: landlord?.nombre,
+            role: 'arrendatario',
+          }),
+        ])
 
         res.status(200).json({ success: true, data })
       } else {

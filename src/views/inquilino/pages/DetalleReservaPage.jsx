@@ -22,6 +22,8 @@ import { PLACEHOLDER_PROPERTY_IMAGE } from '@/views/inquilino/constants.js'
 import { formatDateShort } from '@/utils/dateUtils'
 import { LoadingState } from '@/app/components/ui/LoadingState'
 import { BookingContract } from '../components/BookingContract'
+import { toast } from 'sonner'
+import { tenantBookingService } from '@/services/tenantBookingService'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 const PAYPAL_CLIENT_ID = import.meta.env.VITE_PAYPAL_CLIENT_ID
@@ -138,25 +140,18 @@ export function DetalleReservaPage() {
         setReserva(prev => ({
           ...prev,
           estado: 'CONFIRMADA',
-          // Agregamos un objeto de pago simulado para que `isPaid` se vuelva `true`
           pagos: [
             ...(prev.pagos || []),
-            { id_transaccion_paypal: data.orderID, monto: totalFinal },
-          ],
-          // Agregamos también un contrato simulado para que la UI se actualice al instante
-          contrato: [
-            ...(prev.contrato || []),
             {
-              id_propiedad: prev.id_propiedad,
-              id_inquilino: prev.id_inquilino,
-              fecha_inicio: prev.fecha_inicio,
-              fecha_contrato: new Date().toISOString().split('T')[0],
-              estado: 'FIRMADO',
+              id_transaccion_paypal: data.orderID,
+              monto: totalFinal,
+              estado_pago: 'Completado',
             },
           ],
         }))
         setShowPaymentModal(false)
         setView('contract')
+        toast.success('Pago confirmado correctamente.')
       } else {
         throw new Error(result.error || 'El pago no se completó en el servidor.')
       }
@@ -172,8 +167,7 @@ export function DetalleReservaPage() {
   }
 
   const handleCancelarReserva = async () => {
-    // Usar el idReserva de los parámetros de la URL, que puede ser compuesto.
-    if (!idReserva || !reserva?.id_inquilino) return
+    if (!reserva?.id_reserva || !reserva?.id_inquilino) return
 
     setIsCanceling(true)
     setCancelError('')
@@ -182,34 +176,29 @@ export function DetalleReservaPage() {
       motivoSeleccionado === 'Otro (Especificar)' ? motivoAbierto.trim() : motivoSeleccionado
 
     try {
-      const response = await fetch(
-        `${API_URL}/api/inquilino/reservas/${encodeURIComponent(idReserva)}/cancel`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id_inquilino: reserva.id_inquilino,
-            motivo_cancelacion: motivoFinal,
-          }),
-        }
-      )
-
-      const result = await response.json()
-      if (!response.ok) {
-        throw new Error(result.message || 'No se pudo cancelar la reserva.')
-      }
+      const reservaCancelada = await tenantBookingService.cancelarReserva({
+        idReserva: reserva.id_reserva,
+        idInquilino: reserva.id_inquilino,
+        motivoCancelacion: motivoFinal,
+      })
 
       // Se actualiza el estado local con los datos frescos de la reserva cancelada desde el servidor.
       // Esto asegura que el estado y cualquier otro campo relevante se reflejen correctamente.
       setReserva(prev => ({
         ...prev,
-        ...result.reserva,
+        ...reservaCancelada,
       }))
       setShowCancelConfirm(false)
       setMotivoSeleccionado('')
       setMotivoAbierto('')
+      toast.success('Reserva cancelada correctamente.', {
+        description: isPaid
+          ? 'La reserva fue cancelada. Si existía un pago asociado, el reembolso se gestionará en una fase posterior.'
+          : undefined,
+      })
     } catch (err) {
-      setCancelError(err.message)
+      console.error('No se pudo cancelar la reserva:', err)
+      setCancelError('No se pudo cancelar la reserva. Intenta nuevamente.')
     } finally {
       setIsCanceling(false)
     }
@@ -249,8 +238,23 @@ export function DetalleReservaPage() {
   const formatDate = value => formatDateShort(value)
 
   const estado = String(reserva?.estado || '').toUpperCase()
-  const isPaid = reserva?.pagos && reserva.pagos.length > 0
-  const hasContract = reserva?.contrato && reserva.contrato.length > 0
+  const pagos = Array.isArray(reserva?.pagos) ? reserva.pagos : []
+  const estadosPagoConfirmado = [
+    'COMPLETADO',
+    'COMPLETED',
+    'CONFIRMADO',
+    'CONFIRMED',
+    'PAGADO',
+    'PAID',
+  ]
+  const estadoPagoReserva = String(
+    reserva?.estado_pago || reserva?.pago?.estado_pago || ''
+  ).toUpperCase()
+  const isPaid =
+    estadosPagoConfirmado.includes(estadoPagoReserva) ||
+    pagos.some(pago =>
+      estadosPagoConfirmado.includes(String(pago?.estado_pago || '').toUpperCase())
+    )
 
   // Una reserva se puede eliminar del historial si está CANCELADA o RECHAZADA.
   const canDeleteFromHistory = ['CANCELADA', 'RECHAZADA'].includes(estado)
@@ -286,7 +290,7 @@ export function DetalleReservaPage() {
 
   const isCancelDisabled =
     isCanceling ||
-    !motivoSeleccionado ||
+    (estado === 'CONFIRMADA' && !motivoSeleccionado) ||
     (motivoSeleccionado === 'Otro (Especificar)' && !motivoAbierto.trim())
 
   const getText = value => (typeof value === 'string' ? value.trim() : '')
@@ -398,7 +402,7 @@ export function DetalleReservaPage() {
                   Tu estadía
                 </p>
                 <h2 className="font-poppins text-lg font-semibold text-[#5F5F5F] sm:text-xl">
-                  {view === 'contract' ? 'Contrato de Reserva' : 'Detalles de tu Solicitud'}
+                  {view === 'contract' ? 'Constancia de Reserva' : 'Detalles de tu Solicitud'}
                 </h2>
               </div>
 
@@ -587,18 +591,16 @@ export function DetalleReservaPage() {
                           ¡Todo listo para tu viaje!
                         </h3>
                         <p className="mt-2 text-sm text-green-700/80">
-                          Tu reserva está confirmada y el pago ha sido procesado. Puedes ver y
-                          descargar tu contrato.
+                          Tu reserva está confirmada y el pago ha sido procesado. Puedes consultar
+                          la constancia de tu reserva.
                         </p>
-                        {hasContract && (
-                          <Button
-                            variant="outline"
-                            className="mt-4 w-full bg-white border-green-600 text-green-700 hover:bg-green-50"
-                            onClick={() => setView('contract')}
-                          >
-                            Ver Contrato de Reserva
-                          </Button>
-                        )}
+                        <Button
+                          variant="outline"
+                          className="mt-4 w-full bg-white border-green-600 text-green-700 hover:bg-green-50"
+                          onClick={() => setView('contract')}
+                        >
+                          Ver Constancia de Reserva
+                        </Button>
                       </div>
                     )}
 
@@ -641,15 +643,18 @@ export function DetalleReservaPage() {
                 <p className="mt-2 text-sm text-[#5F5F5F]/80">
                   ¿Estás seguro de que quieres cancelar esta reserva?
                 </p>
-                <div className="mt-4 rounded-md border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800">
-                  <strong>Importante:</strong> La cancelación no implica un reembolso automático.
-                </div>
+                {isPaid && (
+                  <div className="mt-4 rounded-md border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800">
+                    Esta reserva tiene un pago confirmado. La cancelación no generará reembolso
+                    automático en esta fase.
+                  </div>
+                )}
                 <div className="mt-4 space-y-2">
                   <label
                     htmlFor="motivo-cancelacion"
                     className="text-sm font-medium text-[#5F5F5F]"
                   >
-                    Motivo de cancelación *
+                    Motivo de cancelación {estado === 'CONFIRMADA' ? '*' : '(opcional)'}
                   </label>
                   <select
                     id="motivo-cancelacion"
@@ -657,8 +662,8 @@ export function DetalleReservaPage() {
                     onChange={e => setMotivoSeleccionado(e.target.value)}
                     className="flex h-10 w-full items-center justify-between rounded-md border border-[#6B8E23]/20 bg-white px-3 py-2 text-sm text-[#5F5F5F] ring-offset-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#6B8E23]/50 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <option value="" disabled>
-                      -- Selecciona un motivo --
+                    <option value="">
+                      -- Sin motivo --
                     </option>
                     {MOTIVOS_CANCELACION.map(motivo => (
                       <option key={motivo} value={motivo}>

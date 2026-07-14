@@ -1,4 +1,8 @@
 import { supabase } from '../config/supabase.js'
+import {
+  sendReservationConfirmedEmail,
+  sendReservationRejectedEmail,
+} from './emailNotificationService.js'
 
 class ValidationError extends Error {
   constructor(message) {
@@ -342,7 +346,7 @@ export async function updateReservationStatus(idReserva, idArrendatario, nuevoEs
   const principalImageByProperty = getPrincipalImageByProperty(imagesResult.data)
   const imagenPrincipal = principalImageByProperty[propertyId] || null
 
-  return {
+  const enrichedReservation = {
     ...updatedReserva,
     id: updatedReserva.id_reserva,
     titulo_propiedad: propiedad?.titulo || propiedad?.descripcion || 'Propiedad',
@@ -352,6 +356,25 @@ export async function updateReservationStatus(idReserva, idArrendatario, nuevoEs
     propiedad: propiedad ? { ...propiedad, imagen_principal: imagenPrincipal } : null,
     inquilino,
   }
+
+  const notificationData = {
+    to: inquilino?.correo,
+    name: inquilino?.nombre,
+    propertyTitle: propiedad?.titulo || propiedad?.descripcion,
+    startDate: updatedReserva?.fecha_inicio,
+    endDate: updatedReserva?.fecha_fin,
+    total: enrichedReservation.total,
+    reason: updatedReserva?.motivo_rechazo,
+    role: 'inquilino',
+  }
+
+  if (estado === 'CONFIRMADA') {
+    await sendReservationConfirmedEmail(notificationData)
+  } else if (estado === 'RECHAZADA') {
+    await sendReservationRejectedEmail(notificationData)
+  }
+
+  return enrichedReservation
 }
 
 export { ValidationError }

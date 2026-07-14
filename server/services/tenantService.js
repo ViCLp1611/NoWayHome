@@ -568,12 +568,22 @@ export async function getTenantProperties() {
   // Para cada propiedad disponible, asignar su imagen principal
   const propertiesWithImages = availableProperties.map(property => {
     const propertyImages = imagesByProperty[property.id_propiedad] || []
+    const storedDescription = splitStoredPropertyDescription(property.descripcion)
 
     // Regla: buscar imagen con es_principal = true, sino la primera ordenada
     const mainImage = propertyImages.find(img => img.es_principal) || propertyImages[0] || null
 
     return {
       ...withCapacityFields(property),
+      titulo:
+        normalizeText(property.titulo) ||
+        normalizeText(property.titulo_propiedad) ||
+        normalizeText(property.nombre_propiedad) ||
+        storedDescription.titulo ||
+        'Propiedad sin título',
+      descripcion: normalizeText(property.titulo)
+        ? property.descripcion
+        : storedDescription.descripcion,
       imagen_principal: mainImage ? mainImage.url : null,
     }
   })
@@ -612,9 +622,19 @@ export async function getTenantPropertyById(idPropiedad) {
   // Encontrar imagen principal
   const propertyImages = images || []
   const mainImage = propertyImages.find(img => img.es_principal) || propertyImages[0] || null
+  const storedDescription = splitStoredPropertyDescription(property.descripcion)
 
   return {
     ...withCapacityFields(property),
+    titulo:
+      normalizeText(property.titulo) ||
+      normalizeText(property.titulo_propiedad) ||
+      normalizeText(property.nombre_propiedad) ||
+      storedDescription.titulo ||
+      'Propiedad sin título',
+    descripcion: normalizeText(property.titulo)
+      ? property.descripcion
+      : storedDescription.descripcion,
     imagenes: propertyImages,
     imagen_principal: mainImage ? mainImage.url : null,
   }
@@ -674,34 +694,22 @@ export async function createTenantReservation(reservationData) {
 }
 
 export async function cancelTenantReservation(idReserva, idInquilino, motivoCancelacion) {
-  const reservationId = decodeURIComponent(String(idReserva || '').trim())
+  const reservationId = parsePositiveInteger(idReserva, 'id_reserva')
   const tenantId = parsePositiveInteger(idInquilino, 'id_inquilino')
   const motivo = normalizeText(motivoCancelacion)
 
-  if (!motivo) {
-    throw new ValidationError('El motivo de cancelación es obligatorio.')
-  }
-
-  const compositeId = parseReservationCompositeId(reservationId)
-
-  if (!compositeId) {
-    throw new ValidationError('Identificador de reserva no válido.')
-  }
-
-  if (compositeId.id_inquilino !== tenantId) {
-    throw new ValidationError('No tienes permiso para cancelar esta reserva.')
-  }
-
   const { data: reservation, error: fetchError } = await supabase
     .from('reserva')
-    .select('estado')
-    .eq('id_propiedad', compositeId.id_propiedad)
-    .eq('id_inquilino', compositeId.id_inquilino)
-    .eq('fecha_inicio', compositeId.fecha_inicio)
+    .select('*')
+    .eq('id_reserva', reservationId)
     .single()
 
   if (fetchError || !reservation) {
-    throw new Error('Reserva no encontrada.')
+    throw new ValidationError('Reserva no encontrada.')
+  }
+
+  if (Number(reservation.id_inquilino) !== tenantId) {
+    throw new ValidationError('No tienes permiso para cancelar esta reserva.')
   }
 
   const currentState = String(reservation.estado || '')
@@ -714,20 +722,54 @@ export async function cancelTenantReservation(idReserva, idInquilino, motivoCanc
     )
   }
 
-  const { data: updatedReservation, error: updateError } = await supabase
+  const isConfirmed = ['confirmada', 'confirmed'].includes(currentState)
+  if (isConfirmed && !motivo) {
+    throw new ValidationError('El motivo de cancelación es obligatorio para una reserva confirmada.')
+  }
+
+  const { data: payments, error: paymentsError } = await supabase
+    .from('pago')
+    .select('estado_pago')
+    .eq('id_reserva', reservationId)
+
+  if (paymentsError) {
+    console.error('[tenantService] No se pudo comprobar el pago de la reserva:', paymentsError.message)
+  }
+
+  const paidStatuses = ['completado', 'completed', 'confirmado', 'confirmed', 'pagado', 'paid']
+  const hasConfirmedPayment = (payments || []).some(payment =>
+    paidStatuses.includes(normalizeText(payment?.estado_pago).toLowerCase())
+  )
+
+  const cancellationPayload = {
+    estado: 'CANCELADA',
+    motivo_cancelacion: motivo || null,
+    cancelada_por: 'inquilino',
+    fecha_cancelacion: new Date().toISOString(),
+  }
+
+  let { data: updatedReservation, error: updateError } = await supabase
     .from('reserva')
-    .update({ estado: 'cancelada', motivo_cancelacion: motivo })
-    .eq('id_propiedad', compositeId.id_propiedad)
-    .eq('id_inquilino', compositeId.id_inquilino)
-    .eq('fecha_inicio', compositeId.fecha_inicio)
+    .update(cancellationPayload)
+    .eq('id_reserva', reservationId)
     .select()
     .single()
+
+  if (updateError) {
+    const fallbackPayload = { estado: 'CANCELADA', motivo_rechazo: motivo || null }
+    ;({ data: updatedReservation, error: updateError } = await supabase
+      .from('reserva')
+      .update(fallbackPayload)
+      .eq('id_reserva', reservationId)
+      .select()
+      .single())
+  }
 
   if (updateError) {
     throw new Error('No se pudo cancelar la reserva.')
   }
 
-  return updatedReservation
+  return { ...updatedReservation, pago_confirmado: hasConfirmedPayment }
 }
 
 export async function confirmTenantReservation(identifier) {

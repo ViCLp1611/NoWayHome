@@ -13,6 +13,7 @@ import { ChangePasswordModal } from '@/views/inquilino/pages/ChangePasswordModal
 import { inquilinoController } from '@/controllers/inquilinoController'
 import { toast } from 'sonner'
 import { formatDateLong } from '@/utils/dateUtils'
+import { tenantBookingService } from '@/services/tenantBookingService'
 
 export function ProfilePage() {
   const navigate = useNavigate()
@@ -24,6 +25,10 @@ export function ProfilePage() {
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false)
   const [loadError, setLoadError] = useState('')
+  const [bookingToCancel, setBookingToCancel] = useState(null)
+  const [cancellationReason, setCancellationReason] = useState('')
+  const [isCancelling, setIsCancelling] = useState(false)
+  const [cancellationError, setCancellationError] = useState('')
 
   useEffect(() => {
     const fetchPerfil = async () => {
@@ -50,15 +55,7 @@ export function ProfilePage() {
           reserva => !reserva.oculto_para_inquilino
         )
         const normalizedReservas = reservasVisibles.map(reserva => {
-          // Genera un ID único para la navegación, priorizando el id_reserva numérico.
-          // Si no existe, usa la clave compuesta como fallback.
-          const navigationId =
-            reserva.id_reserva ||
-            (reserva.id_propiedad &&
-            reserva.id_inquilino &&
-            (reserva.fecha_entrada || reserva.fecha_inicio)
-              ? `${reserva.id_propiedad}-${reserva.id_inquilino}-${reserva.fecha_entrada || reserva.fecha_inicio}`
-              : null)
+          const navigationId = reserva.id_reserva || null
 
           return {
             ...reserva,
@@ -244,6 +241,65 @@ export function ProfilePage() {
   const getBookingPriceBase = booking =>
     booking.precio_base ?? booking.precio ?? booking.precio_noche ?? 0
 
+  const paidStatuses = ['COMPLETADO', 'COMPLETED', 'CONFIRMADO', 'CONFIRMED', 'PAGADO', 'PAID']
+  const hasConfirmedPayment = booking => {
+    const payments = Array.isArray(booking?.pagos) ? booking.pagos : []
+    const directStatus = String(
+      booking?.estado_pago || booking?.pago?.estado_pago || ''
+    ).toUpperCase()
+    return (
+      paidStatuses.includes(directStatus) ||
+      payments.some(payment =>
+        paidStatuses.includes(String(payment?.estado_pago || '').toUpperCase())
+      )
+    )
+  }
+
+  const handleCancelBooking = async () => {
+    const tenantId = userData?.id_inquilino || userData?.id
+    if (!bookingToCancel?.id_reserva || !tenantId) return
+
+    const status = String(getBookingStatus(bookingToCancel)).toUpperCase()
+    if (status === 'CONFIRMADA' && !cancellationReason.trim()) {
+      setCancellationError('El motivo de cancelación es obligatorio.')
+      return
+    }
+
+    setIsCancelling(true)
+    setCancellationError('')
+    try {
+      const updatedBooking = await tenantBookingService.cancelarReserva({
+        idReserva: bookingToCancel.id_reserva,
+        idInquilino: tenantId,
+        motivoCancelacion: cancellationReason.trim(),
+      })
+      setReservas(current =>
+        current.map(booking =>
+          booking.id_reserva === updatedBooking.id_reserva
+            ? {
+                ...booking,
+                ...updatedBooking,
+                estado: updatedBooking.estado,
+                estado_reserva: updatedBooking.estado,
+              }
+            : booking
+        )
+      )
+      toast.success('Reserva cancelada correctamente.', {
+        description: hasConfirmedPayment(bookingToCancel)
+          ? 'La reserva fue cancelada. Si existía un pago asociado, el reembolso se gestionará en una fase posterior.'
+          : undefined,
+      })
+      setBookingToCancel(null)
+      setCancellationReason('')
+    } catch (error) {
+      console.error('No se pudo cancelar la reserva:', error)
+      setCancellationError('No se pudo cancelar la reserva. Intenta nuevamente.')
+    } finally {
+      setIsCancelling(false)
+    }
+  }
+
   return (
     <>
       <InquilinoNavbar /> {/* Nuevo Navbar inyectado en la página */}
@@ -362,7 +418,7 @@ export function ProfilePage() {
                   Aún no tienes reservas realizadas.
                 </div>
               ) : (
-                reservas.map(booking => {
+                reservas.map((booking, bookingIndex) => {
                   const estadoCrudo = String(getBookingStatus(booking) || '').toLowerCase()
                   let estadoNormalizado = estadoCrudo
                   if (estadoCrudo === 'confirmed') estadoNormalizado = 'confirmada'
@@ -379,8 +435,7 @@ export function ProfilePage() {
                   return (
                     <Card
                       key={
-                        booking.id_navegacion ||
-                        `${booking.id_propiedad}-${booking.id_inquilino}-${getBookingStartDate(booking)}`
+                        booking.id_reserva || `reservation-${bookingIndex}`
                       }
                       className="p-6 bg-[#F2E8CF] border-none shadow-none rounded-2xl"
                     >
@@ -433,6 +488,21 @@ export function ProfilePage() {
                           >
                             Ver Detalles
                           </Button>
+                          {['pendiente', 'confirmada'].includes(estadoNormalizado) &&
+                            booking.id_reserva && (
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                onClick={() => {
+                                  setBookingToCancel(booking)
+                                  setCancellationReason('')
+                                  setCancellationError('')
+                                }}
+                                className="bg-red-600 text-white hover:bg-red-700"
+                              >
+                                Cancelar reserva
+                              </Button>
+                            )}
                         </div>
                       </div>
                     </Card>
@@ -610,6 +680,59 @@ export function ProfilePage() {
               </Card>
             </TabsContent>
           </Tabs>
+
+          {bookingToCancel && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+              <Card className="w-full max-w-md p-6">
+                <h3 className="font-poppins text-lg font-semibold text-[#5F5F5F]">
+                  Confirmar cancelación
+                </h3>
+                <p className="mt-2 text-sm text-[#5F5F5F]/80">
+                  ¿Estás seguro de que quieres cancelar esta reserva?
+                </p>
+                {hasConfirmedPayment(bookingToCancel) && (
+                  <div className="mt-4 rounded-md border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800">
+                    Esta reserva tiene un pago confirmado. La cancelación no generará reembolso
+                    automático en esta fase.
+                  </div>
+                )}
+                <label className="mt-4 block text-sm font-medium text-[#5F5F5F]">
+                  Motivo de cancelación{' '}
+                  {String(getBookingStatus(bookingToCancel)).toUpperCase() === 'CONFIRMADA'
+                    ? '*'
+                    : '(opcional)'}
+                </label>
+                <textarea
+                  value={cancellationReason}
+                  onChange={event => setCancellationReason(event.target.value)}
+                  className="mt-2 min-h-[90px] w-full rounded-md border border-[#6B8E23]/20 p-3 text-sm"
+                />
+                {cancellationError && (
+                  <p className="mt-3 text-sm text-red-600">{cancellationError}</p>
+                )}
+                <div className="mt-6 flex justify-end gap-3">
+                  <Button
+                    variant="ghost"
+                    disabled={isCancelling}
+                    onClick={() => setBookingToCancel(null)}
+                  >
+                    Volver
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    disabled={
+                      isCancelling ||
+                      (String(getBookingStatus(bookingToCancel)).toUpperCase() === 'CONFIRMADA' &&
+                        !cancellationReason.trim())
+                    }
+                    onClick={handleCancelBooking}
+                  >
+                    {isCancelling ? 'Cancelando...' : 'Sí, cancelar'}
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          )}
         </div>
       </div>
     </>

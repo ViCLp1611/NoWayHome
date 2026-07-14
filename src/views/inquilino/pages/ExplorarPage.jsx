@@ -9,7 +9,6 @@ import { EmptyState } from '@/app/components/ui/EmptyState'
 import { LoadingState } from '@/app/components/ui/LoadingState'
 import { InquilinoNavbar } from '@/views/inquilino/components/InquilinoNavbar.jsx'
 import { propiedadController } from '@/controllers/propiedadController.js'
-import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
 import { PLACEHOLDER_PROPERTY_IMAGE } from '@/views/inquilino/constants.js'
 
@@ -95,7 +94,8 @@ export function ExplorarPage() {
     if (!filtro.trim()) return true
 
     const termino = filtro.toLowerCase()
-    const nombreProp = prop.titulo || prop.descripcion || prop.nombre || ''
+    const nombreProp =
+      prop.titulo || prop.titulo_propiedad || prop.nombre_propiedad || 'Propiedad sin título'
     const ubicacionProp = prop.ubicacion || prop.direccion || prop.ciudad || ''
 
     return (
@@ -213,8 +213,12 @@ export function ExplorarPage() {
             !error && (
               <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {propiedadesFiltradas.map(prop => {
-                  const id = prop.id_propiedad || prop.id
-                  const nombre = prop.titulo || prop.descripcion || prop.nombre || 'Sin nombre'
+                  const id = prop.id_propiedad
+                  const nombre =
+                    prop.titulo ||
+                    prop.titulo_propiedad ||
+                    prop.nombre_propiedad ||
+                    'Propiedad sin título'
                   const ubicacion =
                     prop.ubicacion || prop.direccion || prop.ciudad || 'Ubicación no especificada'
                   const precio = prop.precio_noche || prop.precio || prop.costo || 0

@@ -263,9 +263,10 @@ export function ReservasArrendatario() {
 
       const mensajes = {
         CONFIRMADA: 'Reserva confirmada correctamente.',
-        RECHAZADA: 'Reserva rechazada o cancelada correctamente.',
+        RECHAZADA: 'Reserva rechazada correctamente.',
+        CANCELADA: 'Reserva cancelada correctamente.',
         confirmada: 'Reserva confirmada correctamente.',
-        rechazada: 'Reserva rechazada o cancelada correctamente.',
+        rechazada: 'Reserva rechazada correctamente.',
         cancelada: 'Reserva cancelada correctamente.',
       }
 

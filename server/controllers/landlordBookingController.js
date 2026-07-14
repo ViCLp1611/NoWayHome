@@ -4,6 +4,7 @@ import {
   updateReservationStatus,
   ValidationError,
 } from '../services/landlordBookingService.js'
+import { sendReservationCancelledEmail } from '../services/emailNotificationService.js'
 
 function sendError(res, error, fallbackMessage = 'No se pudo completar la solicitud.') {
   console.error('[landlordBookingController]', error?.message || error)
@@ -88,6 +89,27 @@ export async function updateReservationStatusHandler(req, res) {
         .single()
 
       if (updateError) throw updateError
+
+      const [propertyResult, tenantResult, paymentsResult] = await Promise.all([
+        supabase.from('propiedad').select('*').eq('id_propiedad', updatedReserva.id_propiedad).maybeSingle(),
+        supabase.from('inquilino').select('nombre,correo').eq('id_inquilino', updatedReserva.id_inquilino).maybeSingle(),
+        supabase.from('pago').select('estado_pago').eq('id_reserva', updatedReserva.id_reserva),
+      ])
+      const paidStatuses = ['COMPLETADO', 'COMPLETED', 'CONFIRMADO', 'CONFIRMED', 'PAGADO', 'PAID']
+      const hasPayment = (paymentsResult.data || []).some(payment =>
+        paidStatuses.includes(String(payment?.estado_pago || '').toUpperCase())
+      )
+      await sendReservationCancelledEmail({
+        to: tenantResult.data?.correo,
+        name: tenantResult.data?.nombre,
+        propertyTitle: propertyResult.data?.titulo || propertyResult.data?.descripcion,
+        startDate: updatedReserva?.fecha_inicio,
+        endDate: updatedReserva?.fecha_fin,
+        total: updatedReserva?.pago,
+        reason: motivo_rechazo.trim(),
+        role: 'inquilino',
+        hasPayment,
+      })
 
       return res.json({
         ok: true,

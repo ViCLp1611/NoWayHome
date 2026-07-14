@@ -6,7 +6,7 @@ import { supabase } from './config/supabase.js'
 import landlordProfileRoutes from './routes/landlordProfileRoutes.js'
 import landlordBookingRoutes from './routes/landlordBookingRoutes.js'
 import propertyRoutes from './routes/propertyRoutes.js'
-import paymentRoutes from './routes/paymentRoutes.js' // Se comenta porque el archivo de rutas de pago parece estar ausente o mal configurado.
+import paymentRoutes from './routes/paymentRoutes.js'
 import tenantRoutes from './routes/tenantRoutes.js'
 import geocodeRoutes from './routes/geocodeRoutes.js'
 import {
@@ -18,7 +18,6 @@ import {
   validatePassword,
 } from './utils/crypto.js'
 import { passwordResetEmailTemplate } from './utils/emailTemplates.js'
-import { paymentController } from './controllers/paymentController.js' // Importamos el controlador de pagos directamente.
 import { getTenantFavorites } from './services/tenantService.js'
 
 /*
@@ -66,7 +65,7 @@ app.use('/api/arrendatario/reservas', landlordBookingRoutes)
 app.use('/api/arrendatario/properties', propertyRoutes)
 app.use('/api/inquilino', tenantRoutes)
 app.use('/api/geocode', geocodeRoutes)
-// app.use('/api/payments', paymentRoutes) // Se comenta para definir las rutas aquí.
+app.use('/api/payments', paymentRoutes)
 
 app.patch('/api/inquilino/reservas/:idReserva/hide', async (req, res) => {
   /*
@@ -232,10 +231,6 @@ app.get('/api/inquilino/:id/favoritos', async (req, res) => {
     res.status(500).json({ success: false, message: 'No se pudieron cargar los favoritos.' })
   }
 })
-
-// --- Solución al error 404 en pagos ---
-app.post('/api/payments/crear-orden', paymentController.crearOrden)
-app.post('/api/payments/capturar-orden', paymentController.capturarOrden)
 
 /*
 |--------------------------------------------------------------------------

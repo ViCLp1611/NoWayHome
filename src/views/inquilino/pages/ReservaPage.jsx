@@ -116,7 +116,7 @@ export function ReservaPage() {
         throw new Error(result.message || 'Ocurrió un error en el servidor.')
       }
 
-      toast.success('¡Solicitud Enviada!', {
+      toast.success('Reserva creada correctamente.', {
         description: 'El anfitrión ha sido notificado. Recibirás una actualización pronto.',
       })
 

@@ -1,5 +1,6 @@
 import {
   confirmTenantReservation,
+  cancelTenantReservation,
   getTenantFavorites,
   getTenantProfile,
   getTenantProperties,
@@ -9,6 +10,31 @@ import {
   ValidationError,
 } from '../services/tenantService.js'
 import { supabase } from '../config/supabase.js'
+import {
+  sendReservationCancelledEmail,
+  sendReservationCreatedEmail,
+} from '../services/emailNotificationService.js'
+
+async function getReservationNotificationContext(reservation) {
+  const [propertyResult, tenantResult] = await Promise.all([
+    supabase.from('propiedad').select('*').eq('id_propiedad', reservation?.id_propiedad).maybeSingle(),
+    supabase.from('inquilino').select('nombre,correo').eq('id_inquilino', reservation?.id_inquilino).maybeSingle(),
+  ])
+  const property = propertyResult.data || null
+  const tenant = tenantResult.data || null
+  let landlord = null
+
+  if (property?.id_arrendatario) {
+    const result = await supabase
+      .from('arrendatario')
+      .select('nombre,correo')
+      .eq('id_arrendatario', property.id_arrendatario)
+      .maybeSingle()
+    landlord = result.data || null
+  }
+
+  return { property, tenant, landlord }
+}
 
 function sendError(res, error, fallbackMessage = 'No se pudo completar la solicitud.') {
   if (error instanceof ValidationError || error.statusCode === 400) {
@@ -29,7 +55,7 @@ export async function getTenantProfileHandler(req, res) {
     // a Supabase incluya la columna 'oculto_para_inquilino'.
     const getReservationsPromise = supabase
       .from('reserva')
-      .select('*, propiedad:id_propiedad(*, imagenes:propiedad_imagen(*))') // El '*' trae todas las columnas.
+      .select('*, propiedad:id_propiedad(*, imagenes:propiedad_imagen(*)), pagos:pago(*)')
       .eq('id_inquilino', tenantId)
 
     const [profile, { data: reservations, error: reservationsError }, favorites] =
@@ -220,6 +246,17 @@ export async function createTenantReservationHandler(req, res) {
 
     if (error) throw error
 
+    const { property, landlord } = await getReservationNotificationContext(nuevaReserva)
+    await sendReservationCreatedEmail({
+      to: landlord?.correo,
+      name: landlord?.nombre,
+      propertyTitle: property?.titulo || property?.descripcion,
+      startDate: nuevaReserva?.fecha_inicio,
+      endDate: nuevaReserva?.fecha_fin,
+      total: nuevaReserva?.pago,
+      role: 'arrendatario',
+    })
+
     return res.status(201).json({
       ok: true,
       message: '¡Solicitud de reserva enviada! El estado ahora es PENDIENTE.',
@@ -252,78 +289,28 @@ export async function cancelTenantReservationHandler(req, res) {
     if (!id_inquilino) {
       return sendError(res, new ValidationError('Se requiere el ID del inquilino.'))
     }
-    if (!motivo_cancelacion || !motivo_cancelacion.trim()) {
-      return sendError(res, new ValidationError('Se requiere un motivo de cancelación.'))
-    }
-
-    const isCompositeKey = String(idReservaParam).includes('-')
-
-    // Paso 1: Encontrar y validar la reserva
-    let findQuery = supabase.from('reserva').select('id_inquilino, estado')
-
-    if (isCompositeKey) {
-      const parts = idReservaParam.split('-')
-      const id_propiedad = parseInt(parts[0], 10)
-      const id_inquilino_key = parseInt(parts[1], 10)
-      const fecha_inicio = parts.slice(2).join('-')
-
-      if (isNaN(id_propiedad) || isNaN(id_inquilino_key)) {
-        throw new ValidationError('ID de reserva compuesto inválido.')
-      }
-      findQuery = findQuery.match({ id_propiedad, id_inquilino: id_inquilino_key, fecha_inicio })
-    } else {
-      findQuery = findQuery.eq('id_reserva', idReservaParam)
-    }
-
-    const { data: reserva, error: findError } = await findQuery.single()
-
-    if (findError || !reserva) {
-      return res.status(404).json({ ok: false, message: 'Reserva no encontrada.' })
-    }
-
-    // Paso 2: Validar permisos y reglas de negocio
-    if (reserva.id_inquilino !== Number(id_inquilino)) {
-      return res
-        .status(403)
-        .json({ ok: false, message: 'No tienes permiso para cancelar esta reserva.' })
-    }
-
-    const estadoActual = String(reserva.estado || '').toUpperCase()
-    if (!['PENDIENTE', 'CONFIRMADA'].includes(estadoActual)) {
-      return res.status(400).json({
-        ok: false,
-        message: `No se puede cancelar una reserva en estado '${reserva.estado}'.`,
-      })
-    }
-
-    // Paso 3: Actualizar la reserva
-    let updateQuery = supabase
-      .from('reserva')
-      .update({ estado: 'RECHAZADA', motivo_rechazo: motivo_cancelacion.trim() })
-
-    if (isCompositeKey) {
-      const parts = idReservaParam.split('-')
-      const id_propiedad = parseInt(parts[0], 10)
-      const id_inquilino_key = parseInt(parts[1], 10)
-      const fecha_inicio = parts.slice(2).join('-')
-      updateQuery = updateQuery.match({
-        id_propiedad,
-        id_inquilino: id_inquilino_key,
-        fecha_inicio,
-      })
-    } else {
-      updateQuery = updateQuery.eq('id_reserva', idReservaParam)
-    }
-
-    const { data: reservaCancelada, error: updateError } = await updateQuery.select().single()
-
-    if (updateError) {
-      throw updateError
-    }
+    const reservaCancelada = await cancelTenantReservation(
+      idReservaParam,
+      id_inquilino,
+      motivo_cancelacion
+    )
 
     console.log(
       `[INFO] Reserva ${idReservaParam} cancelada por el inquilino. No se emite reembolso automático.`
     )
+
+    const { property, landlord } = await getReservationNotificationContext(reservaCancelada)
+    await sendReservationCancelledEmail({
+      to: landlord?.correo,
+      name: landlord?.nombre,
+      propertyTitle: property?.titulo || property?.descripcion,
+      startDate: reservaCancelada?.fecha_inicio,
+      endDate: reservaCancelada?.fecha_fin,
+      total: reservaCancelada?.pago,
+      reason: motivo_cancelacion?.trim(),
+      role: 'arrendatario',
+      hasPayment: reservaCancelada?.pago_confirmado === true,
+    })
 
     return res.status(200).json({
       ok: true,

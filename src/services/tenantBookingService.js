@@ -37,4 +37,18 @@ export const tenantBookingService = {
     })
     return data.reservation
   },
+
+  cancelarReserva: async ({ idReserva, idInquilino, motivoCancelacion }) => {
+    const data = await requestJson(
+      `/api/inquilino/reservas/${encodeURIComponent(idReserva)}/cancel`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({
+          id_inquilino: idInquilino,
+          motivo_cancelacion: motivoCancelacion || '',
+        }),
+      }
+    )
+    return data.reserva
+  },
 }
