@@ -112,6 +112,7 @@ export function ReservasArrendatario() {
   const [activeFilter, setActiveFilter] = useState('todas')
   const [pendingAction, setPendingAction] = useState(null)
   const [rejectReason, setRejectReason] = useState('')
+  const [actionFeedback, setActionFeedback] = useState({ type: '', title: '', text: '' })
 
   useEffect(() => {
     const fetchReservas = async () => {
@@ -156,6 +157,7 @@ export function ReservasArrendatario() {
     if (processingId) return
     setPendingAction(null)
     setRejectReason('')
+    setActionFeedback({ type: '', title: '', text: '' })
   }
 
   const openActionModal = (reserva, nuevoEstado) => {
@@ -172,6 +174,7 @@ export function ReservasArrendatario() {
     setMessage({ type: '', title: '', text: '' })
     setPendingAction({ reserva, nuevoEstado, idReserva: parsedIdReserva })
     setRejectReason('')
+    setActionFeedback({ type: '', title: '', text: '' })
   }
 
   // Se extrae la URL de la API para reutilizarla.
@@ -270,14 +273,14 @@ export function ReservasArrendatario() {
         cancelada: 'Reserva cancelada correctamente.',
       }
 
-      setMessage({
+      setActionFeedback({
         type: 'success',
         title: 'Éxito',
         text: mensajes[nuevoEstado] || 'Estado actualizado correctamente.',
       })
       return true
     } catch (err) {
-      setMessage({
+      setActionFeedback({
         type: 'error',
         title: 'Error',
         text: 'No se pudo actualizar la reserva. Intenta nuevamente.',
@@ -293,7 +296,7 @@ export function ReservasArrendatario() {
 
     // Validar que se provea un motivo si se está cancelando
     if (pendingAction.nuevoEstado === 'cancelada' && !rejectReason.trim()) {
-      setMessage({
+      setActionFeedback({
         type: 'error',
         title: 'Motivo requerido',
         text: 'Debes proporcionar un motivo para cancelar la reserva.',
@@ -307,7 +310,6 @@ export function ReservasArrendatario() {
       rejectReason
     )
     if (wasUpdated) {
-      setPendingAction(null)
       setRejectReason('')
     }
   }
@@ -739,7 +741,16 @@ export function ReservasArrendatario() {
               <p className="mt-2 text-sm leading-6 text-[#5F5F5F]/80">{modalMessage}</p>
             </div>
 
-            {(isRejectingAction || isCancellingAction) && (
+            {actionFeedback.text && (
+              <AlertMessage
+                type={actionFeedback.type}
+                title={actionFeedback.title}
+                message={actionFeedback.text}
+                className="mb-5"
+              />
+            )}
+
+            {actionFeedback.type !== 'success' && (isRejectingAction || isCancellingAction) && (
               <div className="mb-5">
                 <label htmlFor="reject-reason" className="text-sm font-medium text-[#5F5F5F]">
                   {isCancellingAction
@@ -749,7 +760,12 @@ export function ReservasArrendatario() {
                 <textarea
                   id="reject-reason"
                   value={rejectReason}
-                  onChange={event => setRejectReason(event.target.value)}
+                  onChange={event => {
+                    setRejectReason(event.target.value)
+                    if (actionFeedback.type === 'error') {
+                      setActionFeedback({ type: '', title: '', text: '' })
+                    }
+                  }}
                   disabled={Boolean(processingId)}
                   rows={4}
                   className="mt-2 w-full resize-none rounded-xl border border-[#A67C52]/25 bg-white px-3 py-2 text-sm text-[#5F5F5F] outline-none transition focus:border-[#6B8E23] focus:ring-2 focus:ring-[#6B8E23]/20 disabled:opacity-70"
@@ -770,23 +786,25 @@ export function ReservasArrendatario() {
                 disabled={Boolean(processingId)}
                 className="h-10 rounded-xl border-2 border-[#6B8E23] bg-white text-[#6B8E23] shadow-none hover:bg-[#FAFAFA] hover:text-[#5F5F5F]"
               >
-                Cancelar
+                {actionFeedback.type === 'success' ? 'Cerrar' : 'Cancelar'}
               </Button>
-              <Button
-                type="button"
-                onClick={confirmPendingAction}
-                disabled={Boolean(processingId)}
-                className={`h-10 rounded-xl px-4 text-white shadow-none ${isConfirmingAction ? 'bg-[#6B8E23] hover:bg-[#5a7a1e]' : isRejectingAction ? 'bg-red-600 hover:bg-red-700' : 'bg-[#A67C52] hover:bg-[#8f6844]'}`}
-              >
-                {isCancellingAction ? (
-                  <AlertCircle className="h-4 w-4" />
-                ) : isConfirmingAction ? (
-                  <CheckCircle className="h-4 w-4" />
-                ) : (
-                  <XCircle className="h-4 w-4" />
-                )}
-                {modalConfirmLabel}
-              </Button>
+              {actionFeedback.type !== 'success' && (
+                <Button
+                  type="button"
+                  onClick={confirmPendingAction}
+                  disabled={Boolean(processingId)}
+                  className={`h-10 rounded-xl px-4 text-white shadow-none ${isConfirmingAction ? 'bg-[#6B8E23] hover:bg-[#5a7a1e]' : isRejectingAction ? 'bg-red-600 hover:bg-red-700' : 'bg-[#A67C52] hover:bg-[#8f6844]'}`}
+                >
+                  {isCancellingAction ? (
+                    <AlertCircle className="h-4 w-4" />
+                  ) : isConfirmingAction ? (
+                    <CheckCircle className="h-4 w-4" />
+                  ) : (
+                    <XCircle className="h-4 w-4" />
+                  )}
+                  {modalConfirmLabel}
+                </Button>
+              )}
             </div>
           </div>
         </div>
