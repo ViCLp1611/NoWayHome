@@ -6,4 +6,4 @@ if (!configuredApiUrl && import.meta.env.PROD) {
   throw new Error('Falta configurar VITE_API_URL para conectar con NoWayHome API.')
 }
 
-export const API_URL = configuredApiUrl || 'http://localhost:3000'
+export const API_URL = configuredApiUrl || 'http://localhost:3001'
