@@ -38,6 +38,9 @@ const GENERIC_RESET_MESSAGE =
 const GENERIC_LOGIN_MESSAGE = 'Credenciales incorrectas. Verifica tu correo y contrasena.'
 const TWO_FACTOR_EXPIRATION_MINUTES = 5
 const TWO_FACTOR_MAX_ATTEMPTS = 5
+const LOGIN_MAX_FAILED_ATTEMPTS = 4
+const ACCOUNT_LOCKED_MESSAGE =
+  'Se alcanzó el límite de intentos. Intenta nuevamente en 15 minutos.'
 
 const app = express()
 
@@ -491,10 +494,43 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ success: false, message: GENERIC_LOGIN_MESSAGE })
     }
 
+    const blockedTimestamp = account.data.bloqueado_hasta
+    const normalizedBlockedTimestamp =
+      typeof blockedTimestamp === 'string' &&
+      !/[zZ]|[+-]\d{2}:?\d{2}$/.test(blockedTimestamp)
+        ? `${blockedTimestamp}Z`
+        : blockedTimestamp
+    const blockedUntil = normalizedBlockedTimestamp ? new Date(normalizedBlockedTimestamp) : null
+    if (blockedUntil && !Number.isNaN(blockedUntil.getTime()) && blockedUntil > new Date()) {
+      return res.status(429).json({ success: false, message: ACCOUNT_LOCKED_MESSAGE })
+    }
+
     const passwordMatches = await validatePassword(contrasena, account.data.contrasena)
 
     if (!passwordMatches) {
+      const { data: failedAttempt, error: failedAttemptError } = await supabase.rpc(
+        'registrar_intento_login_fallido',
+        { p_tabla: account.table, p_correo: correo }
+      )
+
+      if (failedAttemptError) {
+        throw new Error('No se pudo registrar el intento fallido de login.')
+      }
+
+      const attemptResult = Array.isArray(failedAttempt) ? failedAttempt[0] : failedAttempt
+      if (Number(attemptResult?.intentos_fallidos) >= LOGIN_MAX_FAILED_ATTEMPTS) {
+        return res.status(429).json({ success: false, message: ACCOUNT_LOCKED_MESSAGE })
+      }
       return res.status(401).json({ success: false, message: GENERIC_LOGIN_MESSAGE })
+    }
+
+    const { error: resetAttemptsError } = await supabase
+      .from(account.table)
+      .update({ intentos_fallidos: 0, bloqueado_hasta: null })
+      .eq('correo', correo)
+
+    if (resetAttemptsError) {
+      throw new Error('No se pudo restablecer el control de intentos de login.')
     }
 
     const code = generate2faCode()
