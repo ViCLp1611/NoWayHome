@@ -22,7 +22,10 @@ export const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY |
 export const SMTP_HOST = process.env.SMTP_HOST
 export const SMTP_PORT = Number(process.env.SMTP_PORT || 587)
 export const EMAIL_USER = process.env.SMTP_USER || process.env.EMAIL_USER
-export const EMAIL_PASS = process.env.SMTP_PASS || process.env.EMAIL_PASS
+export const EMAIL_PASS = String(process.env.SMTP_PASS || process.env.EMAIL_PASS || '').replace(
+  /\s/g,
+  ''
+)
 export const SMTP_SECURE = process.env.SMTP_SECURE === 'true'
 export const MAIL_FROM = process.env.EMAIL_FROM || process.env.MAIL_FROM || EMAIL_USER
 export const TWO_FACTOR_PEPPER = process.env.TWO_FACTOR_PEPPER || ''

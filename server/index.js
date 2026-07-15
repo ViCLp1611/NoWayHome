@@ -1195,10 +1195,14 @@ app.use((error, _req, res, _next) => {
   res.status(500).json({ success: false, message: 'Ocurrió un error interno.' })
 })
 
-app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   /*
    * Punto de arranque del backend Express.
    * No colocar aqui logica de negocio ni valores sensibles.
    */
   console.log(`Servidor NoWayHome iniciado en el puerto ${PORT}.`)
+})
+
+server.on('error', error => {
+  console.error('No se pudo iniciar el servidor NoWayHome:', error.message)
 })
