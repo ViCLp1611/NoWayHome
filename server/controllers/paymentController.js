@@ -8,6 +8,35 @@ import {
 } from '../config/env.js'
 
 const COMPLETED_PAYMENT_STATUSES = ['COMPLETADO', 'COMPLETED', 'CONFIRMADO', 'CONFIRMED', 'PAGADO', 'PAID']
+const PAYPAL_REQUEST_FAILED = 'PAYPAL_REQUEST_FAILED'
+
+const readPayPalResponse = async response => {
+  const text = await response.text()
+
+  if (!text) return null
+
+  try {
+    return JSON.parse(text)
+  } catch {
+    return text
+  }
+}
+
+const logPayPalError = ({ stage, response, body, error }) => {
+  console.error('[PayPal request failed]', {
+    stage,
+    status: response?.status ?? null,
+    statusText: response?.statusText || null,
+    body: body ?? null,
+    message: error?.message || 'PayPal devolvio una respuesta no exitosa.',
+  })
+}
+
+const createPayPalRequestError = message => {
+  const error = new Error(message)
+  error.code = PAYPAL_REQUEST_FAILED
+  return error
+}
 
 const parseReservationId = value => {
   const id = Number(value)
@@ -55,10 +84,21 @@ const generateAccessToken = async () => {
       },
     })
 
-    const data = await response.json()
+    const data = await readPayPalResponse(response)
+
+    if (!response.ok || !data?.access_token) {
+      const error = createPayPalRequestError('PayPal no pudo generar el token OAuth.')
+      logPayPalError({ stage: 'oauth_token', response, body: data, error })
+      error.logged = true
+      throw error
+    }
+
     return data.access_token
   } catch (error) {
-    console.error('Error al generar el token de PayPal:', error?.message || 'Error externo')
+    if (!error?.logged) {
+      logPayPalError({ stage: 'oauth_token', error })
+    }
+    error.code = PAYPAL_REQUEST_FAILED
     throw error
   }
 }
@@ -86,25 +126,47 @@ export const paymentController = {
         ],
       }
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify(payload),
-      })
+      let response
+      let data
 
-      const data = await response.json()
+      try {
+        response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify(payload),
+        })
+
+        data = await readPayPalResponse(response)
+      } catch (error) {
+        logPayPalError({ stage: 'create_order', response, body: data, error })
+        error.code = PAYPAL_REQUEST_FAILED
+        error.logged = true
+        throw error
+      }
 
       // Retornamos el ID de la orden al Frontend para que abra la ventana de PayPal
       if (!response.ok || !data.id) {
-        return res.status(502).json({ success: false, error: 'PayPal no pudo crear la orden.' })
+        const error = createPayPalRequestError('PayPal no pudo crear la orden.')
+        logPayPalError({ stage: 'create_order', response, body: data, error })
+        return res.status(502).json({
+          success: false,
+          error: 'PayPal no pudo crear la orden.',
+          code: PAYPAL_REQUEST_FAILED,
+        })
       }
       res.status(200).json({ id: data.id })
     } catch (error) {
-      console.error('Error creando la orden:', error?.message || 'Error externo')
-      res.status(500).json({ error: 'No se pudo crear la orden de pago.' })
+      if (!error?.logged && error?.code !== PAYPAL_REQUEST_FAILED) {
+        console.error('Error creando la orden:', error?.message || 'Error externo')
+      }
+      res.status(502).json({
+        success: false,
+        error: 'PayPal no pudo crear la orden.',
+        code: PAYPAL_REQUEST_FAILED,
+      })
     }
   },
 
