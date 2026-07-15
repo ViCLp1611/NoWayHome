@@ -345,11 +345,21 @@ async function findAccountWithPasswordByEmail(correo) {
       .maybeSingle()
 
     if (error) {
+      console.error(`Error al consultar ${lookup.table}:`, {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+      })
       throw new Error(`No se pudo consultar ${lookup.table}: ${error.message}`)
     }
 
     if (data) {
       return { ...lookup, data }
+    }
+
+    if (lookup.table === 'administrador') {
+      console.info('Administrador no encontrado; continuando con usuarios')
     }
   }
 

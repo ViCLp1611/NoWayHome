@@ -21,8 +21,8 @@ import { SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL } from './env.js'
 | No mover esta clave ni este cliente al frontend React.
 */
 export const supabase = createClient(
-  SUPABASE_URL,
-  SUPABASE_SERVICE_ROLE_KEY,
+  SUPABASE_URL.trim(),
+  SUPABASE_SERVICE_ROLE_KEY.trim(),
   {
     auth: {
       persistSession: false,
