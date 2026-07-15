@@ -24,17 +24,10 @@ import { LoadingState } from '@/app/components/ui/LoadingState'
 import { BookingContract } from '../components/BookingContract'
 import { toast } from 'sonner'
 import { tenantBookingService } from '@/services/tenantBookingService'
+import { CancelBookingModal } from '@/app/components/CancelBookingModal'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 const PAYPAL_CLIENT_ID = import.meta.env.VITE_PAYPAL_CLIENT_ID
-
-const MOTIVOS_CANCELACION = [
-  'Cambio de planes / Ya no realizaré el viaje',
-  'Encontré un mejor alojamiento en la plataforma',
-  'Error al seleccionar las fechas de reserva',
-  'Emergencia personal / Motivos de salud',
-  'Otro (Especificar)',
-]
 
 async function requestJson(path) {
   const res = await fetch(`${API_URL}${path}`)
@@ -60,8 +53,6 @@ export function DetalleReservaPage() {
   const [isCanceling, setIsCanceling] = useState(false)
   const [cancelError, setCancelError] = useState('')
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
-  const [motivoSeleccionado, setMotivoSeleccionado] = useState('')
-  const [motivoAbierto, setMotivoAbierto] = useState('')
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [view, setView] = useState('details') // 'details' o 'contract'
   const [imagenActual, setImagenActual] = useState(0)
@@ -108,7 +99,7 @@ export function DetalleReservaPage() {
       const response = await fetch(`${API_URL}/api/payments/crear-orden`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ total: totalFinal.toString() }),
+        body: JSON.stringify({ idReserva: reserva.id_reserva }),
       })
       const order = await response.json()
       if (order.id) {
@@ -166,14 +157,11 @@ export function DetalleReservaPage() {
     return <div>Error: La clave de cliente de PayPal no está configurada.</div>
   }
 
-  const handleCancelarReserva = async () => {
+  const handleCancelarReserva = async motivoFinal => {
     if (!reserva?.id_reserva || !reserva?.id_inquilino) return
 
     setIsCanceling(true)
     setCancelError('')
-
-    const motivoFinal =
-      motivoSeleccionado === 'Otro (Especificar)' ? motivoAbierto.trim() : motivoSeleccionado
 
     try {
       const reservaCancelada = await tenantBookingService.cancelarReserva({
@@ -189,8 +177,6 @@ export function DetalleReservaPage() {
         ...reservaCancelada,
       }))
       setShowCancelConfirm(false)
-      setMotivoSeleccionado('')
-      setMotivoAbierto('')
       toast.success('Reserva cancelada correctamente.', {
         description: isPaid
           ? 'La reserva fue cancelada. Si existía un pago asociado, el reembolso se gestionará en una fase posterior.'
@@ -287,11 +273,6 @@ export function DetalleReservaPage() {
 
   // Una reserva se puede cancelar si está PENDIENTE o CONFIRMADA.
   const canCancel = ['PENDIENTE', 'CONFIRMADA'].includes(estado)
-
-  const isCancelDisabled =
-    isCanceling ||
-    (estado === 'CONFIRMADA' && !motivoSeleccionado) ||
-    (motivoSeleccionado === 'Otro (Especificar)' && !motivoAbierto.trim())
 
   const getText = value => (typeof value === 'string' ? value.trim() : '')
   const getTitleFromDescription = description =>
@@ -618,8 +599,6 @@ export function DetalleReservaPage() {
                           className="mt-4 w-full bg-red-600 text-white hover:bg-red-700"
                           onClick={() => {
                             setCancelError('')
-                            setMotivoSeleccionado('')
-                            setMotivoAbierto('')
                             setShowCancelConfirm(true)
                           }}
                         >
@@ -633,74 +612,13 @@ export function DetalleReservaPage() {
             </div>
           </Card>
 
-          {/* MODAL DE CANCELACIÓN */}
-          {showCancelConfirm && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-              <Card className="w-full max-w-md p-6">
-                <h3 className="font-poppins text-lg font-semibold text-[#5F5F5F]">
-                  Confirmar Cancelación
-                </h3>
-                <p className="mt-2 text-sm text-[#5F5F5F]/80">
-                  ¿Estás seguro de que quieres cancelar esta reserva?
-                </p>
-                {isPaid && (
-                  <div className="mt-4 rounded-md border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800">
-                    Esta reserva tiene un pago confirmado. La cancelación no generará reembolso
-                    automático en esta fase.
-                  </div>
-                )}
-                <div className="mt-4 space-y-2">
-                  <label
-                    htmlFor="motivo-cancelacion"
-                    className="text-sm font-medium text-[#5F5F5F]"
-                  >
-                    Motivo de cancelación {estado === 'CONFIRMADA' ? '*' : '(opcional)'}
-                  </label>
-                  <select
-                    id="motivo-cancelacion"
-                    value={motivoSeleccionado}
-                    onChange={e => setMotivoSeleccionado(e.target.value)}
-                    className="flex h-10 w-full items-center justify-between rounded-md border border-[#6B8E23]/20 bg-white px-3 py-2 text-sm text-[#5F5F5F] ring-offset-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#6B8E23]/50 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <option value="">
-                      -- Sin motivo --
-                    </option>
-                    {MOTIVOS_CANCELACION.map(motivo => (
-                      <option key={motivo} value={motivo}>
-                        {motivo}
-                      </option>
-                    ))}
-                  </select>
-                  {motivoSeleccionado === 'Otro (Especificar)' && (
-                    <textarea
-                      value={motivoAbierto}
-                      onChange={e => setMotivoAbierto(e.target.value)}
-                      placeholder="Por favor, especifica el motivo de tu cancelación..."
-                      className="mt-2 min-h-[80px] w-full rounded-md border border-[#6B8E23]/20 bg-white p-2 text-sm text-[#5F5F5F] focus:border-[#6B8E23] focus:ring-2 focus:ring-[#6B8E23]/50"
-                    />
-                  )}
-                </div>
-                {cancelError && <div className="mt-4 text-sm text-red-600">{cancelError}</div>}
-                <div className="mt-6 flex justify-end gap-3">
-                  <Button
-                    variant="ghost"
-                    onClick={() => setShowCancelConfirm(false)}
-                    disabled={isCanceling}
-                  >
-                    Volver
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    className="bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
-                    onClick={handleCancelarReserva}
-                    disabled={isCancelDisabled}
-                  >
-                    {isCanceling ? 'Cancelando...' : 'Sí, cancelar'}
-                  </Button>
-                </div>
-              </Card>
-            </div>
-          )}
+          <CancelBookingModal
+            open={showCancelConfirm}
+            onClose={() => setShowCancelConfirm(false)}
+            onConfirm={handleCancelarReserva}
+            isLoading={isCanceling}
+            error={cancelError}
+          />
 
           {/* MODAL DE ELIMINACIÓN */}
           {showDeleteConfirm && (

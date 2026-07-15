@@ -3,6 +3,38 @@ import { supabase } from '../config/supabase.js' // ⚠️ IMPORTANTE: Ajusta es
 import { sendReservationReceiptEmail } from '../services/emailNotificationService.js'
 
 const { PAYPAL_CLIENT_ID, PAYPAL_SECRET_KEY, PAYPAL_API_URL } = process.env
+const COMPLETED_PAYMENT_STATUSES = ['COMPLETADO', 'COMPLETED', 'CONFIRMADO', 'CONFIRMED', 'PAGADO', 'PAID']
+
+const parseReservationId = value => {
+  const id = Number(value)
+  return Number.isInteger(id) && id > 0 ? id : null
+}
+
+const getPayableReservation = async idReserva => {
+  const { data: reservation, error } = await supabase
+    .from('reserva')
+    .select('id_reserva,estado,id_propiedad,id_inquilino,fecha_inicio,fecha_fin,pago')
+    .eq('id_reserva', idReserva)
+    .maybeSingle()
+
+  if (error || !reservation) return { error: 'La reserva no existe.' }
+  if (String(reservation.estado || '').toUpperCase() !== 'CONFIRMADA') {
+    return { error: 'La reserva no está aprobada para recibir pagos.' }
+  }
+  const expectedAmount = Number(reservation.pago)
+  if (!Number.isFinite(expectedAmount) || expectedAmount <= 0) {
+    return { error: 'La reserva no tiene un monto válido.' }
+  }
+  const { data: payments, error: paymentsError } = await supabase
+    .from('pago')
+    .select('estado_pago')
+    .eq('id_reserva', idReserva)
+  if (paymentsError) return { error: 'No se pudo validar el estado de pago.' }
+  if ((payments || []).some(payment => COMPLETED_PAYMENT_STATUSES.includes(String(payment.estado_pago || '').toUpperCase()))) {
+    return { error: 'La reserva ya tiene un pago confirmado.', status: 409 }
+  }
+  return { reservation, expectedAmount }
+}
 
 // Función interna para obtener el Token de Autorización de PayPal
 const generateAccessToken = async () => {
@@ -31,7 +63,10 @@ export const paymentController = {
   // 1. Crear la Orden de Pago (Se llama antes de que el usuario pague)
   crearOrden: async (req, res) => {
     try {
-      const { total } = req.body // El monto total a cobrar que viene del frontend
+      const idReserva = parseReservationId(req.body?.idReserva)
+      if (!idReserva) return res.status(400).json({ success: false, error: 'idReserva no es válido.' })
+      const payable = await getPayableReservation(idReserva)
+      if (payable.error) return res.status(payable.status || 400).json({ success: false, error: payable.error })
       const accessToken = await generateAccessToken()
       const url = `${PAYPAL_API_URL}/v2/checkout/orders`
 
@@ -41,7 +76,7 @@ export const paymentController = {
           {
             amount: {
               currency_code: 'MXN', // Cambia a "USD" si tu plataforma cobra en dólares
-              value: total,
+              value: payable.expectedAmount.toFixed(2),
             },
           },
         ],
@@ -59,6 +94,9 @@ export const paymentController = {
       const data = await response.json()
 
       // Retornamos el ID de la orden al Frontend para que abra la ventana de PayPal
+      if (!response.ok || !data.id) {
+        return res.status(502).json({ success: false, error: 'PayPal no pudo crear la orden.' })
+      }
       res.status(200).json({ id: data.id })
     } catch (error) {
       console.error('Error creando la orden:', error)
@@ -70,14 +108,17 @@ export const paymentController = {
   capturarOrden: async (req, res) => {
     try {
       // Recibimos el ID de la orden de PayPal y el id_reserva de tu base de datos
-      const { orderID, idReserva } = req.body
+      const orderID = typeof req.body?.orderID === 'string' ? req.body.orderID.trim() : ''
+      const idReserva = parseReservationId(req.body?.idReserva)
 
-      if (!orderID || !idReserva) {
+      if (!/^[A-Z0-9-]{8,40}$/i.test(orderID) || !idReserva) {
         return res.status(400).json({
           success: false,
           error: 'Faltan datos esenciales (orderID o idReserva) para capturar el pago.',
         })
       }
+      const payable = await getPayableReservation(idReserva)
+      if (payable.error) return res.status(payable.status || 400).json({ success: false, error: payable.error })
       const accessToken = await generateAccessToken()
       const url = `${PAYPAL_API_URL}/v2/checkout/orders/${orderID}/capture`
 
@@ -123,6 +164,13 @@ export const paymentController = {
         }
 
         const montoCobrado = parseFloat(data.purchase_units[0].payments.captures[0].amount.value)
+        if (!Number.isFinite(montoCobrado) || Math.abs(montoCobrado - payable.expectedAmount) > 0.01) {
+          console.error(`[PAYMENT-CRITICAL] Monto PayPal distinto al esperado para reserva ${idReserva}.`)
+          return res.status(409).json({
+            success: false,
+            error: 'El monto capturado no coincide con la reserva.',
+          })
+        }
 
         // --- PASO 1: Registrar el pago en la tabla 'pago' ---
         // Nota: El estado de la reserva no se actualiza aquí a 'CONFIRMADA' porque la lógica

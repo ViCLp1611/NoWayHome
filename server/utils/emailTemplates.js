@@ -48,3 +48,34 @@ NoWayHome`,
     }),
   }
 }
+
+export function registrationConfirmationEmailTemplate(nombre, rol) {
+  const safeName = escapeEmailHtml(nombre)
+  const safeRole = escapeEmailHtml(rol)
+
+  return {
+    subject: 'Bienvenido a NoWayHome',
+    text: `Hola ${nombre},
+
+Tu cuenta en NoWayHome fue creada correctamente como ${rol}. Ya puedes iniciar sesión y comenzar a utilizar las funciones disponibles para tu perfil.
+
+NoWayHome`,
+    html: emailBaseTemplate({
+      title: 'Bienvenido a NoWayHome',
+      subtitle: `Tu cuenta como ${rol} está lista`,
+      content: `
+        <p style="margin:0 0 14px;font-size:16px;line-height:1.6;color:#5F5F5F;">
+          Hola <strong>${safeName}</strong>,
+        </p>
+        <p style="margin:0 0 14px;font-size:16px;line-height:1.6;color:#5F5F5F;">
+          Tu cuenta en NoWayHome fue creada correctamente. Ya puedes iniciar sesión y comenzar a utilizar las funciones disponibles para tu perfil.
+        </p>
+        <div style="margin:20px 0 0;padding:16px;border-radius:12px;background:#FFFFFF;border:1px solid rgba(107,142,35,0.2);">
+          <p style="margin:0;font-size:14px;line-height:1.6;color:#5F5F5F;">
+            Perfil registrado: <strong style="color:#6B8E23;">${safeRole}</strong>
+          </p>
+        </div>`,
+      footerText: '© NoWayHome. Este es un mensaje automático, por favor no respondas a este correo.',
+    }),
+  }
+}

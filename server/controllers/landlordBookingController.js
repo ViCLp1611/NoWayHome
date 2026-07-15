@@ -55,6 +55,9 @@ export async function updateReservationStatusHandler(req, res) {
           new ValidationError('Se requiere un motivo para cancelar la reserva.')
         )
       }
+      if (motivo_rechazo.trim().length > 500) {
+        return sendError(res, new ValidationError('El motivo no puede exceder 500 caracteres.'))
+      }
 
       // Verificación de propiedad de la reserva
       const { data: reserva, error: findError } = await supabase
@@ -120,7 +123,12 @@ export async function updateReservationStatusHandler(req, res) {
 
     // Delegamos toda la lógica de validación, permisos y actualización al servicio.
     // El servicio ya valida el ID, el estado, la transición y la propiedad del arrendatario.
-    const updatedReserva = await updateReservationStatus(idReserva, id_arrendatario, estado)
+    const updatedReserva = await updateReservationStatus(
+      idReserva,
+      id_arrendatario,
+      estado,
+      motivo_rechazo
+    )
 
     return res.json({
       ok: true,

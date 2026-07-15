@@ -14,6 +14,7 @@ import { inquilinoController } from '@/controllers/inquilinoController'
 import { toast } from 'sonner'
 import { formatDateLong } from '@/utils/dateUtils'
 import { tenantBookingService } from '@/services/tenantBookingService'
+import { CancelBookingModal } from '@/app/components/CancelBookingModal'
 
 export function ProfilePage() {
   const navigate = useNavigate()
@@ -26,7 +27,6 @@ export function ProfilePage() {
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false)
   const [loadError, setLoadError] = useState('')
   const [bookingToCancel, setBookingToCancel] = useState(null)
-  const [cancellationReason, setCancellationReason] = useState('')
   const [isCancelling, setIsCancelling] = useState(false)
   const [cancellationError, setCancellationError] = useState('')
 
@@ -255,15 +255,9 @@ export function ProfilePage() {
     )
   }
 
-  const handleCancelBooking = async () => {
+  const handleCancelBooking = async cancellationReason => {
     const tenantId = userData?.id_inquilino || userData?.id
     if (!bookingToCancel?.id_reserva || !tenantId) return
-
-    const status = String(getBookingStatus(bookingToCancel)).toUpperCase()
-    if (status === 'CONFIRMADA' && !cancellationReason.trim()) {
-      setCancellationError('El motivo de cancelación es obligatorio.')
-      return
-    }
 
     setIsCancelling(true)
     setCancellationError('')
@@ -271,7 +265,7 @@ export function ProfilePage() {
       const updatedBooking = await tenantBookingService.cancelarReserva({
         idReserva: bookingToCancel.id_reserva,
         idInquilino: tenantId,
-        motivoCancelacion: cancellationReason.trim(),
+        motivoCancelacion: cancellationReason,
       })
       setReservas(current =>
         current.map(booking =>
@@ -291,7 +285,6 @@ export function ProfilePage() {
           : undefined,
       })
       setBookingToCancel(null)
-      setCancellationReason('')
     } catch (error) {
       console.error('No se pudo cancelar la reserva:', error)
       setCancellationError('No se pudo cancelar la reserva. Intenta nuevamente.')
@@ -495,7 +488,6 @@ export function ProfilePage() {
                                 variant="destructive"
                                 onClick={() => {
                                   setBookingToCancel(booking)
-                                  setCancellationReason('')
                                   setCancellationError('')
                                 }}
                                 className="bg-red-600 text-white hover:bg-red-700"
@@ -681,58 +673,13 @@ export function ProfilePage() {
             </TabsContent>
           </Tabs>
 
-          {bookingToCancel && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-              <Card className="w-full max-w-md p-6">
-                <h3 className="font-poppins text-lg font-semibold text-[#5F5F5F]">
-                  Confirmar cancelación
-                </h3>
-                <p className="mt-2 text-sm text-[#5F5F5F]/80">
-                  ¿Estás seguro de que quieres cancelar esta reserva?
-                </p>
-                {hasConfirmedPayment(bookingToCancel) && (
-                  <div className="mt-4 rounded-md border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800">
-                    Esta reserva tiene un pago confirmado. La cancelación no generará reembolso
-                    automático en esta fase.
-                  </div>
-                )}
-                <label className="mt-4 block text-sm font-medium text-[#5F5F5F]">
-                  Motivo de cancelación{' '}
-                  {String(getBookingStatus(bookingToCancel)).toUpperCase() === 'CONFIRMADA'
-                    ? '*'
-                    : '(opcional)'}
-                </label>
-                <textarea
-                  value={cancellationReason}
-                  onChange={event => setCancellationReason(event.target.value)}
-                  className="mt-2 min-h-[90px] w-full rounded-md border border-[#6B8E23]/20 p-3 text-sm"
-                />
-                {cancellationError && (
-                  <p className="mt-3 text-sm text-red-600">{cancellationError}</p>
-                )}
-                <div className="mt-6 flex justify-end gap-3">
-                  <Button
-                    variant="ghost"
-                    disabled={isCancelling}
-                    onClick={() => setBookingToCancel(null)}
-                  >
-                    Volver
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    disabled={
-                      isCancelling ||
-                      (String(getBookingStatus(bookingToCancel)).toUpperCase() === 'CONFIRMADA' &&
-                        !cancellationReason.trim())
-                    }
-                    onClick={handleCancelBooking}
-                  >
-                    {isCancelling ? 'Cancelando...' : 'Sí, cancelar'}
-                  </Button>
-                </div>
-              </Card>
-            </div>
-          )}
+          <CancelBookingModal
+            open={Boolean(bookingToCancel)}
+            onClose={() => setBookingToCancel(null)}
+            onConfirm={handleCancelBooking}
+            isLoading={isCancelling}
+            error={cancellationError}
+          />
         </div>
       </div>
     </>

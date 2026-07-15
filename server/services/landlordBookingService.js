@@ -259,7 +259,7 @@ export async function getLandlordReservations(idArrendatario) {
   })
 }
 
-export async function updateReservationStatus(idReserva, idArrendatario, nuevoEstado) {
+export async function updateReservationStatus(idReserva, idArrendatario, nuevoEstado, motivoRechazo = '') {
   const landlordId = parsePositiveInteger(idArrendatario, 'id_arrendatario')
   const estado = validateStatus(nuevoEstado)
   const reservationId = parsePositiveInteger(idReserva, 'id_reserva')
@@ -295,11 +295,16 @@ export async function updateReservationStatus(idReserva, idArrendatario, nuevoEs
 
   // Validar transición de estado permitida.
   validateTransition(reserva.estado, estado)
+  const motivo = typeof motivoRechazo === 'string' ? motivoRechazo.trim() : ''
+  if (estado === 'RECHAZADA' && !motivo) {
+    throw new ValidationError('Se requiere un motivo para rechazar la reserva.')
+  }
+  if (motivo.length > 500) throw new ValidationError('El motivo no puede exceder 500 caracteres.')
 
   // Actualizar estado
   const { data: updatedReserva, error: updateError } = await supabase
     .from('reserva')
-    .update({ estado })
+    .update({ estado, ...(estado === 'RECHAZADA' ? { motivo_rechazo: motivo } : {}) })
     .eq('id_reserva', reservationId)
     .select()
     .single()

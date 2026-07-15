@@ -4,6 +4,7 @@ import {
   reservationEmailTemplate,
   reservationReceiptEmailTemplate,
 } from '../templates/reservationEmailTemplates.js'
+import { registrationConfirmationEmailTemplate } from '../utils/emailTemplates.js'
 
 async function sendEmail(email, data = {}) {
   if (!data?.to) {
@@ -17,7 +18,9 @@ async function sendEmail(email, data = {}) {
     await getTransporter().sendMail({ from: MAIL_FROM, to: data.to, ...email })
     return true
   } catch (error) {
-    console.error(`[emailNotificationService] Falló el envío de "${email.subject}":`, error)
+    console.error(
+      `[emailNotificationService] Falló el envío de "${email.subject}": ${error?.message || 'Error SMTP'}`
+    )
     return false
   }
 }
@@ -48,4 +51,8 @@ export function sendPaymentConfirmedEmail(data) {
 
 export function sendReservationReceiptEmail(data = {}) {
   return sendEmail(reservationReceiptEmailTemplate(data), data)
+}
+
+export function sendRegistrationConfirmationEmail({ email, nombre, rol }) {
+  return sendEmail(registrationConfirmationEmailTemplate(nombre, rol), { to: email })
 }

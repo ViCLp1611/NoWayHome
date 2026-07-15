@@ -19,6 +19,7 @@ import {
 } from './utils/crypto.js'
 import { passwordResetEmailTemplate } from './utils/emailTemplates.js'
 import { getTenantFavorites } from './services/tenantService.js'
+import { sendRegistrationConfirmationEmail } from './services/emailNotificationService.js'
 
 /*
 |--------------------------------------------------------------------------
@@ -600,6 +601,18 @@ app.post('/api/auth/register', async (req, res) => {
 
     if (error) {
       throw new Error(`No se pudo crear la cuenta: ${error.message}`)
+    }
+
+    try {
+      await sendRegistrationConfirmationEmail({
+        email: data.correo,
+        nombre: data.nombre,
+        rol: role,
+      })
+    } catch (emailError) {
+      console.error(
+        `La cuenta fue registrada, pero falló el correo de bienvenida: ${emailError?.message || 'Error SMTP'}`
+      )
     }
 
     return res.status(201).json({

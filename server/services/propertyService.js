@@ -136,8 +136,8 @@ function validatePropertyData(data) {
   const idArrendatario = Number(data?.id_arrendatario)
   const precioPorNoche = parsePositiveNumber(data?.precio_por_noche, 'precio_por_noche')
   const capacidad = parseOptionalPositiveInteger(data?.capacidad, 'capacidad')
-  const numeroHabitaciones = parseOptionalNonNegativeInteger(data?.numero_habitaciones, 'numero_habitaciones')
-  const numeroBanos = parseOptionalNonNegativeInteger(data?.numero_banos, 'numero_banos')
+  const numeroHabitaciones = parseOptionalPositiveInteger(data?.numero_habitaciones, 'numero_habitaciones')
+  const numeroBanos = parseOptionalPositiveInteger(data?.numero_banos, 'numero_banos')
   const latitud = parseOptionalCoordinate(data?.latitud, 'latitud', -90, 90)
   const longitud = parseOptionalCoordinate(data?.longitud, 'longitud', -180, 180)
 
@@ -146,6 +146,12 @@ function validatePropertyData(data) {
   if (!direccion) throw new ValidationError('direccion es obligatoria.')
   if (!ciudad) throw new ValidationError('ciudad es obligatoria.')
   if (!pais) throw new ValidationError('pais es obligatorio.')
+  if (titulo.length > 120) throw new ValidationError('titulo no puede exceder 120 caracteres.')
+  if (descripcion.length > 2000) throw new ValidationError('descripcion no puede exceder 2000 caracteres.')
+  if (direccion.length > 250) throw new ValidationError('direccion no puede exceder 250 caracteres.')
+  if (ciudad.length > 100 || pais.length > 100) {
+    throw new ValidationError('ciudad y pais no pueden exceder 100 caracteres.')
+  }
   if (!Number.isInteger(idArrendatario) || idArrendatario <= 0) {
     throw new ValidationError('id_arrendatario es obligatorio.')
   }

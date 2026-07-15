@@ -21,6 +21,7 @@ import { LoadingState } from '@/app/components/ui/LoadingState'
 import { landlordBookingService } from '@/services/landlordBookingService'
 import { formatDateLong } from '@/utils/dateUtils'
 import { PLACEHOLDER_PROPERTY_IMAGE } from '@/views/inquilino/constants.js'
+import { CancelBookingModal } from '@/app/components/CancelBookingModal'
 
 // Combinación total y unificación de catálogos de estilos para soportar estados en minúsculas y mayúsculas
 const ESTADO_STYLES = {
@@ -295,11 +296,14 @@ export function ReservasArrendatario() {
     if (!pendingAction) return
 
     // Validar que se provea un motivo si se está cancelando
-    if (pendingAction.nuevoEstado === 'cancelada' && !rejectReason.trim()) {
+    if (
+      ['cancelada', 'rechazada'].includes(String(pendingAction.nuevoEstado).toLowerCase()) &&
+      !rejectReason.trim()
+    ) {
       setActionFeedback({
         type: 'error',
         title: 'Motivo requerido',
-        text: 'Debes proporcionar un motivo para cancelar la reserva.',
+        text: 'Debes proporcionar un motivo para continuar.',
       })
       return
     }
@@ -312,6 +316,17 @@ export function ReservasArrendatario() {
     if (wasUpdated) {
       setRejectReason('')
     }
+  }
+
+  const confirmCancellation = async reason => {
+    if (!pendingAction || processingId) return
+    setActionFeedback({ type: '', title: '', text: '' })
+    const wasUpdated = await handleEstadoChange(
+      pendingAction.idReserva,
+      pendingAction.nuevoEstado,
+      reason
+    )
+    if (wasUpdated) closeActionModal()
   }
 
   const formatPrice = price => {
@@ -723,7 +738,7 @@ export function ReservasArrendatario() {
         )}
       </div>
 
-      {pendingAction && (
+      {pendingAction && !isCancellingAction && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6"
           role="dialog"
@@ -755,7 +770,7 @@ export function ReservasArrendatario() {
                 <label htmlFor="reject-reason" className="text-sm font-medium text-[#5F5F5F]">
                   {isCancellingAction
                     ? 'Motivo de la cancelación (obligatorio)'
-                    : 'Motivo del rechazo (opcional)'}
+                    : 'Motivo del rechazo (obligatorio)'}
                 </label>
                 <textarea
                   id="reject-reason"
@@ -792,7 +807,7 @@ export function ReservasArrendatario() {
                 <Button
                   type="button"
                   onClick={confirmPendingAction}
-                  disabled={Boolean(processingId)}
+                  disabled={Boolean(processingId) || (isRejectingAction && !rejectReason.trim())}
                   className={`h-10 rounded-xl px-4 text-white shadow-none ${isConfirmingAction ? 'bg-[#6B8E23] hover:bg-[#5a7a1e]' : isRejectingAction ? 'bg-red-600 hover:bg-red-700' : 'bg-[#A67C52] hover:bg-[#8f6844]'}`}
                 >
                   {isCancellingAction ? (
@@ -809,6 +824,14 @@ export function ReservasArrendatario() {
           </div>
         </div>
       )}
+
+      <CancelBookingModal
+        open={Boolean(pendingAction && isCancellingAction)}
+        onClose={closeActionModal}
+        onConfirm={confirmCancellation}
+        isLoading={Boolean(processingId)}
+        error={actionFeedback.type === 'error' ? actionFeedback.text : ''}
+      />
     </div>
   )
 }

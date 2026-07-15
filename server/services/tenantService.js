@@ -645,22 +645,36 @@ export async function createTenantReservation(reservationData) {
   const idPropiedad = parsePositiveInteger(reservationData?.id_propiedad, 'id_propiedad')
   const fechaInicio = validateDate(reservationData?.fecha_inicio, 'fecha_inicio')
   const fechaFin = validateDate(reservationData?.fecha_fin, 'fecha_fin')
-  const pago = Number(reservationData?.pago)
 
   if (new Date(fechaFin) <= new Date(fechaInicio)) {
     throw new ValidationError('La fecha de fin debe ser posterior a la fecha de inicio.')
   }
 
-  if (!Number.isFinite(pago) || pago <= 0) {
-    throw new ValidationError('El pago debe ser mayor a 0.')
+  const [{ data: tenant, error: tenantError }, { data: property, error: propertyError }] =
+    await Promise.all([
+      supabase.from('inquilino').select('id_inquilino').eq('id_inquilino', idInquilino).maybeSingle(),
+      supabase.from('propiedad').select('id_propiedad,precio,estado').eq('id_propiedad', idPropiedad).maybeSingle(),
+    ])
+
+  if (tenantError || !tenant) throw new ValidationError('El inquilino no existe.')
+  if (propertyError || !property) throw new ValidationError('La propiedad no existe.')
+  if (!['activa', 'disponible'].includes(normalizeText(property.estado).toLowerCase())) {
+    throw new ValidationError('La propiedad no está disponible para reservar.')
   }
 
+  const nights = Math.ceil((new Date(fechaFin) - new Date(fechaInicio)) / 86400000)
+  const nightlyPrice = Number(property.precio)
+  if (!Number.isFinite(nightlyPrice) || nightlyPrice <= 0) {
+    throw new ValidationError('La propiedad no tiene un precio válido.')
+  }
+  const pago = Number((nightlyPrice * nights * 1.1).toFixed(2))
+
   // Validar disponibilidad para evitar solapamiento de reservas
-  const { data: conflictingReservations, error: conflictCheckError } = await supabase
+  const { count: conflictingReservationsCount, error: conflictCheckError } = await supabase
     .from('reserva')
     .select('id_propiedad, fecha_inicio, fecha_fin', { count: 'exact', head: true })
     .eq('id_propiedad', idPropiedad)
-    .in('estado', ['pendiente', 'confirmada', 'confirmed'])
+    .in('estado', ['pendiente', 'PENDIENTE', 'confirmada', 'CONFIRMADA', 'confirmed'])
     .lt('fecha_inicio', fechaFin) // Una reserva existente comienza antes de que termine la nueva
     .gt('fecha_fin', fechaInicio) // Y termina después de que comience la nueva
 
@@ -669,8 +683,8 @@ export async function createTenantReservation(reservationData) {
     throw new Error('No se pudo verificar la disponibilidad de la propiedad.')
   }
 
-  if (conflictingReservations && conflictingReservations.length > 0) {
-    throw new Error(
+  if (conflictingReservationsCount > 0) {
+    throw new ValidationError(
       'La propiedad ya se encuentra reservada o apartada para las fechas seleccionadas.'
     )
   }
@@ -722,10 +736,8 @@ export async function cancelTenantReservation(idReserva, idInquilino, motivoCanc
     )
   }
 
-  const isConfirmed = ['confirmada', 'confirmed'].includes(currentState)
-  if (isConfirmed && !motivo) {
-    throw new ValidationError('El motivo de cancelación es obligatorio para una reserva confirmada.')
-  }
+  if (!motivo) throw new ValidationError('El motivo de cancelación es obligatorio.')
+  if (motivo.length > 500) throw new ValidationError('El motivo no puede exceder 500 caracteres.')
 
   const { data: payments, error: paymentsError } = await supabase
     .from('pago')

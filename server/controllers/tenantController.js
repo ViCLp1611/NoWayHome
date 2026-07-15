@@ -1,6 +1,7 @@
 import {
   confirmTenantReservation,
   cancelTenantReservation,
+  createTenantReservation,
   getTenantFavorites,
   getTenantProfile,
   getTenantProperties,
@@ -219,32 +220,7 @@ export async function getTenantReservationHandler(req, res) {
 
 export async function createTenantReservationHandler(req, res) {
   try {
-    // El pago ya no se procesa en este punto.
-    const { id_propiedad, id_inquilino, fecha_inicio, fecha_fin, pago } = req.body
-
-    // Validación básica de los datos de entrada.
-    if (!id_propiedad || !id_inquilino || !fecha_inicio || !fecha_fin || !pago) {
-      return res
-        .status(400)
-        .json({ ok: false, message: 'Faltan datos para la solicitud de reserva.' })
-    }
-
-    const reservationData = {
-      id_propiedad,
-      id_inquilino,
-      fecha_inicio,
-      fecha_fin,
-      pago, // Guardamos el total esperado, pero no se ha cobrado.
-      estado: 'PENDIENTE', // Estado inicial unificado según la nueva regla de negocio.
-    }
-
-    const { data: nuevaReserva, error } = await supabase
-      .from('reserva')
-      .insert(reservationData)
-      .select()
-      .single()
-
-    if (error) throw error
+    const nuevaReserva = await createTenantReservation(req.body)
 
     const { property, landlord } = await getReservationNotificationContext(nuevaReserva)
     await sendReservationCreatedEmail({
