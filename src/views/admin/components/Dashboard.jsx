@@ -25,11 +25,18 @@ import {
   BarChart,
   Bar,
 } from 'recharts';
-// Importamos cliente de Supabase para consultas a la base de datos
-import { supabase } from '@/lib/supabaseClient';
 import { getAdminActivityLog } from '@/views/admin/utils/adminActivity';
 import { ConfirmActionModal } from './ConfirmActionModal';
+import { getAdminDashboardData } from '@/services/adminDataService';
 
+/*
+|--------------------------------------------------------------------------
+| Dashboard administrativo
+|--------------------------------------------------------------------------
+| Consume GET /api/admin/dashboard-data mediante adminDataService.
+| Espera datos agregados de inquilino, arrendatario, propiedad y reserva.
+| El backend debe validar rol administrador antes de consultar Supabase.
+*/
 // Definimos constantes para mapear posibles nombres de campos en la base de datos
 const MONTHS_ES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 // Listas de posibles llaves para extraer datos numéricos, fechas, estados y nombres de propiedades.
@@ -163,39 +170,12 @@ export function Dashboard({ onNavigate }) {
     setErrorMessage('');
 
     try {
-      const [tenantsResult, landlordsResult, propertiesResult, bookingsResult] = await Promise.all([
-        supabase.from('inquilino').select('id_inquilino,nombre'),
-        supabase.from('arrendatario').select('id_arrendatario,nombre'),
-        supabase.from('propiedad').select('id_propiedad,estado,descripcion'),
-        supabase
-          .from('reserva')
-          .select('id_propiedad,id_inquilino,fecha_inicio,fecha_fin,estado,pago,propiedad:propiedad(descripcion),inquilino:inquilino(nombre)'),
-      ]);
+      const dashboardData = await getAdminDashboardData();
 // Extraemos datos o asignamos arrays vacíos para evitar errores de acceso.
-      const tenants = tenantsResult.data || [];
-      const landlords = landlordsResult.data || [];
-      const properties = propertiesResult.data || [];
-      const bookings = bookingsResult.data || [];
-
-      const hasSupabaseErrors = [
-        tenantsResult.error,
-        landlordsResult.error,
-        propertiesResult.error,
-        bookingsResult.error,
-      ].some(Boolean);
-
-// Si hubo errores en alguna consulta, construimos un mensaje detallado para el usuario.
-      if (hasSupabaseErrors) {
-        const messages = [
-          tenantsResult.error,
-          landlordsResult.error,
-          propertiesResult.error,
-          bookingsResult.error,
-        ]
-          .filter(Boolean)
-          .map((err) => err.message);
-        setErrorMessage(`Se cargó el dashboard parcialmente. ${messages.join(' | ')}`);
-      }
+      const tenants = dashboardData.tenants || [];
+      const landlords = dashboardData.landlords || [];
+      const properties = dashboardData.properties || [];
+      const bookings = dashboardData.bookings || [];
 // Calculamos métricas principales a mostrar en tarjetas.
       const totalRevenue = bookings.reduce((sum, booking) => sum + parseAmount(booking), 0);
       // Actualizamos el estado de métricas para renderizar tarjetas.

@@ -1,170 +1,266 @@
-// Controlador de Autenticación - Maneja la lógica de autenticación
+// Controlador de Autenticación - Maneja la lógica de negocio y estado local
+import { authService } from '../services/authService.js'
+// Opcional: import { UserModel } from '../models/userModel.js'; si aún ocupas algo específico de ahí
 
-import { UserModel, mockUser } from '../models/userModel';
-
+/*
+|--------------------------------------------------------------------------
+| Controlador frontend de autenticacion
+|--------------------------------------------------------------------------
+| Orquesta validaciones visibles y delega las llamadas reales a authService.
+|
+| Flujos:
+| - login() consume POST /api/auth/login.
+| - verify2FA() consume POST /api/auth/verify-2fa.
+| - register() consume POST /api/auth/register.
+|
+| Seguridad:
+| - No compara contrasenas ni codigos contra hashes en frontend.
+| - No debe guardar una sesion completa antes de terminar 2FA.
+*/
 export class AuthController {
   constructor() {
-    this.currentUser = null;
-    this.isAuthenticated = false;
+    this.currentUser = null
+    this.isAuthenticated = false
   }
 
-  // Método para iniciar sesión
-  login(email, password) {
-    // En producción, esto haría una llamada a la API
-    // Por ahora, usamos datos mock
-    
+  // Método para iniciar sesión (Inquilinos y Arrendatarios)
+  async login(email, password) {
+    // Valida formato basico antes de solicitar al backend el inicio de login.
+    // Si el backend responde requires2FA, LoginPage pasa al paso de codigo.
     if (!email || !password) {
       return {
         success: false,
-        message: 'Por favor, complete todos los campos'
-      };
+        message: 'Por favor, complete todos los campos',
+      }
     }
 
-    if (!UserModel.validateEmail(email)) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
       return {
         success: false,
-        message: 'Email inválido'
-      };
+        message: 'Email inválido',
+      }
     }
 
-    // Simulamos una autenticación exitosa
-    this.currentUser = mockUser;
-    this.isAuthenticated = true;
+    try {
+      // Llamada al servicio real de base de datos
+      const result = await authService.loginUser(email, password)
 
-    return {
-      success: true,
-      message: 'Inicio de sesión exitoso',
-      user: this.currentUser
-    };
+      if (result.success && !result.requires2FA) {
+        this.currentUser = result.user
+        this.isAuthenticated = true
+      }
+
+      return result
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || 'Error inesperado al iniciar sesión',
+      }
+    }
+  }
+
+  async verify2FA(email, code, role) {
+    // Verifica codigo temporal de 6 digitos. El backend decide si el codigo
+    // coincide, no esta expirado, no fue usado y pertenece al rol indicado.
+    if (!email || !code || !role) {
+      return {
+        success: false,
+        message: 'Ingresa el codigo de verificacion',
+      }
+    }
+
+    if (!/^\d{6}$/.test(code)) {
+      return {
+        success: false,
+        message: 'El codigo debe tener 6 digitos',
+      }
+    }
+
+    try {
+      const result = await authService.verify2FA(email, code, role)
+
+      if (result.success) {
+        this.currentUser = result.user
+        this.isAuthenticated = true
+      }
+
+      return result
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || 'Error inesperado al verificar el codigo',
+      }
+    }
   }
 
   // Método para registrar un nuevo usuario
-  register(userData) {
-    const { name, email, phone, password, confirmPassword, role } = userData;
+  async register(userData) {
+    const { name, email, phone, password, confirmPassword, role } = userData
 
     // Validaciones
     if (!name || !email || !phone || !password || !confirmPassword) {
       return {
         success: false,
-        message: 'Por favor, complete todos los campos'
-      };
+        message: 'Por favor, complete todos los campos',
+      }
     }
 
-    if (!UserModel.validateEmail(email)) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
       return {
         success: false,
-        message: 'Email inválido'
-      };
+        message: 'Email inválido',
+      }
     }
 
-    if (!UserModel.validatePhone(phone)) {
+    // Validación básica de teléfono (puedes ajustarla según necesites)
+    const phoneRegex = /^[0-9+\-\s()]{7,15}$/
+    if (!phoneRegex.test(phone)) {
       return {
         success: false,
-        message: 'Teléfono inválido'
-      };
+        message: 'Teléfono inválido',
+      }
     }
 
     if (password !== confirmPassword) {
       return {
         success: false,
-        message: 'Las contraseñas no coinciden'
-      };
+        message: 'Las contraseñas no coinciden',
+      }
     }
 
     if (password.length < 6) {
       return {
         success: false,
-        message: 'La contraseña debe tener al menos 6 caracteres'
-      };
+        message: 'La contraseña debe tener al menos 6 caracteres',
+      }
     }
 
-    // Crear nuevo usuario
-    const newUser = new UserModel({
-      id: Date.now(),
-      name,
-      email,
-      phone,
-      role: role || 'guest',
-      memberSince: new Date().toISOString()
-    });
+    try {
+      // Llamada al servicio real para insertar en la tabla
+      const result = await authService.registerUser(userData)
 
-    // Simulamos un registro exitoso
-    this.currentUser = newUser;
-    this.isAuthenticated = true;
+      if (result.success) {
+        this.currentUser = result.user
+        this.isAuthenticated = true
+      }
 
-    return {
-      success: true,
-      message: 'Registro exitoso',
-      user: this.currentUser
-    };
+      return result
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || 'Error inesperado en el registro',
+      }
+    }
+  }
+
+  async updatePassword(data) {
+    const { userId, role, password, confirmPassword } = data
+
+    if (!password || !confirmPassword) {
+      return { success: false, message: 'Debes completar ambos campos de contraseña.' }
+    }
+
+    if (password.length < 6) {
+      return {
+        success: false,
+        message: 'La contraseña debe tener al menos 6 caracteres.',
+      }
+    }
+
+    if (password !== confirmPassword) {
+      return { success: false, message: 'Las contraseñas no coinciden.' }
+    }
+
+    if (!userId || !role) {
+      return { success: false, message: 'No se pudo identificar al usuario.' }
+    }
+
+    try {
+      // Asumiendo que authService tendrá este método que llama al backend
+      const result = await authService.updatePassword({
+        userId,
+        role,
+        newPassword: password,
+      })
+      return result
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || 'Ocurrió un error inesperado al actualizar la contraseña.',
+      }
+    }
   }
 
   // Método para cerrar sesión
   logout() {
-    this.currentUser = null;
-    this.isAuthenticated = false;
+    this.currentUser = null
+    this.isAuthenticated = false
 
     return {
       success: true,
-      message: 'Sesión cerrada exitosamente'
-    };
+      message: 'Sesión cerrada exitosamente',
+    }
   }
 
   // Método para obtener el usuario actual
   getCurrentUser() {
-    return this.currentUser;
+    return this.currentUser
   }
 
   // Método para verificar si el usuario está autenticado
   checkAuth() {
-    return this.isAuthenticated;
+    return this.isAuthenticated
   }
 
-  // Método para actualizar el usuario
+  // Método para actualizar el usuario (Se mantiene para no romper Vistas futuras/actuales)
   updateUser(userData) {
     if (!this.isAuthenticated || !this.currentUser) {
       return {
         success: false,
-        message: 'Usuario no autenticado'
-      };
+        message: 'Usuario no autenticado',
+      }
     }
 
-    // Actualizar datos del usuario
-    Object.assign(this.currentUser, userData);
+    // Actualización local en memoria
+    Object.assign(this.currentUser, userData)
 
     return {
       success: true,
       message: 'Usuario actualizado exitosamente',
-      user: this.currentUser
-    };
+      user: this.currentUser,
+    }
   }
 
-  // Método para cambiar el rol del usuario
+  // Método para cambiar el rol del usuario (Se mantiene local para no romper Vistas)
   switchUserRole(newRole) {
     if (!this.isAuthenticated || !this.currentUser) {
       return {
         success: false,
-        message: 'Usuario no autenticado'
-      };
+        message: 'Usuario no autenticado',
+      }
     }
 
-    if (this.currentUser.switchRole(newRole)) {
+    if (newRole === 'host' || newRole === 'guest') {
+      this.currentUser.role = newRole
       return {
         success: true,
         message: `Rol cambiado a ${newRole === 'host' ? 'Anfitrión' : 'Huésped'}`,
-        user: this.currentUser
-      };
+        user: this.currentUser,
+      }
     }
 
     return {
       success: false,
-      message: 'Rol inválido'
-    };
+      message: 'Rol inválido',
+    }
   }
 }
 
+// ------------------------------------------------------------------
 // Función para login de administrador (separada del controlador de usuarios)
-import { authService } from '../services/authService.js';
+// ------------------------------------------------------------------
 
 export const handleAdminLogin = async (correo, contrasena) => {
   try {
@@ -172,52 +268,49 @@ export const handleAdminLogin = async (correo, contrasena) => {
     if (!correo || !correo.trim()) {
       return {
         success: false,
-        message: 'El correo electrónico es requerido'
-      };
+        message: 'El correo electrónico es requerido',
+      }
     }
 
     if (!contrasena || !contrasena.trim()) {
       return {
         success: false,
-        message: 'La contraseña es requerida'
-      };
+        message: 'La contraseña es requerida',
+      }
     }
 
     // Validación básica de formato de email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(correo.trim())) {
       return {
         success: false,
-        message: 'El formato del correo electrónico no es válido'
-      };
+        message: 'El formato del correo electrónico no es válido',
+      }
     }
 
     // Llamar al servicio de autenticación
-    const result = await authService.loginAdmin(correo.trim(), contrasena);
+    const result = await authService.loginAdmin(correo.trim(), contrasena)
 
     if (result.success) {
-      // Aquí podríamos almacenar el admin en localStorage o sessionStorage si fuera necesario
-      // Por ahora, solo retornamos el resultado exitoso
       return {
         success: true,
         admin: result.admin,
-        message: result.message
-      };
+        message: result.message,
+      }
     } else {
       return {
         success: false,
-        message: result.message
-      };
+        message: result.message,
+      }
     }
-
   } catch (error) {
-    console.error('Error en handleAdminLogin:', error);
+    console.error('Error en handleAdminLogin:', error)
     return {
       success: false,
-      message: error.message || 'Error desconocido en la autenticación'
-    };
+      message: error.message || 'Error desconocido en la autenticación',
+    }
   }
-};
+}
 
 // Instancia singleton del controlador de autenticación
-export const authController = new AuthController();
+export const authController = new AuthController()

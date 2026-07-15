@@ -1,45 +1,103 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { Header } from '@/views/components/Header';
-import { HomePage } from '@/views/pages/HomePage';
-import { LoginPage } from '@/views/pages/LoginPage';
-import { RegisterPage } from '@/views/pages/RegisterPage';
-import { ProfilePage } from '@/views/pages/ProfilePage';
-import AdminDashboard from '@/views/admin/AdminDashboard';
-import { AdminLogin } from '@/views/admin/AdminLogin';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { Header } from '@/views/components/Header'
+import { HomePage } from '@/views/pages/HomePage'
+import { LoginPage } from '@/views/pages/LoginPage'
+import { RegisterPage } from '@/views/pages/RegisterPage'
+import { ForgotPassword } from '@/views/pages/ForgotPassword'
+import { ResetPassword } from '@/views/pages/ResetPassword'
+import { UpdatePassword } from '@/views/pages/UpdatePassword'
+import { ProfilePage } from '@/views/user/pages/ProfilePage'
+import { CrearPropiedad } from '@/views/pages/arrendatario/CrearPropiedad'
+import { EditarPropiedad } from '@/views/pages/arrendatario/EditarPropiedad'
+import { MisPropiedades } from '@/views/pages/arrendatario/MisPropiedades'
+import { ReservasArrendatario } from '@/views/pages/arrendatario/ReservasArrendatario'
+import AdminDashboard from '@/views/admin/AdminDashboard'
+import { ProfilePage as InquilinoProfile } from '@/views/inquilino/pages/ProfilePage.jsx'
+import { ExplorarPage } from '@/views/inquilino/pages/ExplorarPage.jsx'
+import { PropertyDetailPage } from '@/views/inquilino/pages/PropertyDetailPage.jsx'
+import { ReservaPage } from '@/views/inquilino/pages/ReservaPage.jsx'
+import { DetalleReservaPage } from '@/views/inquilino/pages/DetalleReservaPage.jsx'
 
 export default function App() {
   return (
     <Router>
       <div className="min-h-screen">
         <Routes>
-          <Route path="/" element={
-            <>
-              <Header />
-              <HomePage />
-            </>
-          } />
-          <Route path="/login" element={
-            <>
-              <Header />
-              <LoginPage />
-            </>
-          } />
-          <Route path="/register" element={
-            <>
-              <Header />
-              <RegisterPage />
-            </>
-          } />
-          <Route path="/profile" element={
-            <>
-              <Header />
-              <ProfilePage />
-            </>
-          } />
-          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route
+            path="/"
+            element={
+              <>
+                <Header />
+                <HomePage />
+              </>
+            }
+          />
+          <Route
+            path="/login"
+            element={
+              <>
+                <Header />
+                <LoginPage />
+              </>
+            }
+          />
+          <Route
+            path="/register"
+            element={
+              <>
+                <Header />
+                <RegisterPage />
+              </>
+            }
+          />
+          <Route
+            path="/forgot-password"
+            element={
+              <>
+                <Header />
+                <ForgotPassword />
+              </>
+            }
+          />
+          <Route
+            path="/reset-password"
+            element={
+              <>
+                <Header />
+                <ResetPassword />
+              </>
+            }
+          />
+          <Route
+            path="/update-password"
+            element={
+              <>
+                <Header />
+                <UpdatePassword />
+              </>
+            }
+          />
+
+          <Route path="/profile" element={<ProfilePage />} />
+
+          <Route path="/admin/login" element={<Navigate to="/login" replace />} />
           <Route path="/admin" element={<AdminDashboard />} />
+
+          <Route path="/inquilino" element={<Navigate to="/inquilino/explorar" replace />} />
+          <Route path="/inquilino/perfil" element={<InquilinoProfile />} />
+          <Route path="/inquilino/explorar" element={<ExplorarPage />} />
+          <Route path="/inquilino/propiedad/:id" element={<PropertyDetailPage />} />
+          <Route path="/inquilino/reserva/:id" element={<ReservaPage />} />
+          <Route path="/inquilino/reserva-detalle/:idReserva" element={<DetalleReservaPage />} />
+
+          <Route path="/arrendatario" element={<Navigate to="/arrendatario/perfil" replace />} />
+          <Route path="/arrendatario/perfil" element={<ProfilePage />} />
+          <Route path="/arrendatario/reservas" element={<ReservasArrendatario />} />
+          <Route path="/arrendatario/propiedades" element={<MisPropiedades />} />
+          <Route path="/arrendatario/propiedades/nueva" element={<CrearPropiedad />} />
+          <Route path="/arrendatario/propiedades/:id/editar" element={<EditarPropiedad />} />
         </Routes>
       </div>
     </Router>
-  );
+  )
 }

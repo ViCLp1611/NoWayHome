@@ -26,6 +26,19 @@ import {
 import { supabase } from '@/lib/supabaseClient';
 import { recordAdminActivity } from '@/views/admin/utils/adminActivity';
 import { ConfirmActionModal } from './ConfirmActionModal';
+import { getAdminPropertiesData } from '@/services/adminDataService';
+
+/*
+|--------------------------------------------------------------------------
+| Gestion de propiedades admin
+|--------------------------------------------------------------------------
+| Consume GET /api/admin/properties-data mediante adminDataService.
+| Espera propiedades, reservas por propiedad y datos del arrendatario.
+|
+| Seguridad:
+| - El backend debe validar rol administrador antes de consultar Supabase.
+| - Las operaciones directas de edicion/eliminacion deben respetar RLS.
+*/
 
 // Componente principal de la gestión de propiedades, que incluye funcionalidades para listar, buscar, filtrar, editar y eliminar propiedades.
 const DEFAULT_STATUS_OPTIONS = ['Disponible', 'Ocupado', 'Mantenimiento', 'Inactiva'];
@@ -40,6 +53,15 @@ const normalizeStatusValue = (status) => {
   if (trimmedStatus === 'inactiva' || trimmedStatus === 'inactivo') return 'Inactiva';
 
   return trimmedStatus;
+};
+
+const getPropertyTitle = (description) => {
+  const lines = String(description || '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  return lines[0] || 'Propiedad sin título';
 };
 // Componente principal de la gestión de propiedades, que incluye funcionalidades para listar, buscar, filtrar, editar y eliminar propiedades.
 export function PropertyManagement({ onNavigate }) {
@@ -63,12 +85,9 @@ export function PropertyManagement({ onNavigate }) {
 // Realizamos dos consultas paralelas: una para obtener las propiedades con su información relacionada y otra para contar las reservas por propiedad,
 //  luego combinamos los resultados para mostrar la información completa en la tabla.
     try {
-      const [propertiesResult, bookingsResult] = await Promise.all([
-        supabase
-          .from('propiedad')
-          .select('id_propiedad,descripcion,direccion,precio,estado,resena,id_arrendatario,arrendatario:arrendatario(nombre)'),
-        supabase.from('reserva').select('id_propiedad'),
-      ]);
+      const propertiesData = await getAdminPropertiesData();
+      const propertiesResult = { error: null };
+      const bookingsResult = { error: null };
 
   // Si alguna de las consultas tiene error, mostramos un mensaje de error pero intentamos mostrar los datos que sí se pudieron cargar.
       if (propertiesResult.error || bookingsResult.error) {
@@ -79,14 +98,14 @@ export function PropertyManagement({ onNavigate }) {
         setErrorMessage(`Carga parcial de propiedades. ${messages}`);
       }
 // Construimos un mapa de conteo de reservas por propiedad para luego agregar esa información a cada propiedad en la lista.
-      const bookingCountMap = (bookingsResult.data || []).reduce((acc, booking) => {
+      const bookingCountMap = (propertiesData.bookings || []).reduce((acc, booking) => {
         const key = String(booking.id_propiedad);
         acc[key] = (acc[key] || 0) + 1;
         return acc;
       }, {});
 
 // Normalizamos los datos de propiedades para asegurarnos de que tengan un formato consistente, incluyendo el nombre del arrendatario y el conteo de reservas.
-      const normalizedProperties = (propertiesResult.data || []).map((item) => ({
+      const normalizedProperties = (propertiesData.properties || []).map((item) => ({
         id: item.id_propiedad,
         descripcion: item.descripcion,
         direccion: item.direccion,
@@ -393,14 +412,20 @@ export function PropertyManagement({ onNavigate }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredProperties.map((property) => (
+                {filteredProperties.map((property) => {
+                  const propertyTitle = getPropertyTitle(property.descripcion);
+                  const propertyLocation = property.direccion || 'Ubicación no disponible';
+
+                  return (
                   <TableRow key={property.id} className="hover:bg-[#F2E8CF]/20">
                     <TableCell>
-                      <div>
-                        <p className="text-[#5F5F5F]">{property.descripcion}</p>
-                        <p className="text-sm text-[#5F5F5F]/60 flex items-center gap-1">
+                      <div className="max-w-[340px]">
+                        <p className="truncate font-medium text-[#5F5F5F]" title={propertyTitle}>
+                          {propertyTitle}
+                        </p>
+                        <p className="mt-1 flex items-center gap-1 text-sm text-[#5F5F5F]/60">
                           <MapPin className="w-3 h-3" />
-                          {property.direccion}
+                          <span className="truncate" title={propertyLocation}>{propertyLocation}</span>
                         </p>
                       </div>
                     </TableCell>
@@ -417,7 +442,7 @@ export function PropertyManagement({ onNavigate }) {
                     <TableCell className="text-[#5F5F5F]">{property.resena}</TableCell>
                     <TableCell>
                       <ActionMenu
-                        label={`Acciones de ${property.descripcion}`}
+                        label={`Acciones de ${propertyTitle}`}
                         actions={[
                           {
                             label: 'Editar',
@@ -433,7 +458,8 @@ export function PropertyManagement({ onNavigate }) {
                       />
                     </TableCell>
                   </TableRow>
-                ))}
+                  )
+                })}
               </TableBody>
             </Table>
           </div>

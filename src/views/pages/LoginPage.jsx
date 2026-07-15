@@ -1,208 +1,458 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, ArrowRight, AlertCircle, Database } from 'lucide-react';
-import { Button } from '@/app/components/ui/button';
-import { Input } from '@/app/components/ui/input';
-import { Card } from '@/app/components/ui/card';
-import { Alert, AlertDescription } from '@/app/components/ui/alert';
-import { authService } from '@/services/authService';
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import {
+  AlertCircle,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  Key,
+  Lock,
+  Mail,
+  ShieldCheck,
+  Facebook,
+  Twitter,
+  Instagram,
+} from 'lucide-react'
+import { Alert, AlertDescription } from '@/app/components/ui/alert'
+import { Button } from '@/app/components/ui/button'
+import { Card } from '@/app/components/ui/card'
+import { Input } from '@/app/components/ui/input'
+import { authController } from '../../controllers/authController'
 
+// Importación de los PDFs legales desde la carpeta assets
+import politicaPdf from '@/assets/politica-de-privacidad.pdf'
+import terminosPdf from '@/assets/terminos-y-condiciones.pdf'
+
+/*
+|--------------------------------------------------------------------------
+| Pantalla de login unificado + 2FA
+|--------------------------------------------------------------------------
+| Consume el flujo:
+| - POST /api/auth/login para validar correo/contrasena y solicitar 2FA.
+| - POST /api/auth/verify-2fa para completar la sesion.
+|
+| Seguridad:
+| - No se guarda usuario en storage hasta que 2FA termina correctamente.
+| - pendingRole conserva temporalmente el rol devuelto por backend para
+|   validar el codigo en la tabla two_factor_codes.
+| - No mostrar mensajes que revelen si un correo existe.
+*/
 export function LoginPage() {
-  const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate()
+  const PENDING_2FA_KEY = 'pending_2fa'
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(false)
+  const [error, setError] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [step, setStep] = useState('credentials')
+  const [verificationCode, setVerificationCode] = useState('')
+  const [pendingRole, setPendingRole] = useState('')
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setIsLoading(true);
+  useEffect(() => {
+    const rawPending = sessionStorage.getItem(PENDING_2FA_KEY)
+    if (!rawPending) return
 
     try {
-      const admin = await authService.login(email, password);
-      // Guardar en localStorage si se seleccionó "Recordarme"
-      if (rememberMe) {
-        localStorage.setItem('admin', JSON.stringify(admin));
-      } else {
-        sessionStorage.setItem('admin', JSON.stringify(admin));
+      const pending = JSON.parse(rawPending)
+      if (!pending?.email || !pending?.role) {
+        sessionStorage.removeItem(PENDING_2FA_KEY)
+        return
       }
-      navigate('/admin');
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
+
+      setEmail(pending.email)
+      setPendingRole(pending.role)
+      setStep('verify')
+    } catch {
+      sessionStorage.removeItem(PENDING_2FA_KEY)
     }
-  };
+  }, [])
+
+  const clearPending2FA = () => {
+    sessionStorage.removeItem(PENDING_2FA_KEY)
+  }
+
+  const clearFinalSessions = () => {
+    sessionStorage.removeItem('user')
+    sessionStorage.removeItem('admin')
+    localStorage.removeItem('user')
+    localStorage.removeItem('admin')
+  }
+
+  const redirectByRole = role => {
+    if (role === 'administrador') {
+      navigate('/admin')
+      return
+    }
+
+    if (role === 'arrendatario') {
+      navigate('/arrendatario')
+      return
+    }
+
+    navigate('/inquilino/perfil')
+  }
+
+  const handleSubmit = async e => {
+    e.preventDefault()
+    setError('')
+    setIsLoading(true)
+
+    try {
+      if (step === 'credentials') {
+        clearPending2FA()
+
+        // Primer paso: el backend valida credenciales y envia codigo 2FA.
+        // Todavia no se considera sesion iniciada.
+        const loginResult = await authController.login(email, password)
+
+        if (loginResult.success && loginResult.requires2FA) {
+          setPendingRole(loginResult.role)
+          sessionStorage.setItem(
+            PENDING_2FA_KEY,
+            JSON.stringify({
+              email: email.trim().toLowerCase(),
+              role: loginResult.role,
+              createdAt: Date.now(),
+            })
+          )
+          setStep('verify')
+          setVerificationCode('')
+          return
+        }
+
+        setError(
+          loginResult.message || 'Credenciales incorrectas. Verifica tu correo y contrasena.'
+        )
+        return
+      }
+
+      // Segundo paso: se verifica el codigo temporal antes de guardar usuario.
+      const verifyResult = await authController.verify2FA(email, verificationCode, pendingRole)
+
+      if (!verifyResult.success) {
+        setError(verifyResult.message || 'Codigo invalido o expirado.')
+        return
+      }
+
+      clearFinalSessions()
+      clearPending2FA()
+
+      const storageKey = verifyResult.user.role === 'administrador' ? 'admin' : 'user'
+      const storage = rememberMe ? localStorage : sessionStorage
+      storage.setItem(storageKey, JSON.stringify(verifyResult.user))
+      redirectByRole(verifyResult.user.role)
+    } catch (err) {
+      setError(err.message || 'Error inesperado al iniciar sesion')
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-[#FAFAFA]">
-      <Card className="w-full max-w-md p-8 md:p-10 bg-white border border-[#6B8E23]/10 shadow-sm rounded-2xl">
-        <div className="text-center mb-10">
-          <h1 className="font-poppins font-semibold text-3xl md:text-4xl text-[#5F5F5F] mb-3">
-            Bienvenido de nuevo
-          </h1>
-          <p className="text-[#5F5F5F]/70 text-lg">
-            Inicia sesión para continuar
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <label htmlFor="email" className="text-[#5F5F5F] font-medium">
-              Correo Electrónico
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
-              <Input
-                id="email"
-                type="email"
-                placeholder="correo@ejemplo.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="pl-12 h-12 bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] rounded-xl transition-colors"
-                required
-              />
-            </div>
+    <div className="min-h-screen flex flex-col bg-[#FAFAFA]">
+      {/* Contenedor principal para centrar el login y ocupar el espacio disponible */}
+      <main className="flex-grow flex items-center justify-center px-4 py-12">
+        <Card className="w-full max-w-md p-8 md:p-10 bg-white border border-[#6B8E23]/10 shadow-sm rounded-2xl">
+          <div className="text-center mb-10">
+            <h1 className="font-poppins font-semibold text-3xl md:text-4xl text-[#5F5F5F] mb-3">
+              Bienvenido de nuevo
+            </h1>
+            <p className="text-[#5F5F5F]/70 text-lg">Inicia sesion para continuar</p>
           </div>
 
-          <div className="space-y-2">
-            <label htmlFor="password" className="text-[#5F5F5F] font-medium">
-              Contraseña
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="pl-12 h-12 bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] rounded-xl transition-colors"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between text-sm">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input 
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="rounded border-[#6B8E23]/30 text-[#6B8E23] focus:ring-[#6B8E23] focus:ring-offset-0"
-              />
-              <span className="text-[#5F5F5F]">Recordarme</span>
-            </label>
-            <button 
-              type="button" 
-              className="text-[#6B8E23] hover:text-[#5a7a1e] transition-colors"
-            >
-              ¿Olvidaste tu contraseña?
-            </button>
-          </div>
-
-          <Button 
-            type="submit" 
-            disabled={isLoading}
-            className="w-full bg-[#6B8E23] text-white hover:bg-[#5a7a1e] h-12 shadow-none rounded-xl disabled:opacity-50"
-          >
-            {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </Button>
-
-          {/* Mostrar error si existe */}
-          {error && (
-            <Alert className="border-red-200 bg-red-50">
-              <AlertCircle className="h-4 w-4 text-red-600" />
-              <AlertDescription className="text-red-800">
-                {error}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* Texto informativo sobre acceso dual */}
-          <p className="text-xs text-center text-[#5F5F5F]/70 mt-2">
-            El acceso es válido para huéspedes y anfitriones
-          </p>
-        </form>
-
-        {/* Instrucciones para crear tabla si hay error de tabla no encontrada */}
-        {error && error.includes('La tabla administrador no existe') && (
-          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-            <div className="flex items-start gap-3">
-              <Database className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div className="space-y-3">
-                <h3 className="font-semibold text-blue-900">Crear tabla administrador en Supabase</h3>
-                <div className="space-y-2 text-sm text-blue-800">
-                  <p>1. Ve a tu <strong>Supabase Dashboard</strong> → <strong>SQL Editor</strong></p>
-                  <p>2. Crea una nueva consulta y ejecuta este SQL:</p>
-                  <div className="bg-blue-100 p-3 rounded-lg font-mono text-xs">
-                    <pre className="whitespace-pre-wrap">
-{`CREATE TABLE IF NOT EXISTS public.administrador (
-    id_admin INTEGER GENERATED ALWAYS AS IDENTITY,
-    nombre VARCHAR(100) NOT NULL,
-    correo VARCHAR(100) NOT NULL UNIQUE,
-    contrasena VARCHAR(100) NOT NULL,
-    PRIMARY KEY (id_admin)
-);
-
-INSERT INTO public.administrador (nombre, correo, contrasena)
-VALUES ('Administrador Principal', 'admin@nowayhome.com', 'admin123')
-ON CONFLICT (correo) DO NOTHING;
-
--- Configurar políticas RLS
-ALTER TABLE public.administrador ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Permitir consulta de administradores" ON public.administrador
-    FOR SELECT TO anon USING (true);`}</pre>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {step === 'credentials' ? (
+              <>
+                <div className="space-y-2">
+                  <label htmlFor="email" className="text-[#5F5F5F] font-medium">
+                    Correo electronico
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="correo@ejemplo.com"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      className="pl-12 h-12 bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] rounded-xl transition-colors"
+                      required
+                    />
                   </div>
-                  <p>3. Una vez ejecutado, ve a <strong>/admin/login</strong> para iniciar sesión como administrador</p>
-                  <p>4. Usa estas credenciales:</p>
-                  <ul className="list-disc list-inside ml-4">
-                    <li><strong>Correo:</strong> admin@nowayhome.com</li>
-                    <li><strong>Contraseña:</strong> admin123</li>
-                  </ul>
                 </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="password" className="text-[#5F5F5F] font-medium">
+                    Contrasena
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Escribe tu contrasena"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      className="pl-12 pr-12 h-12 bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] placeholder:text-[#5F5F5F]/50 rounded-xl transition-colors"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-[#5F5F5F]/50 hover:text-[#5F5F5F] transition-colors focus:outline-none"
+                      aria-label={showPassword ? 'Ocultar contrasena' : 'Mostrar contrasena'}
+                    >
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-sm">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={e => setRememberMe(e.target.checked)}
+                      className="rounded border-[#6B8E23]/30 text-[#6B8E23] focus:ring-[#6B8E23] focus:ring-offset-0"
+                    />
+                    <span className="text-[#5F5F5F]">Recordarme</span>
+                  </label>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="text-[#6B8E23] hover:text-[#5a7a1e] hover:bg-[#6B8E23]/10 h-8 px-3 rounded-lg transition-all font-medium text-xs sm:text-sm flex items-center shadow-none"
+                    onClick={() => navigate('/forgot-password')}
+                  >
+                    <Key className="w-3.5 h-3.5 mr-1.5" />
+                    Olvide mi contrasena
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-5 text-center">
+                <ShieldCheck className="mx-auto h-12 w-12 text-[#6B8E23]" />
+                <div className="space-y-2">
+                  <h2 className="font-poppins font-semibold text-xl text-[#5F5F5F]">
+                    Verificacion en dos pasos
+                  </h2>
+                  <p className="text-sm text-[#5F5F5F]/75">
+                    Ingresa el codigo de 6 digitos enviado a {email}.
+                  </p>
+                </div>
+                <Input
+                  id="verification-code"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="000000"
+                  value={verificationCode}
+                  onChange={e => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+                  className="h-14 text-center text-2xl tracking-[0.4em] bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] rounded-xl transition-colors font-semibold"
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    clearPending2FA()
+                    setStep('credentials')
+                    setVerificationCode('')
+                    setPendingRole('')
+                    setError('')
+                  }}
+                  className="text-[#6B8E23] hover:text-[#5a7a1e] hover:bg-[#6B8E23]/10 h-9 rounded-lg shadow-none"
+                >
+                  Volver al login
+                </Button>
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-[#6B8E23] text-white hover:bg-[#5a7a1e] h-12 shadow-none rounded-xl disabled:opacity-50"
+            >
+              {isLoading
+                ? step === 'credentials'
+                  ? 'Enviando codigo...'
+                  : 'Verificando codigo...'
+                : step === 'credentials'
+                  ? 'Iniciar sesion'
+                  : 'Verificar y entrar'}
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+
+            {error && (
+              <Alert className="border-red-200 bg-red-50">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-800">{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <p className="text-xs text-center text-[#5F5F5F]/70 mt-2">
+              El acceso es valido para huespedes, anfitriones y administradores
+            </p>
+          </form>
+
+          <div className="mt-8 text-center">
+            <p className="text-[#5F5F5F]">
+              No tienes cuenta?{' '}
+              <button
+                onClick={() => navigate('/register')}
+                className="text-[#6B8E23] font-medium hover:text-[#5a7a1e] transition-colors"
+              >
+                Registrate aqui
+              </button>
+            </p>
+          </div>
+        </Card>
+      </main>
+
+      {/* Footer Profesional */}
+      <footer className="bg-white border-t border-[#6B8E23]/10 pt-16 pb-8">
+        <div className="container mx-auto px-4 max-w-7xl">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+            {/* Branding & Descripción */}
+            <div className="md:col-span-1 space-y-4">
+              <h3 className="font-poppins text-2xl font-bold text-[#6B8E23]">No Way Home</h3>
+              <p className="text-[#5F5F5F]/70 text-sm leading-relaxed">
+                Tu plataforma de confianza para encontrar los mejores alojamientos temporales.
+                Siéntete en casa, sin importar a dónde vayas.
+              </p>
+              <div className="flex space-x-4 pt-2">
+                <a href="#" className="text-[#A67C52] hover:text-[#6B8E23] transition-colors">
+                  <Facebook className="h-5 w-5" />
+                </a>
+                <a href="#" className="text-[#A67C52] hover:text-[#6B8E23] transition-colors">
+                  <Instagram className="h-5 w-5" />
+                </a>
+                <a href="#" className="text-[#A67C52] hover:text-[#6B8E23] transition-colors">
+                  <Twitter className="h-5 w-5" />
+                </a>
               </div>
             </div>
-          </div>
-        )}
 
-        <div className="mt-8 text-center">
-          <p className="text-[#5F5F5F]">
-            ¿No tienes cuenta?{' '}
-            <button
-              onClick={() => navigate('/register')}
-              className="text-[#6B8E23] font-medium hover:text-[#5a7a1e] transition-colors"
-            >
-              Regístrate aquí
-            </button>
-          </p>
-        </div>
+            {/* Enlaces Rápidos */}
+            <div>
+              <h4 className="font-poppins font-semibold text-[#5F5F5F] mb-4">Descubre</h4>
+              <ul className="space-y-3">
+                <li>
+                  <button
+                    onClick={() => navigate('/')}
+                    className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left"
+                  >
+                    Inicio
+                  </button>
+                </li>
+                <li>
+                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                    Alojamientos destacados
+                  </button>
+                </li>
+                <li>
+                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                    Ofertas especiales
+                  </button>
+                </li>
+                <li>
+                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                    Cómo funciona
+                  </button>
+                </li>
+              </ul>
+            </div>
 
-        <div className="mt-8 pt-8 border-t border-[#6B8E23]/10">
-          <p className="text-sm text-center text-[#5F5F5F]/70 mb-5">
-            O continúa con
-          </p>
-          <div className="grid grid-cols-2 gap-4">
-            <Button 
-              type="button"
-              variant="outline" 
-              className="border-2 border-[#6B8E23]/20 text-[#5F5F5F] hover:border-[#6B8E23] hover:bg-[#F2E8CF]/30 shadow-none rounded-xl h-11 transition-all"
-            >
-              Google
-            </Button>
-            <Button 
-              type="button"
-              variant="outline" 
-              className="border-2 border-[#6B8E23]/20 text-[#5F5F5F] hover:border-[#6B8E23] hover:bg-[#F2E8CF]/30 shadow-none rounded-xl h-11 transition-all"
-            >
-              Facebook
-            </Button>
+            {/* Anfitriones */}
+            <div>
+              <h4 className="font-poppins font-semibold text-[#5F5F5F] mb-4">Anfitriones</h4>
+              <ul className="space-y-3">
+                <li>
+                  <button
+                    onClick={() => navigate('/register')}
+                    className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left"
+                  >
+                    Publica tu espacio
+                  </button>
+                </li>
+                <li>
+                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                    Recursos para anfitriones
+                  </button>
+                </li>
+                <li>
+                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                    Foro de la comunidad
+                  </button>
+                </li>
+                <li>
+                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                    Protección para anfitriones
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            {/* Soporte */}
+            <div>
+              <h4 className="font-poppins font-semibold text-[#5F5F5F] mb-4">Soporte</h4>
+              <ul className="space-y-3">
+                <li>
+                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                    Centro de ayuda
+                  </button>
+                </li>
+                <li>
+                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                    Opciones de cancelación
+                  </button>
+                </li>
+                <li>
+                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                    Medidas de seguridad
+                  </button>
+                </li>
+                <li className="flex items-center gap-2 mt-4">
+                  <Mail className="h-4 w-4 text-[#A67C52]" />
+                  <a
+                    href="mailto:nowayhomeadmin@gmail.com"
+                    className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors"
+                  >
+                    nowayhomeadmin@gmail.com
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Copyright y Políticas usando Etiquetas <a> con importación */}
+          <div className="border-t border-[#6B8E23]/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-[#5F5F5F]/60 text-sm">
+              © {new Date().getFullYear()} No Way Home. Todos los derechos reservados.
+            </p>
+            <div className="flex gap-6">
+              <a
+                href={politicaPdf}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#5F5F5F]/60 hover:text-[#6B8E23] text-sm transition-colors font-medium"
+              >
+                Privacidad
+              </a>
+              <a
+                href={terminosPdf}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#5F5F5F]/60 hover:text-[#6B8E23] text-sm transition-colors font-medium"
+              >
+                Términos
+              </a>
+            </div>
           </div>
         </div>
-      </Card>
+      </footer>
     </div>
-  );
+  )
 }
