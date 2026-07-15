@@ -252,7 +252,8 @@ export function ReservasArrendatario() {
         await landlordBookingService.cambiarEstadoReserva(
           parsedIdReserva,
           idArrendatario,
-          nuevoEstado
+          nuevoEstado,
+          motivo
         )
       }
 
@@ -284,7 +285,7 @@ export function ReservasArrendatario() {
       setActionFeedback({
         type: 'error',
         title: 'Error',
-        text: 'No se pudo actualizar la reserva. Intenta nuevamente.',
+        text: err.message || 'No se pudo actualizar la reserva. Intenta nuevamente.',
       })
       return false
     } finally {
@@ -534,9 +535,6 @@ export function ReservasArrendatario() {
         ) : (
           <div className="space-y-6">
             {visibleReservas.map((reserva, index) => {
-              // ACCIÓN OBLIGATORIA: Log para inspeccionar la data cruda de la reserva
-              console.log('Reserva raw:', reserva)
-
               const parsedReservaId = Number(reserva.id_reserva)
               const hasValidReservationId = Number.isInteger(parsedReservaId) && parsedReservaId > 0
               const nights = calculateNights(reserva.fecha_inicio, reserva.fecha_fin)
