@@ -23,7 +23,7 @@ export const SMTP_HOST = process.env.SMTP_HOST
 export const SMTP_PORT = Number(process.env.SMTP_PORT || 587)
 export const EMAIL_USER = process.env.SMTP_USER || process.env.EMAIL_USER
 export const EMAIL_PASS = process.env.SMTP_PASS || process.env.EMAIL_PASS
-export const SMTP_SECURE = String(process.env.SMTP_SECURE || '').toLowerCase() === 'true'
+export const SMTP_SECURE = process.env.SMTP_SECURE === 'true'
 export const MAIL_FROM = process.env.EMAIL_FROM || process.env.MAIL_FROM || EMAIL_USER
 export const TWO_FACTOR_PEPPER = process.env.TWO_FACTOR_PEPPER || ''
 export const GEOAPIFY_API_KEY = process.env.GEOAPIFY_API_KEY || ''

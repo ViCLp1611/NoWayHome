@@ -20,12 +20,43 @@ export function getTransporter() {
 
   transporter = nodemailer.createTransport({
     host: SMTP_HOST,
-    port: SMTP_PORT,
-    secure: SMTP_SECURE || SMTP_PORT === 465,
+    port: Number(SMTP_PORT),
+    secure: SMTP_SECURE,
+    family: 4,
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 20000,
     auth: {
       user: EMAIL_USER,
       pass: EMAIL_PASS,
     },
   })
+
+  const sendMail = transporter.sendMail.bind(transporter)
+  transporter.sendMail = async message => {
+    console.info('Conexion SMTP iniciada')
+
+    try {
+      const result = await sendMail(message)
+      console.info('Correo enviado')
+      return result
+    } catch (error) {
+      const isTimeout =
+        ['ETIMEDOUT', 'ESOCKET', 'ECONNECTION', 'ENETUNREACH'].includes(error?.code) ||
+        /timeout/i.test(error?.message || '')
+      const isAuthError = error?.code === 'EAUTH' || Number(error?.responseCode) === 535
+
+      if (isTimeout) {
+        console.error('Timeout SMTP:', error?.message || 'Tiempo de conexion agotado')
+      } else if (isAuthError) {
+        console.error('Error de autenticacion SMTP:', error?.message || 'Autenticacion rechazada')
+      } else {
+        console.error('Error SMTP:', error?.message || 'No se pudo enviar el correo')
+      }
+
+      throw error
+    }
+  }
+
   return transporter
 }
