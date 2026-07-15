@@ -11,6 +11,7 @@ import { InquilinoNavbar } from '@/views/inquilino/components/InquilinoNavbar.js
 import { propiedadController } from '@/controllers/propiedadController.js'
 import { toast } from 'sonner'
 import { PLACEHOLDER_PROPERTY_IMAGE } from '@/views/inquilino/constants.js'
+import { API_URL } from '@/config/api'
 
 export function ExplorarPage() {
   const navigate = useNavigate()
@@ -37,8 +38,6 @@ export function ExplorarPage() {
       try {
         setError('')
         setIsLoading(true)
-
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
         // Las propiedades ya vienen filtradas desde el backend para no mostrar las que
         // tienen una reserva activa ('pendiente' o 'confirmada').
@@ -117,8 +116,6 @@ export function ExplorarPage() {
     }
 
     const isFavorito = favoritos.has(propiedadId)
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
-
     try {
       const response = await fetch(`${API_URL}/api/inquilino/favoritos`, {
         method: isFavorito ? 'DELETE' : 'POST',

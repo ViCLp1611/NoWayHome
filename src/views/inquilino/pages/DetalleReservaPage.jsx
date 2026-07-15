@@ -25,8 +25,8 @@ import { BookingContract } from '../components/BookingContract'
 import { toast } from 'sonner'
 import { tenantBookingService } from '@/services/tenantBookingService'
 import { CancelBookingModal } from '@/app/components/CancelBookingModal'
+import { API_URL } from '@/config/api'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 const PAYPAL_CLIENT_ID = import.meta.env.VITE_PAYPAL_CLIENT_ID
 
 async function requestJson(path) {

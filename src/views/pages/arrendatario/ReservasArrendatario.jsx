@@ -22,6 +22,7 @@ import { landlordBookingService } from '@/services/landlordBookingService'
 import { formatDateLong } from '@/utils/dateUtils'
 import { PLACEHOLDER_PROPERTY_IMAGE } from '@/views/inquilino/constants.js'
 import { CancelBookingModal } from '@/app/components/CancelBookingModal'
+import { API_URL } from '@/config/api'
 
 // Combinación total y unificación de catálogos de estilos para soportar estados en minúsculas y mayúsculas
 const ESTADO_STYLES = {
@@ -179,8 +180,6 @@ export function ReservasArrendatario() {
   }
 
   // Se extrae la URL de la API para reutilizarla.
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
-
   const handleEstadoChange = async (idReserva, nuevoEstado, motivo = '') => {
     const parsedIdReserva = Number(idReserva)
     if (!Number.isInteger(parsedIdReserva) || parsedIdReserva <= 0) {

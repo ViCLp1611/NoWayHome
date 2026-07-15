@@ -1,6 +1,12 @@
 import express from 'express'
 import cors from 'cors'
-import { FRONTEND_URL, MAIL_FROM, PORT } from './config/env.js'
+import {
+  FRONTEND_URL,
+  FRONTEND_URL_PREVIEW,
+  MAIL_FROM,
+  NODE_ENV,
+  PORT,
+} from './config/env.js'
 import { getTransporter } from './config/mailer.js'
 import { supabase } from './config/supabase.js'
 import landlordProfileRoutes from './routes/landlordProfileRoutes.js'
@@ -58,12 +64,27 @@ const app = express()
 | - CORS se limita a FRONTEND_URL.
 | - Este bloque no contiene logica de negocio ni debe almacenar secretos.
 */
+const allowedOrigins = new Set(
+  [
+    FRONTEND_URL,
+    FRONTEND_URL_PREVIEW,
+    ...(NODE_ENV === 'production'
+      ? []
+      : ['http://localhost:5173', 'http://127.0.0.1:5173']),
+  ].filter(Boolean)
+)
+
 app.use(
   cors({
-    origin: FRONTEND_URL,
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.has(origin)) return callback(null, true)
+      return callback(new Error('Origen no permitido por CORS.'))
+    },
+    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'x-admin-role'],
   })
 )
-app.use(express.json())
+app.use(express.json({ limit: '1mb' }))
 app.use('/api/arrendatario/profile', landlordProfileRoutes)
 app.use('/api/arrendatario/reservas', landlordBookingRoutes)
 app.use('/api/arrendatario/properties', propertyRoutes)
@@ -440,7 +461,7 @@ async function send2faEmail(correo, code) {
 }
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true })
+  res.status(200).json({ ok: true, service: 'NoWayHome API' })
 })
 
 /*
@@ -1150,10 +1171,24 @@ app.post('/api/auth/update-password', async (req, res) => {
   }
 })
 
-app.listen(PORT, () => {
+app.use((_req, res) => {
+  res.status(404).json({ success: false, message: 'Ruta no encontrada.' })
+})
+
+app.use((error, _req, res, _next) => {
+  if (NODE_ENV !== 'production') {
+    console.error('[NoWayHome API]', error?.message || error)
+  } else {
+    console.error('[NoWayHome API] Error interno controlado.')
+  }
+
+  res.status(500).json({ success: false, message: 'Ocurrió un error interno.' })
+})
+
+app.listen(PORT, '0.0.0.0', () => {
   /*
    * Punto de arranque del backend Express.
    * No colocar aqui logica de negocio ni valores sensibles.
    */
-  console.log(`Servidor NoWayHome escuchando en http://localhost:${PORT}`)
+  console.log(`Servidor NoWayHome iniciado en el puerto ${PORT}.`)
 })

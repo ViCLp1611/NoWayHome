@@ -1,8 +1,12 @@
 // server/controllers/paymentController.js
 import { supabase } from '../config/supabase.js' // ⚠️ IMPORTANTE: Ajusta esta ruta a donde tengas tu archivo de conexión a Supabase en el backend
 import { sendReservationReceiptEmail } from '../services/emailNotificationService.js'
+import {
+  PAYPAL_BASE_URL,
+  PAYPAL_CLIENT_ID,
+  PAYPAL_CLIENT_SECRET,
+} from '../config/env.js'
 
-const { PAYPAL_CLIENT_ID, PAYPAL_SECRET_KEY, PAYPAL_API_URL } = process.env
 const COMPLETED_PAYMENT_STATUSES = ['COMPLETADO', 'COMPLETED', 'CONFIRMADO', 'CONFIRMED', 'PAGADO', 'PAID']
 
 const parseReservationId = value => {
@@ -39,11 +43,11 @@ const getPayableReservation = async idReserva => {
 // Función interna para obtener el Token de Autorización de PayPal
 const generateAccessToken = async () => {
   try {
-    if (!PAYPAL_CLIENT_ID || !PAYPAL_SECRET_KEY) {
+    if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET) {
       throw new Error('Faltan las credenciales de PayPal en el archivo .env')
     }
-    const auth = Buffer.from(PAYPAL_CLIENT_ID + ':' + PAYPAL_SECRET_KEY).toString('base64')
-    const response = await fetch(`${PAYPAL_API_URL}/v1/oauth2/token`, {
+    const auth = Buffer.from(PAYPAL_CLIENT_ID + ':' + PAYPAL_CLIENT_SECRET).toString('base64')
+    const response = await fetch(`${PAYPAL_BASE_URL}/v1/oauth2/token`, {
       method: 'POST',
       body: 'grant_type=client_credentials',
       headers: {
@@ -54,7 +58,7 @@ const generateAccessToken = async () => {
     const data = await response.json()
     return data.access_token
   } catch (error) {
-    console.error('Error al generar el token de PayPal:', error)
+    console.error('Error al generar el token de PayPal:', error?.message || 'Error externo')
     throw error
   }
 }
@@ -68,7 +72,7 @@ export const paymentController = {
       const payable = await getPayableReservation(idReserva)
       if (payable.error) return res.status(payable.status || 400).json({ success: false, error: payable.error })
       const accessToken = await generateAccessToken()
-      const url = `${PAYPAL_API_URL}/v2/checkout/orders`
+      const url = `${PAYPAL_BASE_URL}/v2/checkout/orders`
 
       const payload = {
         intent: 'CAPTURE',
@@ -99,7 +103,7 @@ export const paymentController = {
       }
       res.status(200).json({ id: data.id })
     } catch (error) {
-      console.error('Error creando la orden:', error)
+      console.error('Error creando la orden:', error?.message || 'Error externo')
       res.status(500).json({ error: 'No se pudo crear la orden de pago.' })
     }
   },
@@ -120,7 +124,7 @@ export const paymentController = {
       const payable = await getPayableReservation(idReserva)
       if (payable.error) return res.status(payable.status || 400).json({ success: false, error: payable.error })
       const accessToken = await generateAccessToken()
-      const url = `${PAYPAL_API_URL}/v2/checkout/orders/${orderID}/capture`
+      const url = `${PAYPAL_BASE_URL}/v2/checkout/orders/${orderID}/capture`
 
       const response = await fetch(url, {
         method: 'POST',
@@ -188,7 +192,10 @@ export const paymentController = {
         ])
 
         if (errorPago) {
-          console.error('Error al insertar el registro del pago en Supabase:', errorPago)
+          console.error(
+            'Error al insertar el registro del pago en Supabase:',
+            errorPago?.message || 'Error de persistencia'
+          )
           // Aunque el pago en PayPal fue exitoso, falló el registro en nuestra BD.
           // Es crucial loguear esto para una revisión manual.
           // No continuamos para no generar un contrato sin un pago registrado.
@@ -262,7 +269,7 @@ export const paymentController = {
         res.status(400).json({ success: false, error: 'El pago no se completó.' })
       }
     } catch (error) {
-      console.error('Error capturando el pago:', error)
+      console.error('Error capturando el pago:', error?.message || 'Error externo')
       res.status(500).json({
         success: false,
         error: 'Fallo al procesar el pago o actualizar la base de datos.',

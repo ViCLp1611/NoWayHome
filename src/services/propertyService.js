@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+import { API_URL } from '@/config/api'
 
 export async function createProperty(formData) {
   const response = await fetch(`${API_URL}/api/arrendatario/properties`, {

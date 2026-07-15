@@ -1,5 +1,5 @@
 // src/controllers/landlordBookingController.js
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+import { API_URL } from '@/config/api'
 
 // Helper para manejar las respuestas de la API
 const handleResponse = async response => {

@@ -15,6 +15,7 @@ import { toast } from 'sonner'
 import { formatDateLong } from '@/utils/dateUtils'
 import { tenantBookingService } from '@/services/tenantBookingService'
 import { CancelBookingModal } from '@/app/components/CancelBookingModal'
+import { API_URL } from '@/config/api'
 
 export function ProfilePage() {
   const navigate = useNavigate()
@@ -130,8 +131,6 @@ export function ProfilePage() {
       toast.error('No se pudo identificar al usuario para esta acción.')
       return
     }
-
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
     try {
       const response = await fetch(`${API_URL}/api/inquilino/favoritos`, {

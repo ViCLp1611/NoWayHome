@@ -31,7 +31,14 @@ export async function geocodeAddress(address) {
     apiKey: GEOAPIFY_API_KEY,
   })
 
-  const response = await fetch(`https://api.geoapify.com/v1/geocode/search?${params.toString()}`)
+  let response
+  try {
+    response = await fetch(`https://api.geoapify.com/v1/geocode/search?${params.toString()}`, {
+      signal: AbortSignal.timeout(8000),
+    })
+  } catch {
+    throw new Error('El servicio de geocodificacion no respondio a tiempo.')
+  }
 
   if (!response.ok) {
     throw new Error('No se pudo consultar el servicio de geocodificacion.')

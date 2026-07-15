@@ -10,8 +10,7 @@ import { toast } from 'sonner'
 import { InquilinoNavbar } from '@/views/inquilino/components/InquilinoNavbar.jsx'
 import { reservaController } from '@/controllers/reservaController.js'
 import { formatDateLong } from '@/utils/dateUtils'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+import { API_URL } from '@/config/api'
 
 export function ReservaPage() {
   const { id } = useParams()

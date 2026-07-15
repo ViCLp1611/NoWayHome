@@ -18,7 +18,7 @@ export async function geocodeAddressHandler(req, res) {
 
     return res.status(500).json({
       ok: false,
-      message: error.message || 'No se pudo buscar la ubicacion.',
+      message: 'No se pudo buscar la ubicacion.',
     })
   }
 }
