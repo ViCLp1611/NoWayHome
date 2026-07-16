@@ -81,7 +81,7 @@ app.use(
       return callback(new Error('Origen no permitido por CORS.'))
     },
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'x-admin-role'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-role', 'x-admin-email'],
   })
 )
 app.use(express.json({ limit: '1mb' }))
