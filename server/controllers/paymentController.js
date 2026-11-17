@@ -1,6 +1,9 @@
 // server/controllers/paymentController.js
 import { supabase } from '../config/supabase.js' // ⚠️ IMPORTANTE: Ajusta esta ruta a donde tengas tu archivo de conexión a Supabase en el backend
-import { sendReservationReceiptEmail } from '../services/emailNotificationService.js'
+import {
+  resolvePropertyTitle,
+  sendReservationReceiptEmail,
+} from '../services/emailNotificationService.js'
 import {
   PAYPAL_BASE_URL,
   PAYPAL_CLIENT_ID,
@@ -40,22 +43,43 @@ const getPayableReservation = async idReserva => {
   return { reservation, expectedAmount }
 }
 
+const parsePayPalResponse = async (response, operationLabel) => {
+  const rawText = await response.text()
+  if (!rawText || !rawText.trim()) {
+    return {}
+  }
+  try {
+    return JSON.parse(rawText)
+  } catch {
+    throw new Error(`${operationLabel} devolvió una respuesta inválida (HTTP ${response.status}).`)
+  }
+}
+
 // Función interna para obtener el Token de Autorización de PayPal
 const generateAccessToken = async () => {
   try {
     if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET) {
       throw new Error('Faltan las credenciales de PayPal en el archivo .env')
     }
-    const auth = Buffer.from(PAYPAL_CLIENT_ID + ':' + PAYPAL_CLIENT_SECRET).toString('base64')
+    const auth = Buffer.from(`${PAYPAL_CLIENT_ID}:${PAYPAL_CLIENT_SECRET}`).toString('base64')
     const response = await fetch(`${PAYPAL_BASE_URL}/v1/oauth2/token`, {
       method: 'POST',
       body: 'grant_type=client_credentials',
       headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
         Authorization: `Basic ${auth}`,
       },
     })
 
-    const data = await response.json()
+    const data = await parsePayPalResponse(response, 'PayPal OAuth')
+    if (!response.ok || !data?.access_token) {
+      throw new Error(
+        data?.error_description ||
+          data?.error ||
+          `PayPal OAuth rechazó la solicitud (HTTP ${response.status}).`
+      )
+    }
     return data.access_token
   } catch (error) {
     console.error('Error al generar el token de PayPal:', error?.message || 'Error externo')
@@ -67,7 +91,7 @@ export const paymentController = {
   // 1. Crear la Orden de Pago (Se llama antes de que el usuario pague)
   crearOrden: async (req, res) => {
     try {
-      const idReserva = parseReservationId(req.body?.idReserva)
+      const idReserva = parseReservationId(req.body?.idReserva ?? req.body?.id_reserva)
       if (!idReserva) return res.status(400).json({ success: false, error: 'idReserva no es válido.' })
       const payable = await getPayableReservation(idReserva)
       if (payable.error) return res.status(payable.status || 400).json({ success: false, error: payable.error })
@@ -89,19 +113,33 @@ export const paymentController = {
       const response = await fetch(url, {
         method: 'POST',
         headers: {
+          Accept: 'application/json',
           'Content-Type': 'application/json',
           Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(payload),
       })
 
-      const data = await response.json()
+      const data = await parsePayPalResponse(response, 'PayPal crear orden')
 
       // Retornamos el ID de la orden al Frontend para que abra la ventana de PayPal
-      if (!response.ok || !data.id) {
-        return res.status(502).json({ success: false, error: 'PayPal no pudo crear la orden.' })
+      if (!response.ok || !data?.id) {
+        console.error('PayPal rechazó creación de orden:', {
+          status: response.status,
+          name: data?.name || null,
+          message: data?.message || null,
+          details: data?.details || null,
+        })
+        return res.status(502).json({
+          success: false,
+          error: data?.message || 'PayPal no pudo crear la orden.',
+        })
       }
-      res.status(200).json({ id: data.id })
+      res.status(200).json({
+        id: data.id,
+        status: data.status,
+        links: Array.isArray(data.links) ? data.links : [],
+      })
     } catch (error) {
       console.error('Error creando la orden:', error?.message || 'Error externo')
       res.status(500).json({ error: 'No se pudo crear la orden de pago.' })
@@ -112,8 +150,9 @@ export const paymentController = {
   capturarOrden: async (req, res) => {
     try {
       // Recibimos el ID de la orden de PayPal y el id_reserva de tu base de datos
-      const orderID = typeof req.body?.orderID === 'string' ? req.body.orderID.trim() : ''
-      const idReserva = parseReservationId(req.body?.idReserva)
+      const rawOrderId = req.body?.orderID ?? req.body?.orderId ?? req.body?.id_orden ?? ''
+      const orderID = typeof rawOrderId === 'string' ? rawOrderId.trim() : ''
+      const idReserva = parseReservationId(req.body?.idReserva ?? req.body?.id_reserva)
 
       if (!/^[A-Z0-9-]{8,40}$/i.test(orderID) || !idReserva) {
         return res.status(400).json({
@@ -129,12 +168,22 @@ export const paymentController = {
       const response = await fetch(url, {
         method: 'POST',
         headers: {
+          Accept: 'application/json',
           'Content-Type': 'application/json',
           Authorization: `Bearer ${accessToken}`,
         },
       })
 
-      const data = await response.json()
+      const data = await parsePayPalResponse(response, 'PayPal capturar orden')
+
+      if (!response.ok) {
+        const issue = data?.details?.[0]?.issue || data?.name || ''
+        return res.status(response.status === 422 ? 422 : 400).json({
+          success: false,
+          error: issue || data?.message || 'No se pudo capturar la orden en PayPal.',
+          message: data?.message || issue || 'El pago no se completó en PayPal.',
+        })
+      }
 
       // Si PayPal nos confirma que el dinero ya se cobró con éxito
       if (data.status === 'COMPLETED') {
@@ -167,7 +216,9 @@ export const paymentController = {
             .json({ success: false, error: 'La reserva no está aprobada para recibir pagos.' })
         }
 
-        const montoCobrado = parseFloat(data.purchase_units[0].payments.captures[0].amount.value)
+        const montoCobrado = parseFloat(
+          data?.purchase_units?.[0]?.payments?.captures?.[0]?.amount?.value
+        )
         if (!Number.isFinite(montoCobrado) || Math.abs(montoCobrado - payable.expectedAmount) > 0.01) {
           console.error(`[PAYMENT-CRITICAL] Monto PayPal distinto al esperado para reserva ${idReserva}.`)
           return res.status(409).json({
@@ -202,67 +253,66 @@ export const paymentController = {
           throw new Error('El pago se completó, pero no se pudo registrar en la base de datos.')
         }
 
-        const [propertyResult, tenantResult] = await Promise.all([
-          supabase
-            .from('propiedad')
-            .select('*')
-            .eq('id_propiedad', reservaParaPagar.id_propiedad)
-            .maybeSingle(),
-          supabase
-            .from('inquilino')
-            .select('nombre,correo')
-            .eq('id_inquilino', reservaParaPagar.id_inquilino)
-            .maybeSingle(),
-        ])
-        const property = propertyResult.data || null
-        const propertyTitle =
-          property?.titulo ||
-          property?.titulo_propiedad ||
-          property?.nombre_propiedad ||
-          String(property?.descripcion || '')
-            .split('\n')
-            .map(part => part.trim())
-            .find(Boolean) ||
-          'Propiedad sin título'
-        let landlord = null
-        if (property?.id_arrendatario) {
-          const landlordResult = await supabase
-            .from('arrendatario')
-            .select('nombre,correo')
-            .eq('id_arrendatario', property.id_arrendatario)
-            .maybeSingle()
-          landlord = landlordResult.data || null
+        try {
+          const [propertyResult, tenantResult] = await Promise.all([
+            supabase
+              .from('propiedad')
+              .select('*')
+              .eq('id_propiedad', reservaParaPagar.id_propiedad)
+              .maybeSingle(),
+            supabase
+              .from('inquilino')
+              .select('id_inquilino,nombre,correo')
+              .eq('id_inquilino', reservaParaPagar.id_inquilino)
+              .maybeSingle(),
+          ])
+          const property = propertyResult.data || null
+          const propertyTitle = resolvePropertyTitle(property)
+          let landlord = null
+          if (property?.id_arrendatario) {
+            const landlordResult = await supabase
+              .from('arrendatario')
+              .select('id_arrendatario,nombre,correo')
+              .eq('id_arrendatario', property.id_arrendatario)
+              .maybeSingle()
+            landlord = landlordResult.data || null
+          }
+          const capture = data?.purchase_units?.[0]?.payments?.captures?.[0]
+          const commonReceiptData = {
+            reservationId: idReserva,
+            propertyTitle,
+            propertyAddress: property?.direccion || property?.ubicacion || property?.ciudad,
+            startDate: reservaParaPagar?.fecha_inicio,
+            endDate: reservaParaPagar?.fecha_fin,
+            total: montoCobrado,
+            tenantName: tenantResult.data?.nombre,
+            tenantEmail: tenantResult.data?.correo,
+            landlordName: landlord?.nombre,
+            landlordEmail: landlord?.correo,
+            paymentStatus: capture?.status || data.status,
+            paymentDate: capture?.create_time || capture?.update_time || new Date().toISOString(),
+            issuedAt: new Date().toISOString(),
+          }
+          await Promise.all([
+            sendReservationReceiptEmail({
+              ...commonReceiptData,
+              to: tenantResult.data?.correo,
+              name: tenantResult.data?.nombre,
+              role: 'inquilino',
+            }),
+            sendReservationReceiptEmail({
+              ...commonReceiptData,
+              to: landlord?.correo,
+              name: landlord?.nombre,
+              role: 'arrendatario',
+            }),
+          ])
+        } catch (notifyError) {
+          console.error(
+            '[paymentController] Pago guardado, pero falló preparación de notificaciones:',
+            notifyError?.message || notifyError
+          )
         }
-        const capture = data?.purchase_units?.[0]?.payments?.captures?.[0]
-        const commonReceiptData = {
-          reservationId: idReserva,
-          propertyTitle,
-          propertyAddress: property?.direccion || property?.ubicacion || property?.ciudad,
-          startDate: reservaParaPagar?.fecha_inicio,
-          endDate: reservaParaPagar?.fecha_fin,
-          total: montoCobrado,
-          tenantName: tenantResult.data?.nombre,
-          tenantEmail: tenantResult.data?.correo,
-          landlordName: landlord?.nombre,
-          landlordEmail: landlord?.correo,
-          paymentStatus: capture?.status || data.status,
-          paymentDate: capture?.create_time || capture?.update_time || new Date().toISOString(),
-          issuedAt: new Date().toISOString(),
-        }
-        await Promise.all([
-          sendReservationReceiptEmail({
-            ...commonReceiptData,
-            to: tenantResult.data?.correo,
-            name: tenantResult.data?.nombre,
-            role: 'inquilino',
-          }),
-          sendReservationReceiptEmail({
-            ...commonReceiptData,
-            to: landlord?.correo,
-            name: landlord?.nombre,
-            role: 'arrendatario',
-          }),
-        ])
 
         res.status(200).json({ success: true, data })
       } else {

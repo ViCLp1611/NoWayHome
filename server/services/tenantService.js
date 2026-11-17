@@ -508,6 +508,12 @@ export async function getTenantProperties() {
     .order('id_propiedad', { ascending: false })
 
   if (propertiesError) {
+    console.error('[tenantService] No se pudo consultar la tabla propiedad:', {
+      message: propertiesError.message,
+      code: propertiesError.code,
+      details: propertiesError.details,
+      hint: propertiesError.hint,
+    })
     throw new Error('No se pudieron cargar las propiedades.')
   }
 

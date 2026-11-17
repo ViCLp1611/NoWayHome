@@ -95,13 +95,18 @@ export async function updateReservationStatusHandler(req, res) {
 
       const [propertyResult, tenantResult, paymentsResult] = await Promise.all([
         supabase.from('propiedad').select('*').eq('id_propiedad', updatedReserva.id_propiedad).maybeSingle(),
-        supabase.from('inquilino').select('nombre,correo').eq('id_inquilino', updatedReserva.id_inquilino).maybeSingle(),
+        supabase
+          .from('inquilino')
+          .select('id_inquilino,nombre,correo')
+          .eq('id_inquilino', updatedReserva.id_inquilino)
+          .maybeSingle(),
         supabase.from('pago').select('estado_pago').eq('id_reserva', updatedReserva.id_reserva),
       ])
       const paidStatuses = ['COMPLETADO', 'COMPLETED', 'CONFIRMADO', 'CONFIRMED', 'PAGADO', 'PAID']
       const hasPayment = (paymentsResult.data || []).some(payment =>
         paidStatuses.includes(String(payment?.estado_pago || '').toUpperCase())
       )
+      const reason = motivo_rechazo.trim()
       await sendReservationCancelledEmail({
         to: tenantResult.data?.correo,
         name: tenantResult.data?.nombre,
@@ -109,7 +114,7 @@ export async function updateReservationStatusHandler(req, res) {
         startDate: updatedReserva?.fecha_inicio,
         endDate: updatedReserva?.fecha_fin,
         total: updatedReserva?.pago,
-        reason: motivo_rechazo.trim(),
+        reason,
         role: 'inquilino',
         hasPayment,
       })

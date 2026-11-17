@@ -79,3 +79,28 @@ NoWayHome`,
     }),
   }
 }
+
+export function twoFactorEmailTemplate(code, expirationMinutes = 5) {
+  const safeCode = escapeEmailHtml(code)
+  const minutes = Number(expirationMinutes) || 5
+
+  return {
+    subject: 'Tu codigo de verificacion de NoWayHome',
+    text: `Tu codigo de verificacion es ${code}. Expira en ${minutes} minutos.`,
+    html: emailBaseTemplate({
+      title: 'Código de verificación',
+      subtitle: 'Usa este código para completar tu inicio de sesión',
+      content: `
+        <p style="margin:0 0 14px;font-size:16px;line-height:1.6;color:#5F5F5F;">
+          Tu código de verificación es:
+        </p>
+        <div style="margin:16px 0;padding:18px;border-radius:12px;background:#FFFFFF;border:1px solid rgba(107,142,35,0.25);text-align:center;">
+          <span style="font-size:32px;letter-spacing:8px;font-weight:700;color:#6B8E23;">${safeCode}</span>
+        </div>
+        <p style="margin:0;font-size:14px;line-height:1.6;color:#5F5F5F;">
+          Expira en ${minutes} minutos. Por tu seguridad, no lo compartas con nadie.
+        </p>`,
+      footerText: '© NoWayHome. Este es un mensaje automático, por favor no respondas a este correo.',
+    }),
+  }
+}

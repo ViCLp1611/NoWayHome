@@ -7,6 +7,13 @@ const EVENT_CONTENT = {
     message: 'Tienes una nueva solicitud de reserva para una de tus propiedades.',
     status: 'Pendiente',
   },
+  created_tenant: {
+    subject: 'Solicitud de reserva enviada (Pendiente)',
+    title: 'Solicitud de reserva pendiente',
+    message:
+      'Tu solicitud de reserva fue registrada correctamente y quedó pendiente de aprobación por el anfitrión.',
+    status: 'Pendiente',
+  },
   confirmed: {
     subject: 'Tu reserva fue confirmada',
     title: 'Tu reserva fue confirmada',
