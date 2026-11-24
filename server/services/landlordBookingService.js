@@ -202,7 +202,9 @@ export async function getLandlordReservations(idArrendatario) {
   }
 
   const tenantIds = [...new Set((reservas || []).map(item => item.id_inquilino).filter(Boolean))]
+  const reservationIds = [...new Set((reservas || []).map(item => item.id_reserva).filter(Boolean))]
   let tenantsById = {}
+  let paymentsByReservation = {}
 
   if (tenantIds.length > 0) {
     const { data: inquilinos, error: inquilinosError } = await supabase
@@ -217,10 +219,30 @@ export async function getLandlordReservations(idArrendatario) {
     }
   }
 
+  if (reservationIds.length > 0) {
+    const { data: pagosData, error: pagosError } = await supabase
+      .from('pago')
+      .select('id_pago,id_reserva,monto,metodo_pago,estado_pago,id_transaccion_paypal')
+      .in('id_reserva', reservationIds)
+
+    if (pagosError) {
+      console.error('Error al obtener pagos de reservas:', pagosError.message)
+    } else {
+      for (const pagoItem of pagosData || []) {
+        if (!paymentsByReservation[pagoItem.id_reserva]) {
+          paymentsByReservation[pagoItem.id_reserva] = []
+        }
+        paymentsByReservation[pagoItem.id_reserva].push(pagoItem)
+      }
+    }
+  }
+
   return (reservas || []).map(reserva => {
     const propiedad = propertiesById[reserva.id_propiedad] || null
     const inquilino = tenantsById[reserva.id_inquilino] || null
     const idReserva = reserva.id_reserva ?? null
+    const reservaPagos = idReserva ? paymentsByReservation[idReserva] || [] : []
+    const latestPago = reservaPagos[reservaPagos.length - 1] || null
     const imagenPrincipal = principalImageByProperty[reserva.id_propiedad] || null
     const total = calculateTotalFallback(reserva, propiedad)
     const estadoNormalizado = String(reserva.estado || 'PENDIENTE').toUpperCase()
@@ -240,7 +262,9 @@ export async function getLandlordReservations(idArrendatario) {
       total,
       pago: Number.isFinite(Number(reserva.pago)) ? Number(reserva.pago) : null,
       estado: estadoNormalizado,
-      estado_pago: reserva.estado_pago || null,
+      estado_pago: reserva.estado_pago || latestPago?.estado_pago || null,
+      id_transaccion_paypal: latestPago?.id_transaccion_paypal || null,
+      pagos: reservaPagos,
       fecha_creacion: reserva.fecha_creacion || null,
       created_at: reserva.fecha_creacion || null,
       propiedad: {

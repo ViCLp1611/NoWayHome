@@ -1,20 +1,29 @@
-import express from 'express'
-import cors from 'cors'
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import express from "express";
+import cors from "cors";
 import {
+  ALLOWED_ORIGINS,
   FRONTEND_URL,
   FRONTEND_URL_PREVIEW,
   MAIL_FROM,
   NODE_ENV,
   PORT,
-} from './config/env.js'
-import { getTransporter } from './config/mailer.js'
-import { supabase } from './config/supabase.js'
-import landlordProfileRoutes from './routes/landlordProfileRoutes.js'
-import landlordBookingRoutes from './routes/landlordBookingRoutes.js'
-import propertyRoutes from './routes/propertyRoutes.js'
-import paymentRoutes from './routes/paymentRoutes.js'
-import tenantRoutes from './routes/tenantRoutes.js'
-import geocodeRoutes from './routes/geocodeRoutes.js'
+} from "./config/env.js";
+import {
+  diagnoseMailError,
+  sendMail,
+  verifyEmailConfiguration,
+} from "./config/mailer.js";
+import { supabase } from "./config/supabase.js";
+import landlordProfileRoutes from "./routes/landlordProfileRoutes.js";
+import landlordBookingRoutes from "./routes/landlordBookingRoutes.js";
+import propertyRoutes from "./routes/propertyRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
+import tenantRoutes from "./routes/tenantRoutes.js";
+import geocodeRoutes from "./routes/geocodeRoutes.js";
 import {
   generate2faCode,
   generateSecureToken,
@@ -22,10 +31,13 @@ import {
   hashPassword,
   hashToken,
   validatePassword,
-} from './utils/crypto.js'
-import { passwordResetEmailTemplate } from './utils/emailTemplates.js'
-import { getTenantFavorites } from './services/tenantService.js'
-import { sendRegistrationConfirmationEmail } from './services/emailNotificationService.js'
+} from "./utils/crypto.js";
+import {
+  passwordResetEmailTemplate,
+  twoFactorEmailTemplate,
+} from "./utils/emailTemplates.js";
+import { getTenantFavorites } from "./services/tenantService.js";
+import { sendRegistrationConfirmationEmail } from "./services/emailNotificationService.js";
 
 /*
 |--------------------------------------------------------------------------
@@ -40,15 +52,16 @@ import { sendRegistrationConfirmationEmail } from './services/emailNotificationS
 | usuarios, codigos, tokens o contrasenas.
 */
 const GENERIC_RESET_MESSAGE =
-  'Si el correo esta registrado, recibiras instrucciones para restablecer tu contrasena.'
-const GENERIC_LOGIN_MESSAGE = 'Credenciales incorrectas. Verifica tu correo y contrasena.'
-const TWO_FACTOR_EXPIRATION_MINUTES = 5
-const TWO_FACTOR_MAX_ATTEMPTS = 5
-const LOGIN_MAX_FAILED_ATTEMPTS = 4
+  "Si el correo esta registrado, recibiras instrucciones para restablecer tu contrasena.";
+const GENERIC_LOGIN_MESSAGE =
+  "Credenciales incorrectas. Verifica tu correo y contrasena.";
+const TWO_FACTOR_EXPIRATION_MINUTES = 5;
+const TWO_FACTOR_MAX_ATTEMPTS = 5;
+const LOGIN_MAX_FAILED_ATTEMPTS = 4;
 const ACCOUNT_LOCKED_MESSAGE =
-  'Se alcanzó el límite de intentos. Intenta nuevamente en 15 minutos.'
+  "Se alcanzó el límite de intentos. Intenta nuevamente en 15 minutos.";
 
-const app = express()
+const app = express();
 
 /*
 |--------------------------------------------------------------------------
@@ -64,35 +77,95 @@ const app = express()
 | - CORS se limita a FRONTEND_URL.
 | - Este bloque no contiene logica de negocio ni debe almacenar secretos.
 */
+const LOCAL_OR_LAN_ORIGIN_REGEX =
+  /^http:\/\/(localhost|127\.0\.0\.1|\[::1\]|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?$/;
+
+const configuredOrigins = [
+  ...String(FRONTEND_URL || "").split(","),
+  ...String(FRONTEND_URL_PREVIEW || "").split(","),
+  ...ALLOWED_ORIGINS,
+]
+  .map((url) => url.trim().replace(/\/+$/, ""))
+  .filter(Boolean);
+
+const isLocalEnvironment =
+  NODE_ENV !== "production" ||
+  configuredOrigins.length === 0 ||
+  configuredOrigins.some((url) => LOCAL_OR_LAN_ORIGIN_REGEX.test(url));
+
 const allowedOrigins = new Set(
   [
-    FRONTEND_URL,
-    FRONTEND_URL_PREVIEW,
-    ...(NODE_ENV === 'production'
-      ? []
-      : ['http://localhost:5173', 'http://127.0.0.1:5173']),
-  ].filter(Boolean)
-)
+    ...configuredOrigins,
+    // El frontend local usa estos origenes aunque NODE_ENV se haya configurado
+    // como "production" en el entorno del backend.
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    `http://localhost:${PORT}`,
+    `http://127.0.0.1:${PORT}`,
+  ].filter(Boolean),
+);
+
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  const normalized = origin.trim().replace(/\/+$/, "");
+  if (allowedOrigins.has(normalized)) return true;
+  if (isLocalEnvironment && LOCAL_OR_LAN_ORIGIN_REGEX.test(normalized)) {
+    return true;
+  }
+  return false;
+}
+
+function resolveFrontendBaseUrl(req) {
+  const originHeader = req?.get("origin")?.trim().replace(/\/+$/, "");
+  if (originHeader && isAllowedOrigin(originHeader)) {
+    return originHeader;
+  }
+
+  const refererHeader = req?.get("referer");
+  if (refererHeader) {
+    try {
+      const refererOrigin = new URL(refererHeader).origin;
+      if (isAllowedOrigin(refererOrigin)) {
+        return refererOrigin;
+      }
+    } catch {
+      // Ignorar referer malformado
+    }
+  }
+
+  const hostHeader = req?.get("host");
+  if (hostHeader) {
+    const hostOrigin = `${req.protocol}://${hostHeader}`.replace(/\/+$/, "");
+    if (isAllowedOrigin(hostOrigin)) {
+      return hostOrigin;
+    }
+  }
+
+  return configuredOrigins[0] || `http://localhost:${PORT}`;
+}
 
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.has(origin)) return callback(null, true)
-      return callback(new Error('Origen no permitido por CORS.'))
+      if (isAllowedOrigin(origin)) return callback(null, true);
+      if (NODE_ENV !== "production") {
+        console.warn(`[CORS] Origen bloqueado: ${origin}`);
+      }
+      return callback(new Error("Origen no permitido por CORS."));
     },
-    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-role', 'x-admin-email'],
-  })
-)
-app.use(express.json({ limit: '1mb' }))
-app.use('/api/arrendatario/profile', landlordProfileRoutes)
-app.use('/api/arrendatario/reservas', landlordBookingRoutes)
-app.use('/api/arrendatario/properties', propertyRoutes)
-app.use('/api/inquilino', tenantRoutes)
-app.use('/api/geocode', geocodeRoutes)
-app.use('/api/payments', paymentRoutes)
+    methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-admin-role", "x-admin-email"],
+  }),
+);
+app.use(express.json({ limit: "1mb" }));
+app.use("/api/arrendatario/profile", landlordProfileRoutes);
+app.use("/api/arrendatario/reservas", landlordBookingRoutes);
+app.use("/api/arrendatario/properties", propertyRoutes);
+app.use("/api/inquilino", tenantRoutes);
+app.use("/api/geocode", geocodeRoutes);
+app.use("/api/payments", paymentRoutes);
 
-app.patch('/api/inquilino/reservas/:idReserva/hide', async (req, res) => {
+app.patch("/api/inquilino/reservas/:idReserva/hide", async (req, res) => {
   /*
   |--------------------------------------------------------------------------
   | PATCH /api/inquilino/reservas/:idReserva/hide
@@ -111,67 +184,79 @@ app.patch('/api/inquilino/reservas/:idReserva/hide', async (req, res) => {
   |   con el de la reserva para evitar que un usuario oculte reservas ajenas.
   | - Valida que el estado de la reserva sea el adecuado.
   */
-  const { idReserva } = req.params
+  const { idReserva } = req.params;
   // En una aplicación real, el id del inquilino debería obtenerse de una sesión autenticada.
-  const { id_inquilino } = req.body
+  const { id_inquilino } = req.body;
 
   if (!id_inquilino) {
-    return res.status(401).json({ success: false, message: 'No estás autenticado.' })
+    return res
+      .status(401)
+      .json({ success: false, message: "No estás autenticado." });
   }
 
   try {
     // 1. Obtener la reserva para validar su estado y propietario
     const { data: reserva, error: findError } = await supabase
-      .from('reserva')
-      .select('id_inquilino, estado')
-      .eq('id_reserva', idReserva)
-      .single()
+      .from("reserva")
+      .select("id_inquilino, estado")
+      .eq("id_reserva", idReserva)
+      .single();
 
-    if (findError) throw findError
+    if (findError) throw findError;
     if (!reserva) {
-      return res.status(404).json({ success: false, message: 'Reserva no encontrada.' })
+      return res
+        .status(404)
+        .json({ success: false, message: "Reserva no encontrada." });
     }
 
     // 2. Validar que el inquilino es el propietario de la reserva
     if (reserva.id_inquilino !== Number(id_inquilino)) {
       return res
         .status(403)
-        .json({ success: false, message: 'No tienes permiso para realizar esta acción.' })
+        .json({
+          success: false,
+          message: "No tienes permiso para realizar esta acción.",
+        });
     }
 
     // 3. Validar el estado de la reserva
-    const estadoNormalizado = String(reserva.estado || '').toLowerCase()
-    const estadosPermitidos = ['cancelada', 'rechazada']
+    const estadoNormalizado = String(reserva.estado || "").toLowerCase();
+    const estadosPermitidos = ["cancelada", "rechazada"];
 
     if (!estadosPermitidos.includes(estadoNormalizado)) {
       return res.status(400).json({
         success: false,
         message:
-          'Solo puedes eliminar del historial las reservas que han sido canceladas o rechazadas.',
-      })
+          "Solo puedes eliminar del historial las reservas que han sido canceladas o rechazadas.",
+      });
     }
 
     // 4. Si todo es correcto, actualizar la reserva
     const { error: updateError } = await supabase
-      .from('reserva')
+      .from("reserva")
       .update({ oculto_para_inquilino: true })
-      .eq('id_reserva', idReserva)
+      .eq("id_reserva", idReserva);
 
     if (updateError) {
-      throw updateError
+      throw updateError;
     }
 
     res
       .status(200)
-      .json({ success: true, message: 'La reserva ha sido eliminada de tu historial.' })
+      .json({
+        success: true,
+        message: "La reserva ha sido eliminada de tu historial.",
+      });
   } catch (error) {
-    console.error('Error al ocultar la reserva:', error.message)
-    res.status(500).json({ success: false, message: 'No se pudo procesar la solicitud.' })
+    console.error("Error al ocultar la reserva:", error.message);
+    res
+      .status(500)
+      .json({ success: false, message: "No se pudo procesar la solicitud." });
   }
-})
+});
 
 // Rutas para gestionar favoritos
-app.post('/api/inquilino/favoritos', async (req, res) => {
+app.post("/api/inquilino/favoritos", async (req, res) => {
   /*
   |--------------------------------------------------------------------------
   | POST /api/inquilino/favoritos
@@ -184,58 +269,77 @@ app.post('/api/inquilino/favoritos', async (req, res) => {
   |   en un entorno de producción, en lugar de confiar en el cuerpo de la
   |   solicitud para prevenir que un usuario agregue favoritos en nombre de otro.
   */
-  const { id_inquilino, id_propiedad } = req.body
+  const { id_inquilino, id_propiedad } = req.body;
 
   if (!id_inquilino || !id_propiedad) {
-    return res.status(400).json({ success: false, message: 'Faltan datos requeridos.' })
-  }
-
-  try {
-    const { error } = await supabase.from('favoritos').insert({ id_inquilino, id_propiedad })
-
-    if (error) {
-      if (error.code === '23505') {
-        return res
-          .status(409)
-          .json({ success: false, message: 'La propiedad ya está en favoritos.' })
-      }
-      throw error
-    }
-
-    res.status(201).json({ success: true, message: 'Propiedad agregada a favoritos.' })
-  } catch (error) {
-    console.error('Error al agregar favorito:', error.message)
-    res
-      .status(500)
-      .json({ success: false, message: 'No se pudo agregar la propiedad a favoritos.' })
-  }
-})
-
-app.delete('/api/inquilino/favoritos', async (req, res) => {
-  const { id_inquilino, id_propiedad } = req.body
-
-  if (!id_inquilino || !id_propiedad) {
-    return res.status(400).json({ success: false, message: 'Faltan datos requeridos.' })
+    return res
+      .status(400)
+      .json({ success: false, message: "Faltan datos requeridos." });
   }
 
   try {
     const { error } = await supabase
-      .from('favoritos')
-      .delete()
-      .match({ id_inquilino, id_propiedad })
+      .from("favoritos")
+      .insert({ id_inquilino, id_propiedad });
 
-    if (error) throw error
+    if (error) {
+      if (error.code === "23505") {
+        return res
+          .status(409)
+          .json({
+            success: false,
+            message: "La propiedad ya está en favoritos.",
+          });
+      }
+      throw error;
+    }
 
-    res.status(200).json({ success: true, message: 'Propiedad eliminada de favoritos.' })
+    res
+      .status(201)
+      .json({ success: true, message: "Propiedad agregada a favoritos." });
   } catch (error) {
-    console.error('Error al eliminar favorito:', error.message)
+    console.error("Error al agregar favorito:", error.message);
     res
       .status(500)
-      .json({ success: false, message: 'No se pudo eliminar la propiedad de favoritos.' })
+      .json({
+        success: false,
+        message: "No se pudo agregar la propiedad a favoritos.",
+      });
   }
-})
+});
 
-app.get('/api/inquilino/:id/favoritos', async (req, res) => {
+app.delete("/api/inquilino/favoritos", async (req, res) => {
+  const { id_inquilino, id_propiedad } = req.body;
+
+  if (!id_inquilino || !id_propiedad) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Faltan datos requeridos." });
+  }
+
+  try {
+    const { error } = await supabase
+      .from("favoritos")
+      .delete()
+      .match({ id_inquilino, id_propiedad });
+
+    if (error) throw error;
+
+    res
+      .status(200)
+      .json({ success: true, message: "Propiedad eliminada de favoritos." });
+  } catch (error) {
+    console.error("Error al eliminar favorito:", error.message);
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: "No se pudo eliminar la propiedad de favoritos.",
+      });
+  }
+});
+
+app.get("/api/inquilino/:id/favoritos", async (req, res) => {
   /*
   |--------------------------------------------------------------------------
   | GET /api/inquilino/:id/favoritos
@@ -243,19 +347,24 @@ app.get('/api/inquilino/:id/favoritos', async (req, res) => {
   | Funcion:
   | Obtiene la lista de IDs de propiedades favoritas de un inquilino.
   */
-  const { id } = req.params
+  const { id } = req.params;
   try {
-    const favorites = await getTenantFavorites(id)
+    const favorites = await getTenantFavorites(id);
     // El frontend solo necesita los IDs de las propiedades para el estado inicial
     const favoritePropertyIds = favorites.map(
-      fav => fav.propiedad?.id_propiedad || fav.id_propiedad
-    )
-    res.json({ success: true, data: favoritePropertyIds })
+      (fav) => fav.propiedad?.id_propiedad || fav.id_propiedad,
+    );
+    res.json({ success: true, data: favoritePropertyIds });
   } catch (error) {
-    console.error('Error al obtener favoritos de inquilino:', error.message)
-    res.status(500).json({ success: false, message: 'No se pudieron cargar los favoritos.' })
+    console.error("Error al obtener favoritos de inquilino:", error.message);
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: "No se pudieron cargar los favoritos.",
+      });
   }
-})
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -268,11 +377,11 @@ app.get('/api/inquilino/:id/favoritos', async (req, res) => {
 | No usar estas funciones para imprimir valores sensibles en consola.
 */
 function normalizeEmail(correo) {
-  return typeof correo === 'string' ? correo.trim().toLowerCase() : ''
+  return typeof correo === "string" ? correo.trim().toLowerCase() : "";
 }
 
 function normalizeText(value) {
-  return typeof value === 'string' ? value.trim() : ''
+  return typeof value === "string" ? value.trim() : "";
 }
 
 async function findAccountByEmail(correo) {
@@ -291,28 +400,28 @@ async function findAccountByEmail(correo) {
    *   cuando sea necesario evitar enumeracion de usuarios.
    */
   const lookups = [
-    { table: 'administrador', role: 'administrador' },
-    { table: 'inquilino', role: 'inquilino' },
-    { table: 'arrendatario', role: 'arrendatario' },
-  ]
+    { table: "administrador", role: "administrador" },
+    { table: "inquilino", role: "inquilino" },
+    { table: "arrendatario", role: "arrendatario" },
+  ];
 
   for (const lookup of lookups) {
     const { data, error } = await supabase
       .from(lookup.table)
-      .select('correo')
-      .eq('correo', correo)
-      .maybeSingle()
+      .select("correo")
+      .eq("correo", correo)
+      .maybeSingle();
 
     if (error) {
-      throw new Error(`No se pudo consultar ${lookup.table}: ${error.message}`)
+      throw new Error(`No se pudo consultar ${lookup.table}: ${error.message}`);
     }
 
     if (data) {
-      return lookup
+      return lookup;
     }
   }
 
-  return null
+  return null;
 }
 
 async function findAccountWithPasswordByEmail(correo) {
@@ -332,38 +441,32 @@ async function findAccountWithPasswordByEmail(correo) {
    * - La comparacion se hace en backend con validatePassword().
    */
   const lookups = [
-    { table: 'administrador', role: 'administrador', idField: 'id_admin' },
-    { table: 'inquilino', role: 'inquilino', idField: 'id_inquilino' },
-    { table: 'arrendatario', role: 'arrendatario', idField: 'id_arrendatario' },
-  ]
+    { table: "administrador", role: "administrador", idField: "id_admin" },
+    { table: "inquilino", role: "inquilino", idField: "id_inquilino" },
+    { table: "arrendatario", role: "arrendatario", idField: "id_arrendatario" },
+  ];
 
   for (const lookup of lookups) {
     const { data, error } = await supabase
       .from(lookup.table)
-      .select('*')
-      .eq('correo', correo)
-      .maybeSingle()
+      .select("*")
+      .eq("correo", correo)
+      .maybeSingle();
 
     if (error) {
-      console.error(`Error al consultar ${lookup.table}:`, {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint,
-      })
-      throw new Error(`No se pudo consultar ${lookup.table}: ${error.message}`)
+      throw new Error(`No se pudo consultar ${lookup.table}: ${error.message}`);
     }
 
     if (data) {
-      return { ...lookup, data }
+      return { ...lookup, data };
     }
 
-    if (lookup.table === 'administrador') {
-      console.info('Administrador no encontrado; continuando con usuarios')
+    if (lookup.table === "administrador") {
+      console.info("Administrador no encontrado; continuando con usuarios");
     }
   }
 
-  return null
+  return null;
 }
 
 function toSafeAccount(account) {
@@ -371,7 +474,7 @@ function toSafeAccount(account) {
    * Construye el objeto seguro que se entrega al frontend despues de 2FA.
    * No incluye contrasena, hashes, tokens ni codigos temporales.
    */
-  const id = account.data[account.idField]
+  const id = account.data[account.idField];
 
   return {
     id,
@@ -380,7 +483,7 @@ function toSafeAccount(account) {
     correo: account.data.correo,
     telefono: account.data.telefono,
     role: account.role,
-  }
+  };
 }
 
 function isAdminRequest(req) {
@@ -392,31 +495,36 @@ function isAdminRequest(req) {
    * No usar esta cabecera como autorizacion fuerte para datos sensibles
    * sin revisar el modelo de sesiones/autenticacion completo.
    */
-  return req.get('x-admin-role') === 'administrador'
+  return req.get("x-admin-role") === "administrador";
 }
 
 function getSupabaseErrorMessage(results) {
   return results
-    .map(result => result.error)
+    .map((result) => result.error)
     .filter(Boolean)
-    .map(error => error.message)
-    .join(' | ')
+    .map((error) => error.message)
+    .join(" | ");
 }
 
 function sendAdminDataResponse(res, results, payload) {
-  const errorMessage = getSupabaseErrorMessage(results)
+  const errorMessage = getSupabaseErrorMessage(results);
 
   if (errorMessage) {
     return res.status(500).json({
       success: false,
       message: `No se pudieron cargar datos administrativos. ${errorMessage}`,
-    })
+    });
   }
 
-  return res.json({ success: true, ...payload })
+  return res.json({ success: true, ...payload });
 }
 
-async function sendResetEmail(correo, token) {
+async function sendResetEmail(
+  correo,
+  token,
+  frontendBaseUrl = FRONTEND_URL,
+  fromMobile = false,
+) {
   /*
    * Envia el correo de recuperacion de contrasena.
    *
@@ -429,17 +537,21 @@ async function sendResetEmail(correo, token) {
    * - En Supabase se guarda unicamente hashToken(token).
    * - No imprimir resetUrl ni token en consola.
    */
-  const resetUrl = `${FRONTEND_URL}/reset-password?token=${encodeURIComponent(token)}`
-  const transporter = getTransporter()
-  const resetEmail = passwordResetEmailTemplate(resetUrl)
+  const baseUrl = String(frontendBaseUrl || FRONTEND_URL)
+    .trim()
+    .replace(/\/+$/, "");
+  const mobileParam = fromMobile ? "&from=mobile" : "";
+  const resetUrl = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}${mobileParam}`;
+  const resetEmail = passwordResetEmailTemplate(resetUrl);
 
-  await transporter.sendMail({
+  await sendMail({
     from: MAIL_FROM,
     to: correo,
     subject: resetEmail.subject,
     text: resetEmail.text,
     html: resetEmail.html,
-  })
+    context: "password-reset",
+  });
 }
 
 async function send2faEmail(correo, code) {
@@ -455,24 +567,21 @@ async function send2faEmail(correo, code) {
    * ADVERTENCIA:
    * No imprimir el codigo 2FA ni su hash en consola.
    */
-  const transporter = getTransporter()
+  const twoFactorEmail = twoFactorEmailTemplate(code, TWO_FACTOR_EXPIRATION_MINUTES);
 
-  await transporter.sendMail({
+  await sendMail({
     from: MAIL_FROM,
     to: correo,
-    subject: 'Tu codigo de verificacion de NoWayHome',
-    text: `Tu codigo de verificacion es ${code}. Expira en ${TWO_FACTOR_EXPIRATION_MINUTES} minutos.`,
-    html: `
-      <p>Tu codigo de verificacion es:</p>
-      <p style="font-size: 28px; letter-spacing: 6px; font-weight: 700;">${code}</p>
-      <p>Expira en ${TWO_FACTOR_EXPIRATION_MINUTES} minutos. No lo compartas con nadie.</p>
-    `,
-  })
+    subject: twoFactorEmail.subject,
+    text: twoFactorEmail.text,
+    html: twoFactorEmail.html,
+    context: "2fa",
+  });
 }
 
-app.get('/api/health', (_req, res) => {
-  res.status(200).json({ ok: true, service: 'NoWayHome API' })
-})
+app.get("/api/health", (_req, res) => {
+  res.status(200).json({ ok: true, service: "NoWayHome API" });
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -510,92 +619,127 @@ app.get('/api/health', (_req, res) => {
 | - Usa mensaje generico para credenciales invalidas.
 | - Guarda el codigo 2FA hasheado, con expiracion e intentos.
 */
-app.post('/api/auth/login', async (req, res) => {
-  const correo = normalizeEmail(req.body?.correo)
-  const contrasena = typeof req.body?.contrasena === 'string' ? req.body.contrasena : ''
+app.post("/api/auth/login", async (req, res) => {
+  const correo = normalizeEmail(req.body?.correo);
+  const contrasena =
+    typeof req.body?.contrasena === "string" ? req.body.contrasena : "";
 
   if (!correo || !contrasena) {
-    return res.status(400).json({ success: false, message: 'Correo y contrasena son requeridos.' })
+    return res
+      .status(400)
+      .json({ success: false, message: "Correo y contrasena son requeridos." });
   }
 
   try {
-    const account = await findAccountWithPasswordByEmail(correo)
+    const account = await findAccountWithPasswordByEmail(correo);
 
     if (!account) {
-      return res.status(401).json({ success: false, message: GENERIC_LOGIN_MESSAGE })
+      return res
+        .status(401)
+        .json({ success: false, message: GENERIC_LOGIN_MESSAGE });
     }
 
-    const blockedTimestamp = account.data.bloqueado_hasta
+    const blockedTimestamp = account.data.bloqueado_hasta;
     const normalizedBlockedTimestamp =
-      typeof blockedTimestamp === 'string' &&
+      typeof blockedTimestamp === "string" &&
       !/[zZ]|[+-]\d{2}:?\d{2}$/.test(blockedTimestamp)
         ? `${blockedTimestamp}Z`
-        : blockedTimestamp
-    const blockedUntil = normalizedBlockedTimestamp ? new Date(normalizedBlockedTimestamp) : null
-    if (blockedUntil && !Number.isNaN(blockedUntil.getTime()) && blockedUntil > new Date()) {
-      return res.status(429).json({ success: false, message: ACCOUNT_LOCKED_MESSAGE })
+        : blockedTimestamp;
+    const blockedUntil = normalizedBlockedTimestamp
+      ? new Date(normalizedBlockedTimestamp)
+      : null;
+    if (
+      blockedUntil &&
+      !Number.isNaN(blockedUntil.getTime()) &&
+      blockedUntil > new Date()
+    ) {
+      return res
+        .status(429)
+        .json({ success: false, message: ACCOUNT_LOCKED_MESSAGE });
     }
 
-    const passwordMatches = await validatePassword(contrasena, account.data.contrasena)
+    const passwordMatches = await validatePassword(
+      contrasena,
+      account.data.contrasena,
+    );
 
     if (!passwordMatches) {
-      const { data: failedAttempt, error: failedAttemptError } = await supabase.rpc(
-        'registrar_intento_login_fallido',
-        { p_tabla: account.table, p_correo: correo }
-      )
+      const { data: failedAttempt, error: failedAttemptError } =
+        await supabase.rpc("registrar_intento_login_fallido", {
+          p_tabla: account.table,
+          p_correo: correo,
+        });
 
       if (failedAttemptError) {
-        throw new Error('No se pudo registrar el intento fallido de login.')
+        throw new Error("No se pudo registrar el intento fallido de login.");
       }
 
-      const attemptResult = Array.isArray(failedAttempt) ? failedAttempt[0] : failedAttempt
-      if (Number(attemptResult?.intentos_fallidos) >= LOGIN_MAX_FAILED_ATTEMPTS) {
-        return res.status(429).json({ success: false, message: ACCOUNT_LOCKED_MESSAGE })
+      const attemptResult = Array.isArray(failedAttempt)
+        ? failedAttempt[0]
+        : failedAttempt;
+      if (
+        Number(attemptResult?.intentos_fallidos) >= LOGIN_MAX_FAILED_ATTEMPTS
+      ) {
+        return res
+          .status(429)
+          .json({ success: false, message: ACCOUNT_LOCKED_MESSAGE });
       }
-      return res.status(401).json({ success: false, message: GENERIC_LOGIN_MESSAGE })
+      return res
+        .status(401)
+        .json({ success: false, message: GENERIC_LOGIN_MESSAGE });
     }
 
     const { error: resetAttemptsError } = await supabase
       .from(account.table)
       .update({ intentos_fallidos: 0, bloqueado_hasta: null })
-      .eq('correo', correo)
+      .eq("correo", correo);
 
     if (resetAttemptsError) {
-      throw new Error('No se pudo restablecer el control de intentos de login.')
+      throw new Error(
+        "No se pudo restablecer el control de intentos de login.",
+      );
     }
 
-    const code = generate2faCode()
-    const codeHash = hash2faCode(correo, code)
-    const expiresAt = new Date(Date.now() + TWO_FACTOR_EXPIRATION_MINUTES * 60 * 1000).toISOString()
+    const code = generate2faCode();
+    const codeHash = hash2faCode(correo, code);
+    const expiresAt = new Date(
+      Date.now() + TWO_FACTOR_EXPIRATION_MINUTES * 60 * 1000,
+    ).toISOString();
 
-    const { error: insertError } = await supabase.from('two_factor_codes').insert({
-      correo,
-      rol: account.role,
-      code_hash: codeHash,
-      expires_at: expiresAt,
-      used: false,
-      attempts: 0,
-    })
+    const { error: insertError } = await supabase
+      .from("two_factor_codes")
+      .insert({
+        correo,
+        rol: account.role,
+        code_hash: codeHash,
+        expires_at: expiresAt,
+        used: false,
+        attempts: 0,
+      });
 
     if (insertError) {
-      throw new Error(`No se pudo guardar el codigo 2FA: ${insertError.message}`)
+      throw new Error(
+        `No se pudo guardar el codigo 2FA: ${insertError.message}`,
+      );
     }
 
-    await send2faEmail(correo, code)
+    await send2faEmail(correo, code);
 
     return res.json({
       success: true,
       requires2FA: true,
       role: account.role,
-      message: 'Codigo de verificacion enviado.',
-    })
+      message: "Codigo de verificacion enviado.",
+    });
   } catch (error) {
-    console.error('Error en login 2FA:', error.message)
-    return res.status(500).json({ success: false, message: 'No se pudo iniciar sesion.' })
+    console.error("Error en login 2FA:", diagnoseMailError(error));
+    return res
+      .status(500)
+      .json({ success: false, message: "No se pudo iniciar sesion." });
   }
-})
+});
 
-app.post('/api/auth/register', async (req, res) => {
+app.post("/api/auth/register", async (req, res) => {
   /*
    * Registro de usuarios publicos.
    *
@@ -614,47 +758,59 @@ app.post('/api/auth/register', async (req, res) => {
    * ADVERTENCIA:
    * No guardar contrasenas en texto plano ni devolver hashes al frontend.
    */
-  const nombre = normalizeText(req.body?.name)
-  const correo = normalizeEmail(req.body?.email)
-  const telefono = normalizeText(req.body?.phone).replace(/\D/g, '')
-  const contrasena = typeof req.body?.password === 'string' ? req.body.password : ''
-  const role = req.body?.role === 'host' ? 'arrendatario' : 'inquilino'
-  const table = role
-  const idField = role === 'inquilino' ? 'id_inquilino' : 'id_arrendatario'
+  const nombre = normalizeText(req.body?.name);
+  const correo = normalizeEmail(req.body?.email);
+  const telefono = normalizeText(req.body?.phone).replace(/\D/g, "");
+  const contrasena =
+    typeof req.body?.password === "string" ? req.body.password : "";
+  const role = req.body?.role === "host" ? "arrendatario" : "inquilino";
+  const table = role;
+  const idField = role === "inquilino" ? "id_inquilino" : "id_arrendatario";
 
   if (!nombre || !correo || !telefono || !contrasena) {
-    return res.status(400).json({ success: false, message: 'Todos los campos son requeridos.' })
+    return res
+      .status(400)
+      .json({ success: false, message: "Todos los campos son requeridos." });
   }
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
     return res
       .status(400)
-      .json({ success: false, message: 'Ingresa un correo electronico valido.' })
+      .json({
+        success: false,
+        message: "Ingresa un correo electronico valido.",
+      });
   }
 
   if (telefono.length !== 10) {
     return res
       .status(400)
-      .json({ success: false, message: 'El telefono debe contener exactamente 10 numeros.' })
+      .json({
+        success: false,
+        message: "El telefono debe contener exactamente 10 numeros.",
+      });
   }
 
   if (contrasena.length < 6) {
     return res
       .status(400)
-      .json({ success: false, message: 'La contrasena debe tener al menos 6 caracteres.' })
+      .json({
+        success: false,
+        message: "La contrasena debe tener al menos 6 caracteres.",
+      });
   }
 
   try {
-    const existingAccount = await findAccountByEmail(correo)
+    const existingAccount = await findAccountByEmail(correo);
 
     if (existingAccount) {
       return res.status(409).json({
         success: false,
-        message: 'Este correo ya se encuentra registrado en la plataforma.',
-      })
+        message: "Este correo ya se encuentra registrado en la plataforma.",
+      });
     }
 
-    const hashedPassword = await hashPassword(contrasena)
+    const hashedPassword = await hashPassword(contrasena);
     const { data, error } = await supabase
       .from(table)
       .insert({
@@ -664,10 +820,10 @@ app.post('/api/auth/register', async (req, res) => {
         contrasena: hashedPassword,
       })
       .select(`${idField}, nombre, correo, telefono`)
-      .single()
+      .single();
 
     if (error) {
-      throw new Error(`No se pudo crear la cuenta: ${error.message}`)
+      throw new Error(`No se pudo crear la cuenta: ${error.message}`);
     }
 
     try {
@@ -675,11 +831,11 @@ app.post('/api/auth/register', async (req, res) => {
         email: data.correo,
         nombre: data.nombre,
         rol: role,
-      })
+      });
     } catch (emailError) {
       console.error(
-        `La cuenta fue registrada, pero falló el correo de bienvenida: ${emailError?.message || 'Error SMTP'}`
-      )
+        `La cuenta fue registrada, pero falló el correo de bienvenida: ${emailError?.message || "Error SMTP"}`,
+      );
     }
 
     return res.status(201).json({
@@ -692,15 +848,17 @@ app.post('/api/auth/register', async (req, res) => {
         telefono: data.telefono,
         role,
       },
-      message: 'Registro exitoso.',
-    })
+      message: "Registro exitoso.",
+    });
   } catch (error) {
-    console.error('Error en register:', error.message)
-    return res.status(500).json({ success: false, message: 'No se pudo crear la cuenta.' })
+    console.error("Error en register:", error.message);
+    return res
+      .status(500)
+      .json({ success: false, message: "No se pudo crear la cuenta." });
   }
-})
+});
 
-app.post('/api/auth/verify-2fa', async (req, res) => {
+app.post("/api/auth/verify-2fa", async (req, res) => {
   /*
    * Verificacion del segundo factor.
    *
@@ -725,79 +883,95 @@ app.post('/api/auth/verify-2fa', async (req, res) => {
    * - Rechaza codigos usados, expirados o con demasiados intentos.
    * - Marca el codigo como usado despues de verificarlo.
    */
-  const correo = normalizeEmail(req.body?.correo)
-  const code = typeof req.body?.codigo === 'string' ? req.body.codigo.trim() : ''
-  const role = typeof req.body?.role === 'string' ? req.body.role.trim() : ''
+  const correo = normalizeEmail(req.body?.correo);
+  const code =
+    typeof req.body?.codigo === "string" ? req.body.codigo.trim() : "";
+  const role = typeof req.body?.role === "string" ? req.body.role.trim() : "";
 
   if (!correo || !/^\d{6}$/.test(code) || !role) {
-    return res.status(400).json({ success: false, message: 'Codigo de verificacion invalido.' })
+    return res
+      .status(400)
+      .json({ success: false, message: "Codigo de verificacion invalido." });
   }
 
   try {
-    const now = new Date().toISOString()
+    const now = new Date().toISOString();
     const { data: twoFactorCode, error } = await supabase
-      .from('two_factor_codes')
-      .select('id, correo, rol, code_hash, attempts')
-      .eq('correo', correo)
-      .eq('rol', role)
-      .eq('used', false)
-      .gt('expires_at', now)
-      .order('created_at', { ascending: false })
+      .from("two_factor_codes")
+      .select("id, correo, rol, code_hash, attempts")
+      .eq("correo", correo)
+      .eq("rol", role)
+      .eq("used", false)
+      .gt("expires_at", now)
+      .order("created_at", { ascending: false })
       .limit(1)
-      .maybeSingle()
+      .maybeSingle();
 
     if (error) {
-      throw new Error(`No se pudo validar el codigo 2FA: ${error.message}`)
+      throw new Error(`No se pudo validar el codigo 2FA: ${error.message}`);
     }
 
     if (!twoFactorCode) {
-      return res.status(400).json({ success: false, message: 'Codigo invalido o expirado.' })
+      return res
+        .status(400)
+        .json({ success: false, message: "Codigo invalido o expirado." });
     }
 
     if ((twoFactorCode.attempts || 0) >= TWO_FACTOR_MAX_ATTEMPTS) {
       return res
         .status(429)
-        .json({ success: false, message: 'Demasiados intentos. Solicita un codigo nuevo.' })
+        .json({
+          success: false,
+          message: "Demasiados intentos. Solicita un codigo nuevo.",
+        });
     }
 
-    const codeMatches = twoFactorCode.code_hash === hash2faCode(correo, code)
+    const codeMatches = twoFactorCode.code_hash === hash2faCode(correo, code);
 
     if (!codeMatches) {
       await supabase
-        .from('two_factor_codes')
+        .from("two_factor_codes")
         .update({ attempts: (twoFactorCode.attempts || 0) + 1 })
-        .eq('id', twoFactorCode.id)
+        .eq("id", twoFactorCode.id);
 
-      return res.status(400).json({ success: false, message: 'Codigo invalido o expirado.' })
+      return res
+        .status(400)
+        .json({ success: false, message: "Codigo invalido o expirado." });
     }
 
     const { error: usedError } = await supabase
-      .from('two_factor_codes')
+      .from("two_factor_codes")
       .update({ used: true })
-      .eq('id', twoFactorCode.id)
+      .eq("id", twoFactorCode.id);
 
     if (usedError) {
-      throw new Error(`No se pudo marcar el codigo 2FA como usado: ${usedError.message}`)
+      throw new Error(
+        `No se pudo marcar el codigo 2FA como usado: ${usedError.message}`,
+      );
     }
 
-    const account = await findAccountWithPasswordByEmail(correo)
+    const account = await findAccountWithPasswordByEmail(correo);
 
     if (!account || account.role !== role) {
-      return res.status(400).json({ success: false, message: 'Codigo invalido o expirado.' })
+      return res
+        .status(400)
+        .json({ success: false, message: "Codigo invalido o expirado." });
     }
 
     return res.json({
       success: true,
       user: toSafeAccount(account),
-      message: 'Inicio de sesion exitoso.',
-    })
+      message: "Inicio de sesion exitoso.",
+    });
   } catch (error) {
-    console.error('Error en verify-2fa:', error.message)
-    return res.status(500).json({ success: false, message: 'No se pudo verificar el codigo.' })
+    console.error("Error en verify-2fa:", error.message);
+    return res
+      .status(500)
+      .json({ success: false, message: "No se pudo verificar el codigo." });
   }
-})
+});
 
-app.get('/api/admin/dashboard-data', async (req, res) => {
+app.get("/api/admin/dashboard-data", async (req, res) => {
   /*
    * Dashboard general de administrador.
    *
@@ -816,20 +990,23 @@ app.get('/api/admin/dashboard-data', async (req, res) => {
    * - No debe exponerse sin validar rol/sesion admin.
    */
   if (!isAdminRequest(req)) {
-    return res.status(401).json({ success: false, message: 'Sesion de administrador requerida.' })
+    return res
+      .status(401)
+      .json({ success: false, message: "Sesion de administrador requerida." });
   }
 
   try {
-    const [tenantsResult, landlordsResult, propertiesResult, bookingsResult] = await Promise.all([
-      supabase.from('inquilino').select('id_inquilino,nombre'),
-      supabase.from('arrendatario').select('id_arrendatario,nombre'),
-      supabase.from('propiedad').select('id_propiedad,estado,descripcion'),
-      supabase
-        .from('reserva')
-        .select(
-          'id_propiedad,id_inquilino,fecha_inicio,fecha_fin,estado,pago,propiedad:propiedad(descripcion),inquilino:inquilino(nombre)'
-        ),
-    ])
+    const [tenantsResult, landlordsResult, propertiesResult, bookingsResult] =
+      await Promise.all([
+        supabase.from("inquilino").select("id_inquilino,nombre"),
+        supabase.from("arrendatario").select("id_arrendatario,nombre"),
+        supabase.from("propiedad").select("id_propiedad,estado,descripcion"),
+        supabase
+          .from("reserva")
+          .select(
+            "id_propiedad,id_inquilino,fecha_inicio,fecha_fin,estado,pago,propiedad:propiedad(descripcion),inquilino:inquilino(nombre)",
+          ),
+      ]);
 
     return sendAdminDataResponse(
       res,
@@ -839,17 +1016,20 @@ app.get('/api/admin/dashboard-data', async (req, res) => {
         landlords: landlordsResult.data || [],
         properties: propertiesResult.data || [],
         bookings: bookingsResult.data || [],
-      }
-    )
+      },
+    );
   } catch (error) {
-    console.error('Error en admin dashboard-data:', error.message)
+    console.error("Error en admin dashboard-data:", error.message);
     return res
       .status(500)
-      .json({ success: false, message: 'No se pudieron cargar datos administrativos.' })
+      .json({
+        success: false,
+        message: "No se pudieron cargar datos administrativos.",
+      });
   }
-})
+});
 
-app.get('/api/admin/users-data', async (req, res) => {
+app.get("/api/admin/users-data", async (req, res) => {
   /*
    * Datos de usuarios para administracion.
    *
@@ -867,17 +1047,25 @@ app.get('/api/admin/users-data', async (req, res) => {
    * - listas de usuarios y relaciones necesarias para actividad.
    */
   if (!isAdminRequest(req)) {
-    return res.status(401).json({ success: false, message: 'Sesion de administrador requerida.' })
+    return res
+      .status(401)
+      .json({ success: false, message: "Sesion de administrador requerida." });
   }
 
   try {
-    const [inquilinosResult, arrendatariosResult, propertiesResult, bookingsResult] =
-      await Promise.all([
-        supabase.from('inquilino').select('id_inquilino,nombre,correo,telefono'),
-        supabase.from('arrendatario').select('id_arrendatario,nombre,correo,telefono'),
-        supabase.from('propiedad').select('id_propiedad,id_arrendatario'),
-        supabase.from('reserva').select('id_propiedad,id_inquilino,fecha_inicio'),
-      ])
+    const [
+      inquilinosResult,
+      arrendatariosResult,
+      propertiesResult,
+      bookingsResult,
+    ] = await Promise.all([
+      supabase.from("inquilino").select("id_inquilino,nombre,correo,telefono"),
+      supabase
+        .from("arrendatario")
+        .select("id_arrendatario,nombre,correo,telefono"),
+      supabase.from("propiedad").select("id_propiedad,id_arrendatario"),
+      supabase.from("reserva").select("id_propiedad,id_inquilino,fecha_inicio"),
+    ]);
 
     return sendAdminDataResponse(
       res,
@@ -887,15 +1075,17 @@ app.get('/api/admin/users-data', async (req, res) => {
         arrendatarios: arrendatariosResult.data || [],
         properties: propertiesResult.data || [],
         bookings: bookingsResult.data || [],
-      }
-    )
+      },
+    );
   } catch (error) {
-    console.error('Error en admin users-data:', error.message)
-    return res.status(500).json({ success: false, message: 'No se pudieron cargar usuarios.' })
+    console.error("Error en admin users-data:", error.message);
+    return res
+      .status(500)
+      .json({ success: false, message: "No se pudieron cargar usuarios." });
   }
-})
+});
 
-app.get('/api/admin/properties-data', async (req, res) => {
+app.get("/api/admin/properties-data", async (req, res) => {
   /*
    * Datos de propiedades para administracion.
    *
@@ -909,30 +1099,34 @@ app.get('/api/admin/properties-data', async (req, res) => {
    * - arrendatario mediante relacion de propiedad
    */
   if (!isAdminRequest(req)) {
-    return res.status(401).json({ success: false, message: 'Sesion de administrador requerida.' })
+    return res
+      .status(401)
+      .json({ success: false, message: "Sesion de administrador requerida." });
   }
 
   try {
     const [propertiesResult, bookingsResult] = await Promise.all([
       supabase
-        .from('propiedad')
+        .from("propiedad")
         .select(
-          'id_propiedad,descripcion,direccion,precio,estado,resena,id_arrendatario,arrendatario:arrendatario(nombre)'
+          "id_propiedad,descripcion,direccion,precio,estado,resena,id_arrendatario,arrendatario:arrendatario(nombre)",
         ),
-      supabase.from('reserva').select('id_propiedad'),
-    ])
+      supabase.from("reserva").select("id_propiedad"),
+    ]);
 
     return sendAdminDataResponse(res, [propertiesResult, bookingsResult], {
       properties: propertiesResult.data || [],
       bookings: bookingsResult.data || [],
-    })
+    });
   } catch (error) {
-    console.error('Error en admin properties-data:', error.message)
-    return res.status(500).json({ success: false, message: 'No se pudieron cargar propiedades.' })
+    console.error("Error en admin properties-data:", error.message);
+    return res
+      .status(500)
+      .json({ success: false, message: "No se pudieron cargar propiedades." });
   }
-})
+});
 
-app.get('/api/admin/bookings-data', async (req, res) => {
+app.get("/api/admin/bookings-data", async (req, res) => {
   /*
    * Datos de reservas para administracion.
    *
@@ -947,26 +1141,30 @@ app.get('/api/admin/bookings-data', async (req, res) => {
    * - arrendatario mediante propiedad
    */
   if (!isAdminRequest(req)) {
-    return res.status(401).json({ success: false, message: 'Sesion de administrador requerida.' })
+    return res
+      .status(401)
+      .json({ success: false, message: "Sesion de administrador requerida." });
   }
 
   try {
     const bookingsResult = await supabase
-      .from('reserva')
+      .from("reserva")
       .select(
-        'id_propiedad,id_inquilino,fecha_inicio,fecha_fin,estado,pago,propiedad:propiedad(descripcion,id_arrendatario,arrendatario:arrendatario(nombre)),inquilino:inquilino(nombre)'
-      )
+        "id_propiedad,id_inquilino,fecha_inicio,fecha_fin,estado,pago,propiedad:propiedad(descripcion,id_arrendatario,arrendatario:arrendatario(nombre)),inquilino:inquilino(nombre)",
+      );
 
     return sendAdminDataResponse(res, [bookingsResult], {
       bookings: bookingsResult.data || [],
-    })
+    });
   } catch (error) {
-    console.error('Error en admin bookings-data:', error.message)
-    return res.status(500).json({ success: false, message: 'No se pudieron cargar reservas.' })
+    console.error("Error en admin bookings-data:", error.message);
+    return res
+      .status(500)
+      .json({ success: false, message: "No se pudieron cargar reservas." });
   }
-})
+});
 
-app.post('/api/auth/forgot-password', async (req, res) => {
+app.post("/api/auth/forgot-password", async (req, res) => {
   /*
   |--------------------------------------------------------------------------
   | POST /api/auth/forgot-password
@@ -996,43 +1194,128 @@ app.post('/api/auth/forgot-password', async (req, res) => {
   | ADVERTENCIA:
   | No cambiar la respuesta por una que confirme correo encontrado/no encontrado.
   */
-  const correo = normalizeEmail(req.body?.correo)
+  const correo = normalizeEmail(req.body?.correo);
 
   if (!correo) {
-    return res.status(400).json({ message: 'El correo es requerido.' })
+    return res.status(400).json({ message: "El correo es requerido." });
   }
 
   try {
-    const account = await findAccountByEmail(correo)
+    const account = await findAccountByEmail(correo);
 
     if (account) {
-      const token = generateSecureToken()
-      const tokenHash = hashToken(token)
-      const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString()
+      const token = generateSecureToken();
+      const tokenHash = hashToken(token);
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
-      const { error: insertError } = await supabase.from('password_reset_tokens').insert({
-        correo,
-        rol: account.role,
-        token_hash: tokenHash,
-        expires_at: expiresAt,
-        used: false,
-      })
+      const { error: insertError } = await supabase
+        .from("password_reset_tokens")
+        .insert({
+          correo,
+          rol: account.role,
+          token_hash: tokenHash,
+          expires_at: expiresAt,
+          used: false,
+        });
 
       if (insertError) {
-        throw new Error(`No se pudo guardar el token de recuperacion: ${insertError.message}`)
+        throw new Error(
+          `No se pudo guardar el token de recuperacion: ${insertError.message}`,
+        );
       }
 
-      await sendResetEmail(correo, token)
+      const fromMobile = req.body?.clientOrigin === "mobile";
+      await sendResetEmail(
+        correo,
+        token,
+        resolveFrontendBaseUrl(req),
+        fromMobile,
+      );
     }
 
-    return res.json({ message: GENERIC_RESET_MESSAGE })
+    return res.json({ message: GENERIC_RESET_MESSAGE });
   } catch (error) {
-    console.error('Error en forgot-password:', error.message)
-    return res.status(500).json({ message: GENERIC_RESET_MESSAGE })
+    console.error("Error en forgot-password:", diagnoseMailError(error));
+    return res.status(500).json({ message: GENERIC_RESET_MESSAGE });
   }
-})
+});
 
-app.post('/api/auth/reset-password', async (req, res) => {
+app.get("/api/auth/reset-password/status", async (req, res) => {
+  /*
+  |--------------------------------------------------------------------------
+  | GET /api/auth/reset-password/status?token=...
+  |--------------------------------------------------------------------------
+  | Permite verificar al cargar o refrescar la pantalla de cambio de
+  | contraseña si el token del enlace ya fue utilizado o expiró, bloqueando
+  | los campos inmediatamente sin exponer información del usuario.
+  */
+  const token =
+    typeof req.query?.token === "string" ? req.query.token.trim() : "";
+
+  if (!token) {
+    return res.status(400).json({
+      valid: false,
+      status: "invalid",
+      message: "El enlace no es valido o ha expirado.",
+    });
+  }
+
+  try {
+    const tokenHash = hashToken(token);
+    const { data: resetToken, error } = await supabase
+      .from("password_reset_tokens")
+      .select("id, used, expires_at")
+      .eq("token_hash", tokenHash)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`No se pudo consultar el token: ${error.message}`);
+    }
+
+    if (!resetToken) {
+      return res.json({
+        valid: false,
+        status: "invalid",
+        message: "El enlace no es valido o ha expirado.",
+      });
+    }
+
+    if (resetToken.used) {
+      return res.json({
+        valid: false,
+        status: "used",
+        message:
+          "El cambio de contraseña ya fue realizado correctamente con este enlace.",
+      });
+    }
+
+    const rawExpiresAt = resetToken.expires_at;
+    const normalizedExpiresAt =
+      typeof rawExpiresAt === "string" &&
+      !/[zZ]|[+-]\d{2}:?\d{2}$/.test(rawExpiresAt)
+        ? `${rawExpiresAt}Z`
+        : rawExpiresAt;
+
+    if (new Date(normalizedExpiresAt) <= new Date()) {
+      return res.json({
+        valid: false,
+        status: "expired",
+        message: "El enlace no es valido o ha expirado.",
+      });
+    }
+
+    return res.json({ valid: true, status: "active" });
+  } catch (error) {
+    console.error("Error en reset-password/status:", error.message);
+    return res.status(500).json({
+      valid: false,
+      status: "invalid",
+      message: "El enlace no es valido o ha expirado.",
+    });
+  }
+});
+
+app.post("/api/auth/reset-password", async (req, res) => {
   /*
   |--------------------------------------------------------------------------
   | POST /api/auth/reset-password
@@ -1058,77 +1341,94 @@ app.post('/api/auth/reset-password', async (req, res) => {
   | - La nueva contrasena se guarda con bcrypt.
   | - El token se marca como usado al terminar.
   */
-  const token = typeof req.body?.token === 'string' ? req.body.token.trim() : ''
+  const token =
+    typeof req.body?.token === "string" ? req.body.token.trim() : "";
   const nuevaContrasena =
-    typeof req.body?.nuevaContrasena === 'string' ? req.body.nuevaContrasena : ''
+    typeof req.body?.nuevaContrasena === "string"
+      ? req.body.nuevaContrasena
+      : "";
 
   if (!token || !nuevaContrasena) {
-    return res.status(400).json({ message: 'Token y nueva contrasena son requeridos.' })
+    return res
+      .status(400)
+      .json({ message: "Token y nueva contrasena son requeridos." });
   }
 
   if (nuevaContrasena.length < 8) {
-    return res.status(400).json({ message: 'La contrasena debe tener minimo 8 caracteres.' })
+    return res
+      .status(400)
+      .json({ message: "La contrasena debe tener minimo 8 caracteres." });
   }
 
   try {
-    const tokenHash = hashToken(token)
-    const now = new Date().toISOString()
+    const tokenHash = hashToken(token);
+    const now = new Date().toISOString();
 
     const { data: resetToken, error: tokenError } = await supabase
-      .from('password_reset_tokens')
-      .select('id, correo, rol')
-      .eq('token_hash', tokenHash)
-      .eq('used', false)
-      .gt('expires_at', now)
-      .maybeSingle()
+      .from("password_reset_tokens")
+      .select("id, correo, rol")
+      .eq("token_hash", tokenHash)
+      .eq("used", false)
+      .gt("expires_at", now)
+      .maybeSingle();
 
     if (tokenError) {
-      throw new Error(`No se pudo validar el token: ${tokenError.message}`)
+      throw new Error(`No se pudo validar el token: ${tokenError.message}`);
     }
 
     if (!resetToken) {
-      return res.status(400).json({ message: 'El enlace no es valido o ha expirado.' })
+      return res
+        .status(400)
+        .json({ message: "El enlace no es valido o ha expirado." });
     }
 
     const tableByRole = {
-      administrador: 'administrador',
-      inquilino: 'inquilino',
-      arrendatario: 'arrendatario',
-    }
-    const table = tableByRole[resetToken.rol]
+      administrador: "administrador",
+      inquilino: "inquilino",
+      arrendatario: "arrendatario",
+    };
+    const table = tableByRole[resetToken.rol];
 
     if (!table) {
-      return res.status(400).json({ message: 'El enlace no es valido o ha expirado.' })
+      return res
+        .status(400)
+        .json({ message: "El enlace no es valido o ha expirado." });
     }
 
-    const hashedPassword = await hashPassword(nuevaContrasena)
+    const hashedPassword = await hashPassword(nuevaContrasena);
 
     const { error: updateError } = await supabase
       .from(table)
       .update({ contrasena: hashedPassword })
-      .eq('correo', resetToken.correo)
+      .eq("correo", resetToken.correo);
 
     if (updateError) {
-      throw new Error(`No se pudo actualizar la contrasena: ${updateError.message}`)
+      throw new Error(
+        `No se pudo actualizar la contrasena: ${updateError.message}`,
+      );
     }
 
     const { error: usedError } = await supabase
-      .from('password_reset_tokens')
+      .from("password_reset_tokens")
       .update({ used: true })
-      .eq('id', resetToken.id)
+      .eq("id", resetToken.id);
 
     if (usedError) {
-      throw new Error(`No se pudo marcar el token como usado: ${usedError.message}`)
+      throw new Error(
+        `No se pudo marcar el token como usado: ${usedError.message}`,
+      );
     }
 
-    return res.json({ message: 'Contrasena actualizada correctamente.' })
+    return res.json({ message: "Contrasena actualizada correctamente." });
   } catch (error) {
-    console.error('Error en reset-password:', error.message)
-    return res.status(500).json({ message: 'El enlace no es valido o ha expirado.' })
+    console.error("Error en reset-password:", error.message);
+    return res
+      .status(500)
+      .json({ message: "El enlace no es valido o ha expirado." });
   }
-})
+});
 
-app.post('/api/auth/update-password', async (req, res) => {
+app.post("/api/auth/update-password", async (req, res) => {
   /*
   |--------------------------------------------------------------------------
   | POST /api/auth/update-password
@@ -1142,67 +1442,112 @@ app.post('/api/auth/update-password', async (req, res) => {
   |   en un entorno de producción para evitar que un usuario cambie la
   |   contraseña de otro.
   */
-  const { userId, newPassword, role } = req.body
+  const { userId, newPassword, role } = req.body;
 
   if (!userId || !newPassword || !role) {
     return res
       .status(400)
-      .json({ success: false, message: 'Faltan datos requeridos (userId, newPassword, role).' })
+      .json({
+        success: false,
+        message: "Faltan datos requeridos (userId, newPassword, role).",
+      });
   }
 
   if (newPassword.length < 6) {
     return res
       .status(400)
-      .json({ success: false, message: 'La contraseña debe tener al menos 6 caracteres.' })
+      .json({
+        success: false,
+        message: "La contraseña debe tener al menos 6 caracteres.",
+      });
   }
 
   const roleConfig = {
-    inquilino: { table: 'inquilino', idField: 'id_inquilino' },
-    arrendatario: { table: 'arrendatario', idField: 'id_arrendatario' },
-  }
+    inquilino: { table: "inquilino", idField: "id_inquilino" },
+    arrendatario: { table: "arrendatario", idField: "id_arrendatario" },
+  };
 
-  const config = roleConfig[role]
+  const config = roleConfig[role];
 
   if (!config) {
-    return res.status(400).json({ success: false, message: 'Rol de usuario no válido.' })
+    return res
+      .status(400)
+      .json({ success: false, message: "Rol de usuario no válido." });
   }
 
   try {
-    const hashedPassword = await hashPassword(newPassword)
+    const hashedPassword = await hashPassword(newPassword);
     const { error } = await supabase
       .from(config.table)
       .update({ contrasena: hashedPassword })
-      .eq(config.idField, userId)
-    if (error) throw error
-    res.json({ success: true, message: 'Contraseña actualizada con éxito.' })
+      .eq(config.idField, userId);
+    if (error) throw error;
+    res.json({ success: true, message: "Contraseña actualizada con éxito." });
   } catch (error) {
-    console.error(`Error al actualizar contraseña de ${role}:`, error.message)
-    res.status(500).json({ success: false, message: 'No se pudo actualizar la contraseña.' })
+    console.error(`Error al actualizar contraseña de ${role}:`, error.message);
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: "No se pudo actualizar la contraseña.",
+      });
   }
-})
+});
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const distPath = path.resolve(__dirname, "../dist");
+const distIndexPath = path.join(distPath, "index.html");
+
+app.use("/api", (_req, res) => {
+  res.status(404).json({ success: false, message: "Ruta no encontrada." });
+});
+
+if (fs.existsSync(distIndexPath)) {
+  app.use(express.static(distPath));
+
+  app.use((req, res, next) => {
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      return next();
+    }
+    return res.sendFile(distIndexPath);
+  });
+}
 
 app.use((_req, res) => {
-  res.status(404).json({ success: false, message: 'Ruta no encontrada.' })
-})
+  res.status(404).json({ success: false, message: "Ruta no encontrada." });
+});
 
 app.use((error, _req, res, _next) => {
-  if (NODE_ENV !== 'production') {
-    console.error('[NoWayHome API]', error?.message || error)
+  if (NODE_ENV !== "production") {
+    console.error("[NoWayHome API]", error?.message || error);
   } else {
-    console.error('[NoWayHome API] Error interno controlado.')
+    console.error("[NoWayHome API] Error interno controlado.");
   }
 
-  res.status(500).json({ success: false, message: 'Ocurrió un error interno.' })
-})
+  res
+    .status(500)
+    .json({ success: false, message: "Ocurrió un error interno." });
+});
 
-const server = app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, "0.0.0.0", () => {
   /*
    * Punto de arranque del backend Express.
    * No colocar aqui logica de negocio ni valores sensibles.
    */
-  console.log(`Servidor NoWayHome iniciado en el puerto ${PORT}.`)
-})
+  console.log(`Servidor NoWayHome iniciado en el puerto ${PORT}:`);
+  console.log(`  - Local: http://localhost:${PORT}`);
+  const interfaces = os.networkInterfaces();
+  for (const entries of Object.values(interfaces)) {
+    for (const entry of entries || []) {
+      if (entry.family === "IPv4" && !entry.internal) {
+        console.log(`  - Red:   http://${entry.address}:${PORT}`);
+      }
+    }
+  }
+  void verifyEmailConfiguration();
+});
 
-server.on('error', error => {
-  console.error('No se pudo iniciar el servidor NoWayHome:', error.message)
-})
+server.on("error", (error) => {
+  console.error("No se pudo iniciar el servidor NoWayHome:", error.message);
+});

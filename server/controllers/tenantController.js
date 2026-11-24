@@ -13,28 +13,39 @@ import {
 import { supabase } from '../config/supabase.js'
 import {
   sendReservationCancelledEmail,
+  sendReservationConfirmedEmail,
   sendReservationCreatedEmail,
+  sendTenantReservationPendingEmail,
 } from '../services/emailNotificationService.js'
 
 async function getReservationNotificationContext(reservation) {
-  const [propertyResult, tenantResult] = await Promise.all([
-    supabase.from('propiedad').select('*').eq('id_propiedad', reservation?.id_propiedad).maybeSingle(),
-    supabase.from('inquilino').select('nombre,correo').eq('id_inquilino', reservation?.id_inquilino).maybeSingle(),
-  ])
-  const property = propertyResult.data || null
-  const tenant = tenantResult.data || null
-  let landlord = null
+  try {
+    const [propertyResult, tenantResult] = await Promise.all([
+      supabase.from('propiedad').select('*').eq('id_propiedad', reservation?.id_propiedad).maybeSingle(),
+      supabase
+        .from('inquilino')
+        .select('id_inquilino,nombre,correo')
+        .eq('id_inquilino', reservation?.id_inquilino)
+        .maybeSingle(),
+    ])
+    const property = propertyResult.data || null
+    const tenant = tenantResult.data || null
+    let landlord = null
 
-  if (property?.id_arrendatario) {
-    const result = await supabase
-      .from('arrendatario')
-      .select('nombre,correo')
-      .eq('id_arrendatario', property.id_arrendatario)
-      .maybeSingle()
-    landlord = result.data || null
+    if (property?.id_arrendatario) {
+      const result = await supabase
+        .from('arrendatario')
+        .select('id_arrendatario,nombre,correo')
+        .eq('id_arrendatario', property.id_arrendatario)
+        .maybeSingle()
+      landlord = result.data || null
+    }
+
+    return { property, tenant, landlord }
+  } catch (error) {
+    console.error('[tenantController] Error obteniendo contexto de notificación:', error?.message || error)
+    return { property: null, tenant: null, landlord: null }
   }
-
-  return { property, tenant, landlord }
 }
 
 function sendError(res, error, fallbackMessage = 'No se pudo completar la solicitud.') {
@@ -222,16 +233,27 @@ export async function createTenantReservationHandler(req, res) {
   try {
     const nuevaReserva = await createTenantReservation(req.body)
 
-    const { property, landlord } = await getReservationNotificationContext(nuevaReserva)
-    await sendReservationCreatedEmail({
-      to: landlord?.correo,
-      name: landlord?.nombre,
-      propertyTitle: property?.titulo || property?.descripcion,
-      startDate: nuevaReserva?.fecha_inicio,
-      endDate: nuevaReserva?.fecha_fin,
-      total: nuevaReserva?.pago,
-      role: 'arrendatario',
-    })
+    const { property, tenant, landlord } = await getReservationNotificationContext(nuevaReserva)
+    await Promise.allSettled([
+      sendReservationCreatedEmail({
+        to: landlord?.correo,
+        name: landlord?.nombre,
+        propertyTitle: property?.titulo || property?.descripcion,
+        startDate: nuevaReserva?.fecha_inicio,
+        endDate: nuevaReserva?.fecha_fin,
+        total: nuevaReserva?.pago,
+        role: 'arrendatario',
+      }),
+      sendTenantReservationPendingEmail({
+        to: tenant?.correo,
+        name: tenant?.nombre,
+        propertyTitle: property?.titulo || property?.descripcion,
+        startDate: nuevaReserva?.fecha_inicio,
+        endDate: nuevaReserva?.fecha_fin,
+        total: nuevaReserva?.pago,
+        role: 'inquilino',
+      }),
+    ])
 
     return res.status(201).json({
       ok: true,
@@ -246,6 +268,17 @@ export async function createTenantReservationHandler(req, res) {
 export async function confirmTenantReservationHandler(req, res) {
   try {
     const reservation = await confirmTenantReservation(req.body?.reservation || req.params?.id)
+
+    const { property, tenant } = await getReservationNotificationContext(reservation)
+    await sendReservationConfirmedEmail({
+      to: tenant?.correo,
+      name: tenant?.nombre,
+      propertyTitle: property?.titulo || property?.descripcion,
+      startDate: reservation?.fecha_inicio,
+      endDate: reservation?.fecha_fin,
+      total: reservation?.pago,
+      role: 'inquilino',
+    })
 
     return res.json({
       ok: true,
@@ -276,6 +309,7 @@ export async function cancelTenantReservationHandler(req, res) {
     )
 
     const { property, landlord } = await getReservationNotificationContext(reservaCancelada)
+    const reason = motivo_cancelacion?.trim()
     await sendReservationCancelledEmail({
       to: landlord?.correo,
       name: landlord?.nombre,
@@ -283,7 +317,7 @@ export async function cancelTenantReservationHandler(req, res) {
       startDate: reservaCancelada?.fecha_inicio,
       endDate: reservaCancelada?.fecha_fin,
       total: reservaCancelada?.pago,
-      reason: motivo_cancelacion?.trim(),
+      reason,
       role: 'arrendatario',
       hasPayment: reservaCancelada?.pago_confirmado === true,
     })

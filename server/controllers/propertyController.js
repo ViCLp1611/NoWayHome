@@ -1,3 +1,10 @@
+import { supabase } from '../config/supabase.js'
+import {
+  resolvePropertyTitle,
+  sendPropertyCreatedEmail,
+  sendPropertyStatusChangedEmail,
+  sendPropertyUpdatedEmail,
+} from '../services/emailNotificationService.js'
 import {
   createProperty,
   deletePropertyImage,
@@ -7,6 +14,50 @@ import {
   updateLandlordProperty,
   ValidationError,
 } from '../services/propertyService.js'
+
+async function notifyLandlordPropertyEvent({
+  event,
+  landlordId,
+  property,
+  previousStatus = null,
+}) {
+  const parsedLandlordId = Number(landlordId || property?.id_arrendatario)
+  if (!Number.isInteger(parsedLandlordId) || parsedLandlordId <= 0 || !property) {
+    return
+  }
+
+  try {
+    const { data: landlord, error } = await supabase
+      .from('arrendatario')
+      .select('id_arrendatario,nombre,correo')
+      .eq('id_arrendatario', parsedLandlordId)
+      .maybeSingle()
+
+    if (error || !landlord?.correo) return
+
+    const emailPayload = {
+      to: landlord.correo,
+      name: landlord.nombre,
+      propertyTitle: resolvePropertyTitle(property),
+      city: property.ciudad || '',
+      country: property.pais || '',
+      price: property.precio_por_noche ?? property.precio,
+      priceType: property.tipo_precio,
+      status: property.estado || 'activa',
+      previousStatus,
+    }
+
+    if (event === 'created') {
+      await sendPropertyCreatedEmail(emailPayload)
+    } else if (event === 'status_changed') {
+      await sendPropertyStatusChangedEmail(emailPayload)
+    } else {
+      await sendPropertyUpdatedEmail(emailPayload)
+    }
+  } catch (err) {
+    console.error('[propertyController] Error preparando correo de propiedad:', err?.message || err)
+  }
+}
 
 export function healthCheck(_req, res) {
   return res.json({
@@ -26,6 +77,12 @@ export async function createPropertyHandler(req, res) {
 
   try {
     const result = await createProperty(req.body, req.files)
+
+    void notifyLandlordPropertyEvent({
+      event: 'created',
+      landlordId: req.body?.id_arrendatario,
+      property: result.property,
+    })
 
     return res.status(201).json({
       ok: true,
@@ -103,7 +160,22 @@ export async function updateLandlordPropertyHandler(req, res) {
   const idPropiedad = req.params?.id
 
   try {
+    const previousProperty = await getLandlordPropertyById(
+      idPropiedad,
+      req.body?.id_arrendatario
+    ).catch(() => null)
     const property = await updateLandlordProperty(idPropiedad, req.body, req.files || [])
+
+    const prevEstado = String(previousProperty?.estado || '').trim().toLowerCase()
+    const nextEstado = String(property?.estado || '').trim().toLowerCase()
+    const statusChanged = Boolean(prevEstado && nextEstado && prevEstado !== nextEstado)
+
+    void notifyLandlordPropertyEvent({
+      event: statusChanged ? 'status_changed' : 'updated',
+      landlordId: req.body?.id_arrendatario,
+      property,
+      previousStatus: statusChanged ? prevEstado : null,
+    })
 
     return res.json({
       ok: true,

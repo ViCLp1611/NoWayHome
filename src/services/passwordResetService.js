@@ -37,6 +37,33 @@ export function requestPasswordReset(correo) {
   return postJson('/api/auth/forgot-password', { correo })
 }
 
+export async function checkResetTokenStatus(token) {
+  const cleanToken = String(token || '').trim()
+  if (!cleanToken) {
+    return { valid: false, status: 'invalid' }
+  }
+
+  const response = await fetch(
+    `${API_URL}/api/auth/reset-password/status?token=${encodeURIComponent(cleanToken)}`,
+    {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    }
+  )
+
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    // Si el endpoint de estado aun no esta cargado en el servidor en ejecucion,
+    // no bloquear enlaces nuevos; POST /api/auth/reset-password hara la validacion final.
+    return {
+      valid: true,
+      skipped: true,
+    }
+  }
+
+  return data
+}
+
 export function resetPassword(token, nuevaContrasena) {
   // POST /api/auth/reset-password
   // Envia: { token, nuevaContrasena }
