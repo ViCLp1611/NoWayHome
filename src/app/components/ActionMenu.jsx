@@ -6,10 +6,10 @@ import { cn } from '@/app/components/ui/utils';
 const MENU_WIDTH = 176;
 
 const actionVariantClasses = {
-  view: 'text-[#5F5F5F]',
-  neutral: 'text-[#5F5F5F]',
-  edit: 'text-[#A67C52]',
-  primary: 'text-[#6B8E23]',
+  view: 'text-foreground',
+  neutral: 'text-foreground',
+  edit: 'text-accent-ink',
+  primary: 'text-primary-ink',
   danger: 'text-[#B42318]',
 };
 
@@ -78,7 +78,7 @@ export function ActionMenu({ actions = [], label = 'Abrir acciones', align = 'en
     <div
       ref={menuRef}
       role="menu"
-      className="fixed z-[9999] min-w-[176px] rounded-lg border border-[#6B8E23]/15 bg-white p-1 shadow-lg"
+      className="fixed z-[9999] min-w-[176px] rounded-lg border border-border bg-white p-1 shadow-lg"
       style={{ top: position.top, left: position.left }}
       onClick={(event) => event.stopPropagation()}
     >
@@ -99,7 +99,7 @@ export function ActionMenu({ actions = [], label = 'Abrir acciones', align = 'en
               setOpen(false);
             }}
             className={cn(
-              'block w-full rounded-md px-4 py-2 text-left font-[Inter] text-sm hover:bg-[#F2E8CF] focus:bg-[#F2E8CF] focus:outline-none disabled:pointer-events-none disabled:opacity-50',
+              'block w-full rounded-md px-4 py-2 text-left font-inter text-base font-medium hover:bg-secondary focus:bg-secondary focus:outline-none disabled:pointer-events-none disabled:opacity-50',
               actionVariantClasses[action.variant] || actionVariantClasses.neutral,
               action.className
             )}
@@ -126,7 +126,7 @@ export function ActionMenu({ actions = [], label = 'Abrir acciones', align = 'en
           event.stopPropagation();
           setOpen((prev) => !prev);
         }}
-        className="inline-flex size-9 items-center justify-center rounded-lg text-[#5F5F5F] transition-colors hover:bg-[#F2E8CF] hover:text-[#A67C52] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6B8E23]/40"
+        className="inline-flex size-9 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-secondary hover:text-accent-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
       </button>

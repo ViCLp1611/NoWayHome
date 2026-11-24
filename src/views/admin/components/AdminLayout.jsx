@@ -31,10 +31,10 @@ export function AdminLayout({ children, currentPage, onNavigate, onLogout }) {
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div className="min-h-screen bg-background">
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 z-50 flex items-center justify-between px-4">
-        <h1 className="font-['Poppins'] font-semibold text-[#5F5F5F]">Admin Panel</h1>
+        <h1 className="text-foreground">Admin Panel</h1>
         <Button
           variant="ghost"
           size="icon"
@@ -55,8 +55,8 @@ export function AdminLayout({ children, currentPage, onNavigate, onLogout }) {
         `}
       >
         <div className="p-6 border-b border-gray-200">
-          <h1 className="font-['Poppins'] font-semibold text-[#5F5F5F]">Admin Panel</h1>
-          <p className="text-sm text-[#5F5F5F]/60 mt-1">Gestión del sistema</p>
+          <h1 className="text-foreground">Admin Panel</h1>
+          <p className="text-sm text-muted-foreground mt-1">Gestión del sistema</p>
         </div>
 
         <nav className="p-4 space-y-2">
@@ -75,13 +75,13 @@ export function AdminLayout({ children, currentPage, onNavigate, onLogout }) {
                   transition-colors duration-200
                   ${
                     isActive
-                      ? 'bg-[#6B8E23] text-white'
-                      : 'text-[#5F5F5F] hover:bg-[#F2E8CF]'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-foreground hover:bg-secondary'
                   }
                 `}
               >
                 <Icon className="w-5 h-5" />
-                <span className="font-['Inter']">{item.name}</span>
+                <span className="font-inter">{item.name}</span>
               </button>
             );
           })}
@@ -93,10 +93,10 @@ export function AdminLayout({ children, currentPage, onNavigate, onLogout }) {
               setIsMobileMenuOpen(false);
               if (onLogout) onLogout();
             }}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-[#5F5F5F] hover:bg-[#F2E8CF] transition-colors"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-foreground hover:bg-secondary transition-colors"
           >
             <LogOut className="w-5 h-5" />
-            <span className="font-['Inter']">Cerrar sesión</span>
+            <span className="font-inter">Cerrar sesión</span>
           </button>
         </div>
       </aside>

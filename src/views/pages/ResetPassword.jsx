@@ -158,13 +158,13 @@ export function ResetPassword() {
   const formDisabled = isLoading || Boolean(success) || alreadyUsed || isTokenInvalid || !token
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-[#FAFAFA]">
-      <Card className="w-full max-w-md p-8 md:p-10 bg-[#F2E8CF] border border-[#6B8E23]/10 shadow-sm rounded-2xl">
+    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-background">
+      <Card className="w-full max-w-md p-8 md:p-10 bg-secondary border border-border shadow-sm rounded-2xl">
         <div className="text-center mb-8">
-          <h1 className="font-poppins font-semibold text-3xl md:text-4xl text-[#5F5F5F] mb-3">
+          <h1 className="text-foreground mb-3">
             Nueva contrasena
           </h1>
-          <p className="font-inter text-[#5F5F5F]/75 text-base leading-relaxed">
+          <p className="font-inter text-muted-foreground text-base leading-relaxed">
             {Boolean(success) || alreadyUsed
               ? 'El cambio de contraseña ha concluido de forma segura.'
               : 'Crea una contrasena nueva para recuperar el acceso a tu cuenta.'}
@@ -190,11 +190,11 @@ export function ResetPassword() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <label htmlFor="new-password" className="font-inter text-[#5F5F5F] font-medium">
+            <label htmlFor="new-password" className="font-inter text-foreground font-medium">
               Nueva contrasena
             </label>
             <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-accent-ink" />
               <Input
                 id="new-password"
                 type={showNewPassword ? 'text' : 'password'}
@@ -203,14 +203,14 @@ export function ResetPassword() {
                 }
                 value={newPassword}
                 onChange={e => setNewPassword(e.target.value)}
-                className="pl-12 pr-12 h-12 bg-white border-[#6B8E23]/20 focus:border-[#6B8E23] text-[#5F5F5F] rounded-xl transition-colors disabled:bg-gray-100 disabled:opacity-65 disabled:cursor-not-allowed"
+                className="pl-12 pr-12 h-12 bg-white border-control-border focus:border-ring text-foreground rounded-xl transition-colors disabled:bg-gray-100 disabled:opacity-65 disabled:cursor-not-allowed"
                 disabled={formDisabled}
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowNewPassword(value => !value)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-[#5F5F5F]/50 hover:text-[#5F5F5F] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 aria-label={showNewPassword ? 'Ocultar contrasena' : 'Mostrar contrasena'}
                 disabled={formDisabled}
               >
@@ -220,11 +220,11 @@ export function ResetPassword() {
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="confirm-new-password" className="font-inter text-[#5F5F5F] font-medium">
+            <label htmlFor="confirm-new-password" className="font-inter text-foreground font-medium">
               Confirmar contrasena
             </label>
             <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-accent-ink" />
               <Input
                 id="confirm-new-password"
                 type={showConfirmPassword ? 'text' : 'password'}
@@ -233,14 +233,14 @@ export function ResetPassword() {
                 }
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
-                className="pl-12 pr-12 h-12 bg-white border-[#6B8E23]/20 focus:border-[#6B8E23] text-[#5F5F5F] rounded-xl transition-colors disabled:bg-gray-100 disabled:opacity-65 disabled:cursor-not-allowed"
+                className="pl-12 pr-12 h-12 bg-white border-control-border focus:border-ring text-foreground rounded-xl transition-colors disabled:bg-gray-100 disabled:opacity-65 disabled:cursor-not-allowed"
                 disabled={formDisabled}
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(value => !value)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-[#5F5F5F]/50 hover:text-[#5F5F5F] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 aria-label={showConfirmPassword ? 'Ocultar contrasena' : 'Mostrar contrasena'}
                 disabled={formDisabled}
               >
@@ -252,7 +252,7 @@ export function ResetPassword() {
           <Button
             type="submit"
             disabled={formDisabled}
-            className="w-full bg-[#6B8E23] text-white hover:bg-[#5a7a1e] h-12 shadow-none rounded-xl disabled:opacity-45 disabled:cursor-not-allowed"
+            className="w-full bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active h-12 shadow-none rounded-xl disabled:bg-disabled disabled:text-muted-foreground disabled:opacity-100 disabled:cursor-not-allowed"
           >
             {isLoading
               ? 'Actualizando contrasena...'
@@ -262,8 +262,8 @@ export function ResetPassword() {
             <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
 
-          <div className="flex items-center justify-center gap-2 p-3 rounded-xl bg-white/70 border border-[#6B8E23]/15 text-xs text-[#5F5F5F]">
-            <ShieldCheck className="h-4 w-4 text-[#6B8E23] shrink-0" />
+          <div className="flex items-center justify-center gap-2 p-3 rounded-xl bg-white/70 border border-border text-xs text-foreground">
+            <ShieldCheck className="h-4 w-4 text-primary-ink shrink-0" />
             <span>
               Por seguridad, cierra esta ventana al finalizar y vuelve a tu aplicación móvil NoWayHome.
             </span>

@@ -140,7 +140,7 @@ export function ReservaPage() {
 
   if (isLoading || !propiedad) {
     return (
-      <div className="min-h-screen bg-[#FAFAFA]">
+      <div className="min-h-screen bg-background">
         <LoadingState message="Preparando tu reserva..." className="min-h-screen" />
       </div>
     )
@@ -149,11 +149,11 @@ export function ReservaPage() {
   return (
     <>
       <InquilinoNavbar />
-      <div className="min-h-screen bg-[#FAFAFA] px-4 py-8 sm:py-12">
+      <div className="min-h-screen bg-background px-4 py-8 sm:py-12">
         <div className="container mx-auto max-w-7xl">
           <button
             onClick={() => navigate('/inquilino/propiedad/' + id)}
-            className="mb-8 flex items-center gap-2 text-sm font-medium text-[#5F5F5F] transition-colors hover:text-[#6B8E23]"
+            className="mb-8 flex items-center gap-2 text-foreground transition-colors hover:text-primary-ink"
           >
             <ArrowLeft className="h-5 w-5" /> Volver a la propiedad
           </button>
@@ -170,86 +170,86 @@ export function ReservaPage() {
           <div className="mx-auto max-w-4xl">
             {/* Encabezado de la Propiedad */}
             <div className="mb-8">
-              <div className="relative mb-4 aspect-[16/9] w-full overflow-hidden rounded-2xl bg-[#F2E8CF] sm:aspect-[2/1] lg:aspect-[2.5/1]">
+              <div className="relative mb-4 aspect-[16/9] w-full overflow-hidden rounded-2xl bg-secondary sm:aspect-[2/1] lg:aspect-[2.5/1]">
                 <img
                   src={propiedad.imagen_principal || 'https://via.placeholder.com/800x400'}
                   alt={propiedad.titulo || propiedad.descripcion || 'Propiedad'}
                   className="h-full w-full object-cover"
                 />
               </div>
-              <h1 className="font-poppins text-3xl font-semibold text-[#5F5F5F] sm:text-4xl">
+              <h1 className="text-foreground">
                 {propiedad?.titulo || propiedad?.descripcion || 'Propiedad'}
               </h1>
-              <p className="mt-2 flex items-center gap-2 text-base text-[#5F5F5F]/80">
-                <MapPin className="h-5 w-5 shrink-0 text-[#A67C52]" />
+              <p className="mt-2 flex items-center gap-2 text-base text-muted-foreground">
+                <MapPin className="h-5 w-5 shrink-0 text-accent-ink" />
                 <span>{propiedad?.ubicacion || propiedad?.direccion || 'No especificada'}</span>
               </p>
             </div>
 
             {/* Formulario de Reserva */}
-            <Card className="rounded-2xl border border-[#6B8E23]/10 p-6 shadow-sm sm:p-8">
-              <h2 className="mb-6 font-poppins text-2xl font-semibold text-[#5F5F5F]">
+            <Card className="rounded-2xl border border-border p-6 shadow-sm sm:p-8">
+              <h2 className="mb-6 text-foreground">
                 Completa los datos de tu reserva
               </h2>
 
               {/* Card Fechas */}
               <div className="mb-6 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
                 <div>
-                  <label className="text-sm font-medium text-[#5F5F5F]/80">Entrada</label>
+                  <label className="text-sm font-medium text-muted-foreground">Entrada</label>
                   <Input
                     type="date"
                     min={today}
                     value={fechaInicio}
                     onChange={e => setFechaInicio(e.target.value)}
-                    className="mt-2 rounded-xl border-[#6B8E23]/20 bg-white text-[#5F5F5F] focus:border-[#6B8E23] focus:ring-2 focus:ring-[#6B8E23]/50"
+                    className="mt-2 rounded-xl border-control-border bg-white text-foreground focus:border-ring focus:ring-2 focus:ring-ring"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-[#5F5F5F]/80">Salida</label>
+                  <label className="text-sm font-medium text-muted-foreground">Salida</label>
                   <Input
                     type="date"
                     min={fechaInicio || today}
                     value={fechaFin}
                     onChange={e => setFechaFin(e.target.value)}
                     disabled={!fechaInicio}
-                    className="mt-2 rounded-xl border-[#6B8E23]/20 bg-white text-[#5F5F5F] focus:border-[#6B8E23] focus:ring-2 focus:ring-[#6B8E23]/50 disabled:bg-gray-100"
+                    className="mt-2 rounded-xl border-control-border bg-white text-foreground focus:border-ring focus:ring-2 focus:ring-ring disabled:bg-gray-100"
                   />
                 </div>
               </div>
 
               {/* Resumen de Costos */}
               {costos && (
-                <div className="mb-8 space-y-4 rounded-xl bg-[#FAFAFA] p-5">
-                  <h3 className="font-poppins font-semibold text-[#5F5F5F]">Resumen de precios</h3>
+                <div className="mb-8 space-y-4 rounded-xl bg-background p-5">
+                  <h3 className="text-foreground">Resumen de precios</h3>
                   <div className="space-y-2 text-sm">
-                    <div className="flex justify-between text-[#5F5F5F]">
+                    <div className="flex justify-between text-foreground">
                       <span>
                         {formatPrice(propiedad.precio_noche || propiedad.precio || 0)} x{' '}
                         {costos.dias} noche(s)
                       </span>
                       <span>{formatPrice(costos.subtotal)}</span>
                     </div>
-                    <div className="flex justify-between text-[#5F5F5F]">
+                    <div className="flex justify-between text-foreground">
                       <span>Comisión y otros</span>
                       <span>{formatPrice(costos.comision)}</span>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between border-t border-[#6B8E23]/20 pt-4 font-semibold">
-                    <span className="text-base text-[#5F5F5F]">Total (MXN)</span>
-                    <span className="text-xl text-[#6B8E23]">{formatPrice(costos.total)}</span>
+                  <div className="flex items-center justify-between border-t border-border pt-4 font-semibold">
+                    <span className="text-base text-foreground">Total (MXN)</span>
+                    <span className="text-xl text-primary-ink">{formatPrice(costos.total)}</span>
                   </div>
                 </div>
               )}
 
               {/* Card Acción de Pago */}
-              <p className="mb-4 text-center text-sm text-[#5F5F5F]/80">
+              <p className="mb-4 text-center text-sm text-muted-foreground">
                 Al hacer clic en "Solicitar Reserva", tu solicitud será enviada al anfitrión para su
                 aprobación. No se te cobrará nada en este momento.
               </p>
               <Button
                 onClick={handleSolicitarReserva}
                 disabled={!costos || !fechaInicio || !fechaFin || isLoading}
-                className="h-14 w-full rounded-xl bg-[#6B8E23] text-base font-semibold text-white shadow-sm transition-all hover:bg-[#5a7a1e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6B8E23] focus-visible:ring-offset-2 disabled:opacity-60"
+                className="h-14 w-full rounded-xl bg-primary text-primary-foreground shadow-sm transition-all hover:bg-primary-hover active:bg-primary-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:bg-disabled disabled:text-muted-foreground disabled:opacity-100"
               >
                 {isLoading ? 'Enviando Solicitud...' : 'Solicitar Reserva'}
               </Button>

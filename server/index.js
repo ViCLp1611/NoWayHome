@@ -1150,7 +1150,7 @@ app.get("/api/admin/bookings-data", async (req, res) => {
     const bookingsResult = await supabase
       .from("reserva")
       .select(
-        "id_propiedad,id_inquilino,fecha_inicio,fecha_fin,estado,pago,propiedad:propiedad(descripcion,id_arrendatario,arrendatario:arrendatario(nombre)),inquilino:inquilino(nombre)",
+        "id_propiedad,id_inquilino,fecha_inicio,fecha_fin,estado,pago,propiedad:propiedad(titulo,descripcion,id_arrendatario,arrendatario:arrendatario(nombre)),inquilino:inquilino(nombre)",
       );
 
     return sendAdminDataResponse(res, [bookingsResult], {

@@ -24,7 +24,6 @@ if (!PAYPAL_CLIENT_ID) {
       <div
         style={{
           padding: '20px',
-          fontFamily: 'sans-serif',
           backgroundColor: '#fffbe6',
           border: '1px solid #fcc300',
           borderRadius: '8px',

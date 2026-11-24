@@ -96,7 +96,7 @@ export function PropertyForm({ onClose, onSubmit }) {
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
-        <CardTitle className="font-['Poppins'] text-[#5F5F5F]">
+        <CardTitle className="font-poppins text-foreground">
           Registrar Nueva Propiedad
         </CardTitle>
       </CardHeader>
@@ -104,14 +104,14 @@ export function PropertyForm({ onClose, onSubmit }) {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Arrendatario */}
           <div className="space-y-2">
-            <Label htmlFor="id_arrendatario" className="text-[#5F5F5F] font-medium">
+            <Label htmlFor="id_arrendatario" className="text-foreground font-medium">
               Arrendatario *
             </Label>
             <Select
               value={formData.id_arrendatario}
               onValueChange={(value) => handleChange('id_arrendatario', value)}
             >
-              <SelectTrigger className="bg-[#FAFAFA] border-gray-200">
+              <SelectTrigger className="bg-background border-gray-200">
                 <SelectValue placeholder="Seleccione un arrendatario" />
               </SelectTrigger>
               <SelectContent>
@@ -129,7 +129,7 @@ export function PropertyForm({ onClose, onSubmit }) {
 
           {/* Descripción */}
           <div className="space-y-2">
-            <Label htmlFor="descripcion" className="text-[#5F5F5F] font-medium">
+            <Label htmlFor="descripcion" className="text-foreground font-medium">
               Descripción *
             </Label>
             <Textarea
@@ -137,7 +137,7 @@ export function PropertyForm({ onClose, onSubmit }) {
               placeholder="Describa la propiedad..."
               value={formData.descripcion}
               onChange={(e) => handleChange('descripcion', e.target.value)}
-              className="bg-[#FAFAFA] border-gray-200 min-h-[100px]"
+              className="bg-background border-gray-200 min-h-[100px]"
             />
             {errors.descripcion && (
               <p className="text-red-500 text-sm">{errors.descripcion}</p>
@@ -146,7 +146,7 @@ export function PropertyForm({ onClose, onSubmit }) {
 
           {/* Dirección */}
           <div className="space-y-2">
-            <Label htmlFor="direccion" className="text-[#5F5F5F] font-medium">
+            <Label htmlFor="direccion" className="text-foreground font-medium">
               Dirección *
             </Label>
             <Input
@@ -155,7 +155,7 @@ export function PropertyForm({ onClose, onSubmit }) {
               placeholder="Dirección completa de la propiedad"
               value={formData.direccion}
               onChange={(e) => handleChange('direccion', e.target.value)}
-              className="bg-[#FAFAFA] border-gray-200"
+              className="bg-background border-gray-200"
             />
             {errors.direccion && (
               <p className="text-red-500 text-sm">{errors.direccion}</p>
@@ -164,7 +164,7 @@ export function PropertyForm({ onClose, onSubmit }) {
 
           {/* Precio */}
           <div className="space-y-2">
-            <Label htmlFor="precio" className="text-[#5F5F5F] font-medium">
+            <Label htmlFor="precio" className="text-foreground font-medium">
               Precio por noche *
             </Label>
             <Input
@@ -175,7 +175,7 @@ export function PropertyForm({ onClose, onSubmit }) {
               step="0.01"
               value={formData.precio}
               onChange={(e) => handleChange('precio', e.target.value)}
-              className="bg-[#FAFAFA] border-gray-200"
+              className="bg-background border-gray-200"
             />
             {errors.precio && (
               <p className="text-red-500 text-sm">{errors.precio}</p>
@@ -184,14 +184,14 @@ export function PropertyForm({ onClose, onSubmit }) {
 
           {/* Estado */}
           <div className="space-y-2">
-            <Label htmlFor="estado" className="text-[#5F5F5F] font-medium">
+            <Label htmlFor="estado" className="text-foreground font-medium">
               Estado *
             </Label>
             <Select
               value={formData.estado}
               onValueChange={(value) => handleChange('estado', value)}
             >
-              <SelectTrigger className="bg-[#FAFAFA] border-gray-200">
+              <SelectTrigger className="bg-background border-gray-200">
                 <SelectValue placeholder="Seleccione el estado" />
               </SelectTrigger>
               <SelectContent>
@@ -207,7 +207,7 @@ export function PropertyForm({ onClose, onSubmit }) {
 
           {/* Reseña */}
           <div className="space-y-2">
-            <Label htmlFor="resena" className="text-[#5F5F5F] font-medium">
+            <Label htmlFor="resena" className="text-foreground font-medium">
               Reseña (opcional)
             </Label>
             <Textarea
@@ -215,7 +215,7 @@ export function PropertyForm({ onClose, onSubmit }) {
               placeholder="Agregue una reseña o comentarios adicionales..."
               value={formData.resena}
               onChange={(e) => handleChange('resena', e.target.value)}
-              className="bg-[#FAFAFA] border-gray-200 min-h-[80px]"
+              className="bg-background border-gray-200 min-h-[80px]"
             />
           </div>
 

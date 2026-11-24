@@ -72,10 +72,17 @@ const colors = {
 
 ### Tipografía
 
-- **Títulos**: `font-poppins font-semibold`
-- **Texto y botones**: `font-inter` (Regular o Medium)
+El tema global de [`src/styles/theme.css`](../src/styles/theme.css) centraliza familias, pesos y tamaños. [`src/styles/fonts.css`](../src/styles/fonts.css) carga archivos WOFF2 locales con `font-display: swap`. Los archivos cubren el alfabeto latino, incluido el español. Para otros caracteres se aplica la fuente de respaldo del sistema. Las licencias SIL OFL acompañan las fuentes en [`src/assets/fonts/`](../src/assets/fonts/).
 
-⚠️ **No usar** clases de Tailwind para `font-size`, `font-weight`, o `line-height` a menos que el usuario lo solicite explícitamente.
+| Elemento | Fuente | Peso | Desde 1024 px | Menos de 1024 px |
+|---|---|---:|---:|---:|
+| H1 | Poppins | 600 | 36 px | 28 px |
+| H2 | Poppins | 600 | 24 px | 20 px |
+| Texto general | Inter | 400 | 16 px | 16 px |
+| Texto secundario | Inter | 400 | 14 px | 14 px |
+| Botones | Inter | 500 | 16 px | 16 px |
+
+Los encabezados HTML heredan la jerarquía global. Usar `font-poppins font-semibold` en títulos de componentes que se renderizan con otras etiquetas y `text-sm` para texto secundario. Las etiquetas y el menú de navegación usan Inter Medium. Reutilizar los componentes compartidos para botones, formularios, tarjetas y modales.
 
 ### Componentes UI
 

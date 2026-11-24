@@ -153,7 +153,7 @@ export function ExplorarPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#FAFAFA]">
+      <div className="min-h-screen bg-background">
         <LoadingState message="Buscando alojamientos disponibles..." className="min-h-screen" />
       </div>
     )
@@ -163,25 +163,25 @@ export function ExplorarPage() {
     <>
       <InquilinoNavbar />
 
-      <div className="min-h-screen bg-[#FAFAFA] px-4 py-8 md:py-12">
+      <div className="min-h-screen bg-background px-4 py-8 md:py-12">
         <div className="container mx-auto max-w-7xl">
           {/* Header Section */}
           <div className="mb-10 flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
             <div className="space-y-2">
-              <h1 className="font-poppins text-3xl font-bold tracking-tight text-[#5F5F5F] md:text-4xl">
+              <h1 className="tracking-tight text-foreground">
                 Encuentra tu próximo destino
               </h1>
-              <p className="text-base text-[#5F5F5F]/70">
+              <p className="text-base text-muted-foreground">
                 Explora las mejores propiedades en No Way Home
               </p>
             </div>
 
             <div className="w-full md:w-[400px] shrink-0">
               <div className="relative group">
-                <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#5F5F5F]/40 transition-colors group-focus-within:text-[#6B8E23]" />
+                <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary-ink" />
                 <Input
                   placeholder="Buscar por ciudad, destino o nombre..."
-                  className="h-14 w-full rounded-2xl border border-[#6B8E23]/20 bg-white pl-12 pr-4 text-[#5F5F5F] shadow-sm transition-all hover:shadow-md focus-visible:border-[#6B8E23] focus-visible:ring-4 focus-visible:ring-[#6B8E23]/10"
+                  className="h-14 w-full rounded-2xl border border-border bg-white pl-12 pr-4 text-foreground shadow-sm transition-all hover:shadow-md focus-visible:border-ring focus-visible:ring-4 focus-visible:ring-ring"
                   value={filtro}
                   onChange={e => setFiltro(e.target.value)}
                 />
@@ -199,7 +199,7 @@ export function ExplorarPage() {
           )}
 
           {!error && propiedadesFiltradas.length === 0 ? (
-            <div className="mt-12 rounded-3xl bg-white p-8 shadow-sm border border-[#6B8E23]/10">
+            <div className="mt-12 rounded-3xl bg-white p-8 shadow-sm border border-border">
               <EmptyState
                 icon={Search}
                 title="No encontramos resultados"
@@ -225,10 +225,10 @@ export function ExplorarPage() {
                   return (
                     <Card
                       key={id}
-                      className="group flex h-full flex-col overflow-hidden rounded-[24px] border border-transparent bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300 hover:-translate-y-1 hover:border-[#6B8E23]/20 hover:shadow-[0_12px_30px_rgba(107,142,35,0.08)]"
+                      className="group flex h-full flex-col overflow-hidden rounded-[24px] border border-transparent bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300 hover:-translate-y-1 hover:border-border hover:shadow-[0_12px_30px_color-mix(in_srgb,var(--primary)_8%,transparent)]"
                     >
                       {/* Imagen superior con gradiente sutil al hacer hover */}
-                      <div className="relative aspect-[4/3] overflow-hidden bg-[#F2E8CF]/30">
+                      <div className="relative aspect-[4/3] overflow-hidden bg-secondary/30">
                         <img
                           src={imagen}
                           alt={nombre}
@@ -244,7 +244,7 @@ export function ExplorarPage() {
                             className={`h-5 w-5 transition-colors ${
                               isFavorito
                                 ? 'fill-[#ff4757] text-[#ff4757]'
-                                : 'text-[#5F5F5F] hover:fill-[#ff4757] hover:text-[#ff4757]'
+                                : 'text-foreground hover:fill-[#ff4757] hover:text-[#ff4757]'
                             }`}
                           />
                         </button>
@@ -255,35 +255,35 @@ export function ExplorarPage() {
                         <div>
                           <div className="mb-2 flex items-start justify-between gap-3">
                             <h3
-                              className="line-clamp-2 flex-1 font-poppins text-base font-semibold leading-tight text-[#5F5F5F]"
+                              className="line-clamp-2 flex-1 text-base leading-tight text-foreground"
                               title={nombre}
                             >
                               {nombre}
                             </h3>
-                            <div className="flex shrink-0 items-center gap-1 rounded-lg bg-[#F2E8CF] px-2.5 py-1 whitespace-nowrap">
-                              <Star className="h-3.5 w-3.5 fill-[#6B8E23] text-[#6B8E23]" />
-                              <span className="text-xs font-semibold text-[#5F5F5F]">4.9</span>
+                            <div className="flex shrink-0 items-center gap-1 rounded-lg bg-secondary px-2.5 py-1 whitespace-nowrap">
+                              <Star className="h-3.5 w-3.5 fill-primary text-primary-ink" />
+                              <span className="text-xs font-semibold text-foreground">4.9</span>
                             </div>
                           </div>
 
-                          <div className="mb-4 flex items-center gap-1.5 text-[#5F5F5F]/70">
-                            <MapPin className="h-4 w-4 shrink-0 text-[#A67C52]" />
+                          <div className="mb-4 flex items-center gap-1.5 text-muted-foreground">
+                            <MapPin className="h-4 w-4 shrink-0 text-accent-ink" />
                             <span className="line-clamp-1 text-sm font-medium">{ubicacion}</span>
                           </div>
                         </div>
 
                         <div className="mt-auto space-y-4 pt-2">
-                          <div className="flex items-baseline justify-between border-t border-[#F2E8CF] pt-4">
-                            <span className="font-poppins text-xl font-bold text-[#6B8E23]">
+                          <div className="flex items-baseline justify-between border-t border-secondary pt-4">
+                            <span className="text-xl font-medium text-primary-ink">
                               {formatPrice(precio)}
                             </span>
-                            <span className="text-sm font-medium text-[#5F5F5F]/60">/ noche</span>
+                            <span className="text-sm font-medium text-muted-foreground">/ noche</span>
                           </div>
 
                           {/* Botón de Detalles Mejorado (Única Acción) */}
                           <Button
                             onClick={() => navigate(`/inquilino/propiedad/${id}`)}
-                            className="h-11 w-full rounded-xl bg-[#6B8E23] text-sm font-semibold text-white shadow-sm transition-all duration-300 hover:bg-[#5a7a1e] hover:shadow-[0_4px_12px_rgba(107,142,35,0.2)] hover:-translate-y-0.5"
+                            className="h-11 w-full rounded-xl bg-primary text-primary-foreground shadow-sm transition-all duration-300 hover:bg-primary-hover active:bg-primary-active hover:shadow-[0_4px_12px_color-mix(in_srgb,var(--primary)_20%,transparent)] hover:-translate-y-0.5"
                           >
                             Ver detalles
                           </Button>

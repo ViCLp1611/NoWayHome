@@ -336,10 +336,10 @@ export function PropertyManagement({ onNavigate }) {
     <div className="p-6 lg:p-8 space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
-          <h1 className="font-['Poppins'] font-semibold text-[#5F5F5F] mb-2">
+          <h1 className="text-foreground mb-2">
             Gestión de Propiedades
           </h1>
-          <p className="text-[#5F5F5F]/70">
+          <p className="text-muted-foreground">
             Propiedades reales desde la tabla propiedad
           </p>
         </div>
@@ -354,12 +354,12 @@ export function PropertyManagement({ onNavigate }) {
         <CardContent className="p-6">
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#5F5F5F]/40" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
                 placeholder="Buscar por título, ubicación o propietario..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 bg-[#FAFAFA] border-gray-200"
+                className="pl-10 bg-background border-gray-200"
               />
             </div>
             <div className="flex gap-2">
@@ -393,7 +393,7 @@ export function PropertyManagement({ onNavigate }) {
       {/* Properties Table */}
       <Card className="bg-white border-gray-200">
         <CardHeader>
-          <CardTitle className="font-['Poppins'] text-[#5F5F5F]">
+          <CardTitle className="font-poppins text-foreground">
             Lista de Propiedades ({filteredProperties.length})
           </CardTitle>
         </CardHeader>
@@ -401,14 +401,14 @@ export function PropertyManagement({ onNavigate }) {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-[#F2E8CF]/30">
-                  <TableHead className="text-[#5F5F5F]">Propiedad</TableHead>
-                  <TableHead className="text-[#5F5F5F]">Arrendatario</TableHead>
-                  <TableHead className="text-[#5F5F5F]">Estado</TableHead>
-                  <TableHead className="text-[#5F5F5F]">Precio</TableHead>
-                  <TableHead className="text-[#5F5F5F]">Reservas</TableHead>
-                  <TableHead className="text-[#5F5F5F]">Reseña</TableHead>
-                  <TableHead className="text-[#5F5F5F]">Acciones</TableHead>
+                <TableRow className="bg-secondary/30">
+                  <TableHead className="text-foreground">Propiedad</TableHead>
+                  <TableHead className="text-foreground">Arrendatario</TableHead>
+                  <TableHead className="text-foreground">Estado</TableHead>
+                  <TableHead className="text-foreground">Precio</TableHead>
+                  <TableHead className="text-foreground">Reservas</TableHead>
+                  <TableHead className="text-foreground">Reseña</TableHead>
+                  <TableHead className="text-foreground">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -417,29 +417,29 @@ export function PropertyManagement({ onNavigate }) {
                   const propertyLocation = property.direccion || 'Ubicación no disponible';
 
                   return (
-                  <TableRow key={property.id} className="hover:bg-[#F2E8CF]/20">
+                  <TableRow key={property.id} className="hover:bg-secondary/20">
                     <TableCell>
                       <div className="max-w-[340px]">
-                        <p className="truncate font-medium text-[#5F5F5F]" title={propertyTitle}>
+                        <p className="truncate font-medium text-foreground" title={propertyTitle}>
                           {propertyTitle}
                         </p>
-                        <p className="mt-1 flex items-center gap-1 text-sm text-[#5F5F5F]/60">
+                        <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
                           <MapPin className="w-3 h-3" />
                           <span className="truncate" title={propertyLocation}>{propertyLocation}</span>
                         </p>
                       </div>
                     </TableCell>
-                    <TableCell className="text-[#5F5F5F]">{property.arrendatario}</TableCell>
+                    <TableCell className="text-foreground">{property.arrendatario}</TableCell>
                     <TableCell>
                       <Badge className={getStatusBadgeColor(property.estado)}>
                         {property.estado}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-[#5F5F5F]">
+                    <TableCell className="text-foreground">
                       ${property.precio.toLocaleString('es-MX')}
                     </TableCell>
-                    <TableCell className="text-[#5F5F5F]">{property.reservas}</TableCell>
-                    <TableCell className="text-[#5F5F5F]">{property.resena}</TableCell>
+                    <TableCell className="text-foreground">{property.reservas}</TableCell>
+                    <TableCell className="text-foreground">{property.resena}</TableCell>
                     <TableCell>
                       <ActionMenu
                         label={`Acciones de ${propertyTitle}`}
@@ -502,7 +502,7 @@ export function PropertyManagement({ onNavigate }) {
       {false && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-semibold text-[#333]">Confirmar eliminación</h2>
+            <h2 className="text-[#333]">Confirmar eliminación</h2>
             <p className="mt-3 text-sm text-[#555]">
               ¿Seguro quieres eliminar la propiedad <strong>{deleteCandidate.descripcion}</strong>?
             </p>
@@ -521,21 +521,21 @@ export function PropertyManagement({ onNavigate }) {
       {editCandidate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-semibold text-[#333]">Editar propiedad</h2>
+            <h2 className="text-[#333]">Editar propiedad</h2>
             <p className="mt-2 text-sm text-[#555]">
               Solo se pueden modificar la descripción, la dirección y el estado.
             </p>
 
             <div className="mt-5 space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-[#5F5F5F]" htmlFor="property-description">
+                <label className="text-sm font-medium text-foreground" htmlFor="property-description">
                   Descripción
                 </label>
                 <Textarea
                   id="property-description"
                   value={editForm.descripcion}
                   onChange={(event) => handleEditChange('descripcion', event.target.value)}
-                  className="min-h-[120px] bg-[#FAFAFA] border-gray-200"
+                  className="min-h-[120px] bg-background border-gray-200"
                   placeholder="Describe la propiedad"
                   disabled={isSavingEdit}
                 />
@@ -545,14 +545,14 @@ export function PropertyManagement({ onNavigate }) {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-[#5F5F5F]" htmlFor="property-address">
+                <label className="text-sm font-medium text-foreground" htmlFor="property-address">
                   Dirección
                 </label>
                 <Input
                   id="property-address"
                   value={editForm.direccion}
                   onChange={(event) => handleEditChange('direccion', event.target.value)}
-                  className="bg-[#FAFAFA] border-gray-200"
+                  className="bg-background border-gray-200"
                   placeholder="Dirección completa"
                   disabled={isSavingEdit}
                 />
@@ -562,14 +562,14 @@ export function PropertyManagement({ onNavigate }) {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-[#5F5F5F]" htmlFor="property-status">
+                <label className="text-sm font-medium text-foreground" htmlFor="property-status">
                   Estado
                 </label>
                 <select
                   id="property-status"
                   value={editForm.estado}
                   onChange={(event) => handleEditChange('estado', event.target.value)}
-                  className="flex h-10 w-full rounded-md border border-gray-200 bg-[#FAFAFA] px-3 py-2 text-sm text-[#5F5F5F]"
+                  className="flex h-10 w-full rounded-md border border-gray-200 bg-background px-3 py-2 text-sm text-foreground"
                   disabled={isSavingEdit}
                 >
                   <option value="">Seleccione un estado</option>
@@ -610,21 +610,21 @@ export function PropertyManagement({ onNavigate }) {
           className="p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow cursor-pointer text-center"
         >
           <div className="text-xl mb-2">📊</div>
-          <h3 className="font-['Poppins'] font-semibold text-[#5F5F5F] text-sm">Dashboard</h3>
+          <h3 className="text-foreground text-sm">Dashboard</h3>
         </button>
         <button
           onClick={() => onNavigate('users')}
           className="p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow cursor-pointer text-center"
         >
           <div className="text-xl mb-2">👥</div>
-          <h3 className="font-['Poppins'] font-semibold text-[#5F5F5F] text-sm">Usuarios</h3>
+          <h3 className="text-foreground text-sm">Usuarios</h3>
         </button>
         <button
           onClick={() => onNavigate('bookings')}
           className="p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow cursor-pointer text-center"
         >
           <div className="text-xl mb-2">📅</div>
-          <h3 className="font-['Poppins'] font-semibold text-[#5F5F5F] text-sm">Reservas</h3>
+          <h3 className="text-foreground text-sm">Reservas</h3>
         </button>
       </div>
     </div>

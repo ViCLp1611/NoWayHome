@@ -285,8 +285,8 @@ export function Dashboard({ onNavigate }) {
     <div className="p-6 lg:p-8 space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
-          <h1 className="font-['Poppins'] font-semibold text-[#5F5F5F] mb-2">Dashboard Administrativo</h1>
-          <p className="text-[#5F5F5F]/70">Resumen general con datos de la base de datos</p>
+          <h1 className="text-foreground mb-2">Dashboard Administrativo</h1>
+          <p className="text-muted-foreground">Resumen general con datos de la base de datos</p>
         </div>
         <Button
           onClick={loadDashboardData}
@@ -312,31 +312,31 @@ export function Dashboard({ onNavigate }) {
         {statCards.map((stat) => {
           const Icon = stat.icon;
           return (
-            <Card key={stat.key} className="bg-[#F2E8CF] border-none">
+            <Card key={stat.key} className="bg-secondary border-none">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm text-[#5F5F5F]/70">{stat.label}</p>
-                    <p className="text-2xl font-['Poppins'] font-semibold text-[#5F5F5F] mt-1">
+                    <p className="text-sm text-muted-foreground">{stat.label}</p>
+                    <p className="text-2xl font-poppins font-semibold text-foreground mt-1">
                       {loading ? '...' : stat.value}
                     </p>
                     <div className="flex items-center gap-1 mt-2">
                       {stat.trend === 'up' ? (
-                        <ArrowUp className="w-4 h-4 text-[#6B8E23]" />
+                        <ArrowUp className="w-4 h-4 text-green-800" />
                       ) : (
                         <ArrowDown className="w-4 h-4 text-red-500" />
                       )}
                       <span
                         className={`text-sm ${
-                          stat.trend === 'up' ? 'text-[#6B8E23]' : 'text-red-500'
+                          stat.trend === 'up' ? 'text-green-800' : 'text-red-500'
                         }`}
                       >
                         {stat.change}
                       </span>
                     </div>
                   </div>
-                  <div className="w-12 h-12 rounded-lg bg-[#A67C52] flex items-center justify-center">
-                    <Icon className="w-6 h-6 text-white" />
+                  <div className="w-12 h-12 rounded-lg bg-accent flex items-center justify-center">
+                    <Icon className="w-6 h-6 text-accent-foreground" />
                   </div>
                 </div>
               </CardContent>
@@ -348,21 +348,21 @@ export function Dashboard({ onNavigate }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="bg-white border-gray-200">
           <CardHeader>
-            <CardTitle className="font-['Poppins'] text-[#5F5F5F]">Reservas Mensuales</CardTitle>
+            <CardTitle className="font-poppins text-foreground">Reservas Mensuales</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={monthlyBookingsData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" />
-                <XAxis dataKey="month" stroke="#5F5F5F" />
-                <YAxis stroke="#5F5F5F" allowDecimals={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--secondary)" />
+                <XAxis dataKey="month" stroke="var(--foreground)" />
+                <YAxis stroke="var(--foreground)" allowDecimals={false} />
                 <Tooltip />
                 <Line
                   type="monotone"
                   dataKey="reservas"
-                  stroke="#6B8E23"
+                  stroke="var(--primary-ink)"
                   strokeWidth={2}
-                  dot={{ fill: '#6B8E23' }}
+                  dot={{ fill: 'var(--primary-ink)' }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -371,16 +371,16 @@ export function Dashboard({ onNavigate }) {
 
         <Card className="bg-white border-gray-200">
           <CardHeader>
-            <CardTitle className="font-['Poppins'] text-[#5F5F5F]">Estado de Propiedades</CardTitle>
+            <CardTitle className="font-poppins text-foreground">Estado de Propiedades</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={propertyTypesData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" />
-                <XAxis dataKey="tipo" stroke="#5F5F5F" />
-                <YAxis stroke="#5F5F5F" allowDecimals={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--secondary)" />
+                <XAxis dataKey="tipo" stroke="var(--foreground)" />
+                <YAxis stroke="var(--foreground)" allowDecimals={false} />
                 <Tooltip />
-                <Bar dataKey="cantidad" fill="#6B8E23" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="cantidad" fill="var(--primary-ink)" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -389,12 +389,12 @@ export function Dashboard({ onNavigate }) {
 
       <Card className="bg-white border-gray-200">
         <CardHeader>
-          <CardTitle className="font-['Poppins'] text-[#5F5F5F]">Actividad Reciente</CardTitle>
+          <CardTitle className="font-poppins text-foreground">Actividad Reciente</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {recentActivity.length === 0 && !loading && (
-              <p className="text-sm text-[#5F5F5F]/60">No hay actividad reciente para mostrar.</p>
+              <p className="text-sm text-muted-foreground">No hay actividad reciente para mostrar.</p>
             )}
 
             {recentActivity.map((activity) => (
@@ -405,15 +405,15 @@ export function Dashboard({ onNavigate }) {
                 <div className="flex items-center gap-4">
                   <div
                     className={`w-2 h-2 rounded-full ${
-                      activity.status === 'success' ? 'bg-[#6B8E23]' : 'bg-yellow-500'
+                      activity.status === 'success' ? 'bg-green-700' : 'bg-yellow-500'
                     }`}
                   />
                   <div>
-                    <p className="text-[#5F5F5F]">{activity.type}</p>
-                    <p className="text-sm text-[#5F5F5F]/60">{activity.user}</p>
+                    <p className="text-foreground">{activity.type}</p>
+                    <p className="text-sm text-muted-foreground">{activity.user}</p>
                   </div>
                 </div>
-                <span className="text-sm text-[#5F5F5F]/60">{activity.time}</span>
+                <span className="text-sm text-muted-foreground">{activity.time}</span>
               </div>
             ))}
           </div>
@@ -426,31 +426,31 @@ export function Dashboard({ onNavigate }) {
           className="p-6 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow cursor-pointer"
         >
           <div className="text-2xl mb-2">👥</div>
-          <h3 className="font-['Poppins'] font-semibold text-[#5F5F5F] mb-1">Usuarios</h3>
-          <p className="text-sm text-[#5F5F5F]/60">Gestionar usuarios del sistema</p>
+          <h3 className="text-foreground mb-1">Usuarios</h3>
+          <p className="text-sm text-muted-foreground">Gestionar usuarios del sistema</p>
         </button>
         <button
           onClick={() => onNavigate('properties')}
           className="p-6 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow cursor-pointer"
         >
           <div className="text-2xl mb-2">🏠</div>
-          <h3 className="font-['Poppins'] font-semibold text-[#5F5F5F] mb-1">Propiedades</h3>
-          <p className="text-sm text-[#5F5F5F]/60">Administrar propiedades listadas</p>
+          <h3 className="text-foreground mb-1">Propiedades</h3>
+          <p className="text-sm text-muted-foreground">Administrar propiedades listadas</p>
         </button>
         <button
           onClick={() => onNavigate('bookings')}
           className="p-6 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow cursor-pointer"
         >
           <div className="text-2xl mb-2">📅</div>
-          <h3 className="font-['Poppins'] font-semibold text-[#5F5F5F] mb-1">Reservas</h3>
-          <p className="text-sm text-[#5F5F5F]/60">Ver y gestionar reservas</p>
+          <h3 className="text-foreground mb-1">Reservas</h3>
+          <p className="text-sm text-muted-foreground">Ver y gestionar reservas</p>
         </button>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Badge className="bg-[#6B8E23] text-white">Fuente: inquilino + arrendatario</Badge>
-        <Badge className="bg-[#A67C52] text-white">Fuente: propiedad</Badge>
-        <Badge className="bg-[#5F5F5F] text-white">Fuente: reserva</Badge>
+        <Badge className="bg-primary text-primary-foreground">Fuente: inquilino + arrendatario</Badge>
+        <Badge className="bg-accent text-accent-foreground">Fuente: propiedad</Badge>
+        <Badge className="bg-foreground text-white">Fuente: reserva</Badge>
       </div>
     </div>
   );

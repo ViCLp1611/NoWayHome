@@ -96,77 +96,77 @@ export function HomePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#FAFAFA]">
+      <div className="min-h-screen bg-background">
         <LoadingState message="Buscando alojamientos disponibles..." className="min-h-screen" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Hero Section */}
-      <section className="bg-[#F2E8CF] py-16 md:py-24">
+      <section className="bg-secondary py-16 md:py-24">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center mb-10">
-            <h1 className="font-poppins font-semibold text-4xl md:text-5xl text-[#5F5F5F] mb-5 leading-tight">
+            <h1 className="text-foreground mb-5 leading-tight">
               Encuentra tu Hospedaje Perfecto
             </h1>
-            <p className="text-[#5F5F5F]/80 text-lg md:text-xl mb-6">
+            <p className="text-muted-foreground text-lg md:text-xl mb-6">
               Explora miles de propiedades únicas en los mejores destinos
             </p>
             <button
               onClick={() => navigate('/register')}
-              className="text-sm text-[#A67C52] hover:text-[#6B8E23] transition-colors underline decoration-dotted"
+              className="text-accent-ink hover:text-primary-ink transition-colors underline decoration-dotted"
             >
               ¿Eres anfitrión? Publica tu espacio
             </button>
           </div>
 
           {/* Search Bar de 3 campos funcionales (Sin botón extra) */}
-          <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-sm border border-[#6B8E23]/10 p-5 md:p-7">
+          <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-sm border border-border p-5 md:p-7">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               {/* Campo 1: Destino o Título */}
-              <div className="flex items-center gap-3 pb-5 md:pb-0 border-b md:border-b-0 md:border-r border-[#6B8E23]/10 md:pr-5">
-                <MapPin className="h-5 w-5 text-[#A67C52] flex-shrink-0" />
+              <div className="flex items-center gap-3 pb-5 md:pb-0 border-b md:border-b-0 md:border-r border-border md:pr-5">
+                <MapPin className="h-5 w-5 text-accent-ink flex-shrink-0" />
                 <div className="flex-1">
-                  <label className="text-xs text-[#5F5F5F]/70 block mb-1">Destino o Título</label>
+                  <label className="text-xs text-muted-foreground block mb-1">Destino o Título</label>
                   <Input
                     placeholder="¿Dónde vas o qué buscas?"
                     value={destino}
                     onChange={e => setDestino(e.target.value)}
-                    className="border-none p-0 h-auto focus-visible:ring-0 text-[#5F5F5F] placeholder:text-[#5F5F5F]/40 bg-transparent"
+                    className="border-none p-0 h-auto focus-visible:ring-0 text-foreground placeholder:text-muted-foreground bg-transparent"
                   />
                 </div>
               </div>
 
               {/* Campo 2: Costo Deseado */}
-              <div className="flex items-center gap-3 pb-5 md:pb-0 border-b md:border-b-0 md:border-r border-[#6B8E23]/10 md:pr-5">
-                <DollarSign className="h-5 w-5 text-[#A67C52] flex-shrink-0" />
+              <div className="flex items-center gap-3 pb-5 md:pb-0 border-b md:border-b-0 md:border-r border-border md:pr-5">
+                <DollarSign className="h-5 w-5 text-accent-ink flex-shrink-0" />
                 <div className="flex-1">
-                  <label className="text-xs text-[#5F5F5F]/70 block mb-1">Costo Máximo</label>
+                  <label className="text-xs text-muted-foreground block mb-1">Costo Máximo</label>
                   <Input
                     type="number"
                     min="0"
                     placeholder="Precio máximo"
                     value={precioMax}
                     onChange={e => setPrecioMax(e.target.value)}
-                    className="border-none p-0 h-auto focus-visible:ring-0 text-[#5F5F5F] placeholder:text-[#5F5F5F]/40 bg-transparent"
+                    className="border-none p-0 h-auto focus-visible:ring-0 text-foreground placeholder:text-muted-foreground bg-transparent"
                   />
                 </div>
               </div>
 
               {/* Campo 3: Número de Huéspedes */}
               <div className="flex items-center gap-3 pb-5 md:pb-0 md:pr-5">
-                <Users className="h-5 w-5 text-[#A67C52] flex-shrink-0" />
+                <Users className="h-5 w-5 text-accent-ink flex-shrink-0" />
                 <div className="flex-1">
-                  <label className="text-xs text-[#5F5F5F]/70 block mb-1">Huéspedes</label>
+                  <label className="text-xs text-muted-foreground block mb-1">Huéspedes</label>
                   <Input
                     type="number"
                     min="1"
                     placeholder="¿Cuántos van?"
                     value={huespedes}
                     onChange={e => setHuespedes(e.target.value)}
-                    className="border-none p-0 h-auto focus-visible:ring-0 text-[#5F5F5F] placeholder:text-[#5F5F5F]/40 bg-transparent"
+                    className="border-none p-0 h-auto focus-visible:ring-0 text-foreground placeholder:text-muted-foreground bg-transparent"
                   />
                 </div>
               </div>
@@ -179,10 +179,10 @@ export function HomePage() {
       <section className="flex-grow py-16 md:py-20 px-4">
         <div className="container mx-auto max-w-7xl">
           <div className="mb-10">
-            <h2 className="font-poppins font-semibold text-3xl md:text-4xl text-[#5F5F5F] mb-3">
+            <h2 className="text-foreground mb-3">
               Propiedades Disponibles
             </h2>
-            <p className="text-[#5F5F5F]/70 text-lg">Las mejores opciones seleccionadas para ti</p>
+            <p className="text-muted-foreground text-lg">Las mejores opciones seleccionadas para ti</p>
           </div>
 
           {error && (
@@ -195,7 +195,7 @@ export function HomePage() {
           )}
 
           {!error && propiedadesFiltradas.length === 0 ? (
-            <div className="mt-12 rounded-3xl bg-white p-8 shadow-sm border border-[#6B8E23]/10">
+            <div className="mt-12 rounded-3xl bg-white p-8 shadow-sm border border-border">
               <EmptyState
                 icon={Search}
                 title="No encontramos resultados"
@@ -217,9 +217,9 @@ export function HomePage() {
                     <Card
                       key={id}
                       /* Estricta visualización: No redirige al detalle de la propiedad */
-                      className="group flex h-full flex-col overflow-hidden rounded-[24px] border border-transparent bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300 hover:-translate-y-1 hover:border-[#6B8E23]/20 hover:shadow-[0_12px_30px_rgba(107,142,35,0.08)]"
+                      className="group flex h-full flex-col overflow-hidden rounded-[24px] border border-transparent bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300 hover:-translate-y-1 hover:border-border hover:shadow-[0_12px_30px_color-mix(in_srgb,var(--primary)_8%,transparent)]"
                     >
-                      <div className="relative aspect-[4/3] overflow-hidden bg-[#F2E8CF]/30">
+                      <div className="relative aspect-[4/3] overflow-hidden bg-secondary/30">
                         <img
                           src={imagen}
                           alt={nombre}
@@ -232,31 +232,31 @@ export function HomePage() {
                         <div>
                           <div className="mb-2 flex items-start justify-between gap-3">
                             <h3
-                              className="line-clamp-2 flex-1 font-poppins text-base font-semibold leading-tight text-[#5F5F5F]"
+                              className="line-clamp-2 flex-1 text-base leading-tight text-foreground"
                               title={nombre}
                             >
                               {nombre}
                             </h3>
-                            <div className="flex shrink-0 items-center gap-1 rounded-lg bg-[#F2E8CF] px-2.5 py-1 whitespace-nowrap">
-                              <Star className="h-3.5 w-3.5 fill-[#6B8E23] text-[#6B8E23]" />
-                              <span className="text-xs font-semibold text-[#5F5F5F]">
+                            <div className="flex shrink-0 items-center gap-1 rounded-lg bg-secondary px-2.5 py-1 whitespace-nowrap">
+                              <Star className="h-3.5 w-3.5 fill-primary text-primary-ink" />
+                              <span className="text-xs font-semibold text-foreground">
                                 {prop.calificacion_promedio || '4.9'}
                               </span>
                             </div>
                           </div>
 
-                          <div className="mb-4 flex items-center gap-1.5 text-[#5F5F5F]/70">
-                            <MapPin className="h-4 w-4 shrink-0 text-[#A67C52]" />
+                          <div className="mb-4 flex items-center gap-1.5 text-muted-foreground">
+                            <MapPin className="h-4 w-4 shrink-0 text-accent-ink" />
                             <span className="line-clamp-1 text-sm font-medium">{ubicacion}</span>
                           </div>
                         </div>
 
                         <div className="mt-auto space-y-4 pt-2">
-                          <div className="flex items-baseline justify-between border-t border-[#F2E8CF] pt-4">
-                            <span className="font-poppins text-xl font-bold text-[#6B8E23]">
+                          <div className="flex items-baseline justify-between border-t border-secondary pt-4">
+                            <span className="text-xl font-medium text-primary-ink">
                               {formatPrice(precio)}
                             </span>
-                            <span className="text-sm font-medium text-[#5F5F5F]/60">/ noche</span>
+                            <span className="text-sm font-medium text-muted-foreground">/ noche</span>
                           </div>
                         </div>
                       </div>
@@ -270,17 +270,17 @@ export function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="bg-[#6B8E23] py-16 md:py-20">
+      <section className="bg-primary py-16 md:py-20">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="font-poppins font-semibold text-3xl md:text-4xl text-white mb-5 leading-tight">
+          <h2 className="text-primary-foreground mb-5 leading-tight">
             ¿Listo para tu próxima aventura?
           </h2>
-          <p className="text-white/90 text-lg mb-8 max-w-2xl mx-auto">
+          <p className="text-primary-foreground text-lg mb-8 max-w-2xl mx-auto">
             Únete a miles de viajeros que confían en nosotros para encontrar su hospedaje ideal
           </p>
           <Button
             onClick={() => navigate('/register')}
-            className="bg-white text-[#6B8E23] hover:bg-[#F2E8CF] shadow-none rounded-xl px-8 h-12"
+            className="bg-white text-primary-ink hover:bg-secondary shadow-none rounded-xl px-8 h-12"
           >
             Comenzar ahora
           </Button>
@@ -288,24 +288,24 @@ export function HomePage() {
       </section>
 
       {/* Footer Profesional */}
-      <footer className="bg-white border-t border-[#6B8E23]/10 pt-16 pb-8">
+      <footer className="bg-white border-t border-border pt-16 pb-8">
         <div className="container mx-auto px-4 max-w-7xl">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
             {/* Branding & Descripción */}
             <div className="md:col-span-1 space-y-4">
-              <h3 className="font-poppins text-2xl font-bold text-[#6B8E23]">No Way Home</h3>
-              <p className="text-[#5F5F5F]/70 text-sm leading-relaxed">
+              <h3 className="text-2xl text-primary-ink">No Way Home</h3>
+              <p className="text-muted-foreground text-sm leading-relaxed">
                 Tu plataforma de confianza para encontrar los mejores alojamientos temporales.
                 Siéntete en casa, sin importar a dónde vayas.
               </p>
               <div className="flex space-x-4 pt-2">
-                <a href="#" className="text-[#A67C52] hover:text-[#6B8E23] transition-colors">
+                <a href="#" className="text-accent-ink hover:text-primary-ink transition-colors">
                   <Facebook className="h-5 w-5" />
                 </a>
-                <a href="#" className="text-[#A67C52] hover:text-[#6B8E23] transition-colors">
+                <a href="#" className="text-accent-ink hover:text-primary-ink transition-colors">
                   <Instagram className="h-5 w-5" />
                 </a>
-                <a href="#" className="text-[#A67C52] hover:text-[#6B8E23] transition-colors">
+                <a href="#" className="text-accent-ink hover:text-primary-ink transition-colors">
                   <Twitter className="h-5 w-5" />
                 </a>
               </div>
@@ -313,25 +313,25 @@ export function HomePage() {
 
             {/* Enlaces Rápidos */}
             <div>
-              <h4 className="font-poppins font-semibold text-[#5F5F5F] mb-4">Descubre</h4>
+              <h4 className="text-foreground mb-4">Descubre</h4>
               <ul className="space-y-3">
                 <li>
-                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                  <button className="text-muted-foreground hover:text-primary-ink transition-colors text-left">
                     Destinos populares
                   </button>
                 </li>
                 <li>
-                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                  <button className="text-muted-foreground hover:text-primary-ink transition-colors text-left">
                     Alojamientos destacados
                   </button>
                 </li>
                 <li>
-                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                  <button className="text-muted-foreground hover:text-primary-ink transition-colors text-left">
                     Ofertas especiales
                   </button>
                 </li>
                 <li>
-                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                  <button className="text-muted-foreground hover:text-primary-ink transition-colors text-left">
                     Cómo funciona
                   </button>
                 </li>
@@ -340,28 +340,28 @@ export function HomePage() {
 
             {/* Anfitriones */}
             <div>
-              <h4 className="font-poppins font-semibold text-[#5F5F5F] mb-4">Anfitriones</h4>
+              <h4 className="text-foreground mb-4">Anfitriones</h4>
               <ul className="space-y-3">
                 <li>
                   <button
                     onClick={() => navigate('/register')}
-                    className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left"
+                    className="text-muted-foreground hover:text-primary-ink transition-colors text-left"
                   >
                     Publica tu espacio
                   </button>
                 </li>
                 <li>
-                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                  <button className="text-muted-foreground hover:text-primary-ink transition-colors text-left">
                     Recursos para anfitriones
                   </button>
                 </li>
                 <li>
-                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                  <button className="text-muted-foreground hover:text-primary-ink transition-colors text-left">
                     Foro de la comunidad
                   </button>
                 </li>
                 <li>
-                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                  <button className="text-muted-foreground hover:text-primary-ink transition-colors text-left">
                     Protección para anfitriones
                   </button>
                 </li>
@@ -370,28 +370,28 @@ export function HomePage() {
 
             {/* Soporte */}
             <div>
-              <h4 className="font-poppins font-semibold text-[#5F5F5F] mb-4">Soporte</h4>
+              <h4 className="text-foreground mb-4">Soporte</h4>
               <ul className="space-y-3">
                 <li>
-                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                  <button className="text-muted-foreground hover:text-primary-ink transition-colors text-left">
                     Centro de ayuda
                   </button>
                 </li>
                 <li>
-                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                  <button className="text-muted-foreground hover:text-primary-ink transition-colors text-left">
                     Opciones de cancelación
                   </button>
                 </li>
                 <li>
-                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                  <button className="text-muted-foreground hover:text-primary-ink transition-colors text-left">
                     Medidas de seguridad
                   </button>
                 </li>
                 <li className="flex items-center gap-2 mt-4">
-                  <Mail className="h-4 w-4 text-[#A67C52]" />
+                  <Mail className="h-4 w-4 text-accent-ink" />
                   <a
                     href="mailto:nowayhomeadmin@gmail.com"
-                    className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors"
+                    className="text-muted-foreground hover:text-primary-ink text-sm transition-colors"
                   >
                     nowayhomeadmin@gmail.com
                   </a>
@@ -401,8 +401,8 @@ export function HomePage() {
           </div>
 
           {/* Copyright y Políticas usando Etiquetas <a> con importación */}
-          <div className="border-t border-[#6B8E23]/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-[#5F5F5F]/60 text-sm">
+          <div className="border-t border-border pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-muted-foreground text-sm">
               © {new Date().getFullYear()} No Way Home. Todos los derechos reservados.
             </p>
             <div className="flex gap-6">
@@ -410,7 +410,7 @@ export function HomePage() {
                 href={politicaPdf}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[#5F5F5F]/60 hover:text-[#6B8E23] text-sm transition-colors font-medium"
+                className="text-muted-foreground hover:text-primary-ink text-sm transition-colors font-medium"
               >
                 Privacidad
               </a>
@@ -418,7 +418,7 @@ export function HomePage() {
                 href={terminosPdf}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[#5F5F5F]/60 hover:text-[#6B8E23] text-sm transition-colors font-medium"
+                className="text-muted-foreground hover:text-primary-ink text-sm transition-colors font-medium"
               >
                 Términos
               </a>

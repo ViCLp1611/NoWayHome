@@ -29,8 +29,8 @@ import { UserNavbar } from '@/views/user/components/UserNavbar.jsx'
 import { ChangePasswordModal } from '@/views/inquilino/pages/ChangePasswordModal.jsx'
 
 const statusStyles = {
-  activa: 'bg-[#6B8E23] text-white',
-  inactiva: 'bg-[#A67C52]/20 text-[#5F5F5F]',
+  activa: 'bg-green-700 text-white',
+  inactiva: 'bg-accent/20 text-foreground',
   suspendida: 'bg-amber-100 text-amber-800',
 }
 
@@ -296,44 +296,44 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
   return (
     <>
       <UserNavbar />
-      <div className="min-h-screen py-8 px-4 bg-[#FAFAFA]">
+      <div className="min-h-screen py-8 px-4 bg-background">
         <div className="container mx-auto max-w-5xl">
-          <Card className="p-6 md:p-8 mb-8 bg-white border border-[#6B8E23]/10 shadow-sm rounded-2xl">
+          <Card className="p-6 md:p-8 mb-8 bg-white border border-border shadow-sm rounded-2xl">
             <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
-              <Avatar className="h-24 w-24 bg-[#6B8E23] ring-4 ring-[#F2E8CF]">
-                <AvatarFallback className="text-white text-2xl font-poppins">
+              <Avatar className="h-24 w-24 bg-primary ring-4 ring-secondary">
+                <AvatarFallback className="text-foreground text-2xl font-poppins">
                   {getInitials(profile?.nombre)}
                 </AvatarFallback>
               </Avatar>
 
               <div className="flex-1">
                 <div className="flex flex-col md:flex-row md:items-center gap-3 mb-4">
-                  <h1 className="font-poppins font-semibold text-2xl md:text-3xl text-[#5F5F5F] capitalize">
+                  <h1 className="text-foreground capitalize">
                     {profile?.nombre || 'Usuario'}
                   </h1>
                   <div className="flex items-center gap-2">
-                    <Star className="h-5 w-5 fill-[#6B8E23] text-[#6B8E23]" />
-                    <span className="text-[#5F5F5F] font-medium">Arrendatario en NoWayHome</span>
+                    <Star className="h-5 w-5 fill-primary text-primary-ink" />
+                    <span className="text-foreground font-medium">Arrendatario en NoWayHome</span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[#5F5F5F]">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-foreground">
                   <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-[#A67C52]" />
+                    <Mail className="h-4 w-4 text-accent-ink" />
                     <span className="text-sm">{profile?.correo}</span>
                   </div>
                   {profile?.telefono && (
                     <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-[#A67C52]" />
+                      <Phone className="h-4 w-4 text-accent-ink" />
                       <span className="text-sm">{profile.telefono}</span>
                     </div>
                   )}
                   <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-[#A67C52]" />
+                    <MapPin className="h-4 w-4 text-accent-ink" />
                     <span className="text-sm">Ubicacion no definida</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-[#A67C52]" />
+                    <Calendar className="h-4 w-4 text-accent-ink" />
                     <span className="text-sm">Miembro verificado</span>
                   </div>
                 </div>
@@ -343,7 +343,7 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
                 <Button
                   onClick={openEditProfile}
                   variant="outline"
-                  className="flex-1 md:flex-initial border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#6B8E23] hover:text-white shadow-none rounded-xl transition-all"
+                  className="flex-1 md:flex-initial border-2 border-primary-ink text-primary-ink hover:bg-primary hover:text-primary-foreground shadow-none rounded-xl transition-all"
                 >
                   <Edit className="h-4 w-4 mr-2" />
                   Editar
@@ -353,37 +353,37 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
           </Card>
 
           <Tabs defaultValue="properties" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 bg-white border border-[#6B8E23]/10 mb-8 p-1 rounded-xl">
+            <TabsList className="grid w-full grid-cols-3 bg-white border border-border mb-8 p-1 rounded-xl">
               <TabsTrigger
                 value="properties"
-                className="data-[state=active]:bg-[#6B8E23] data-[state=active]:text-white rounded-lg transition-all"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg transition-all"
               >
                 Mis propiedades
               </TabsTrigger>
               <TabsTrigger
                 value="activity"
-                className="data-[state=active]:bg-[#6B8E23] data-[state=active]:text-white rounded-lg transition-all"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg transition-all"
               >
                 Actividad
               </TabsTrigger>
               <TabsTrigger
                 value="settings"
-                className="data-[state=active]:bg-[#6B8E23] data-[state=active]:text-white rounded-lg transition-all"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg transition-all"
               >
                 Configuracion
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="properties" className="space-y-6">
-              <Card className="p-6 bg-[#F2E8CF] border-none shadow-none rounded-2xl">
+              <Card className="p-6 bg-secondary border-none shadow-none rounded-2xl">
                 <div className="flex flex-col gap-6">
                   <div className="flex flex-col md:flex-row justify-between gap-4">
                     <div className="flex-1">
-                      <h2 className="font-poppins font-semibold text-2xl text-[#5F5F5F] mb-3 flex items-center gap-2">
-                        <Building2 className="h-6 w-6 text-[#6B8E23]" />
+                      <h2 className="text-foreground mb-3 flex items-center gap-2">
+                        <Building2 className="h-6 w-6 text-primary-ink" />
                         Mis propiedades
                       </h2>
-                      <p className="text-[#5F5F5F]">
+                      <p className="text-foreground">
                         Administra los alojamientos que tienes publicados en NoWayHome.
                       </p>
                     </div>
@@ -392,13 +392,13 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
                       <Button
                         onClick={() => navigate('/arrendatario/propiedades')}
                         variant="outline"
-                        className="border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#6B8E23] hover:text-white shadow-none rounded-xl"
+                        className="border-2 border-primary-ink text-primary-ink hover:bg-primary hover:text-primary-foreground shadow-none rounded-xl"
                       >
                         Ver todas mis propiedades
                       </Button>
                       <Button
                         onClick={() => navigate('/arrendatario/propiedades/nueva')}
-                        className="bg-[#6B8E23] text-white hover:bg-[#5a7a1e] shadow-none rounded-xl"
+                        className="bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active shadow-none rounded-xl"
                       >
                         <Plus className="h-4 w-4 mr-2" />
                         Agregar propiedad
@@ -407,7 +407,7 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
                   </div>
 
                   {isLoadingProperties && (
-                    <p className="text-sm text-[#5F5F5F]">Cargando propiedades...</p>
+                    <p className="text-sm text-foreground">Cargando propiedades...</p>
                   )}
 
                   {!isLoadingProperties && propertiesError && (
@@ -415,11 +415,11 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
                   )}
 
                   {!isLoadingProperties && !propertiesError && recentProperties.length === 0 && (
-                    <div className="rounded-2xl bg-white p-5 border border-[#6B8E23]/10">
-                      <p className="mb-4 text-[#5F5F5F]">Aún no tienes propiedades registradas.</p>
+                    <div className="rounded-2xl bg-white p-5 border border-border">
+                      <p className="mb-4 text-foreground">Aún no tienes propiedades registradas.</p>
                       <Button
                         onClick={() => navigate('/arrendatario/propiedades/nueva')}
-                        className="bg-[#6B8E23] text-white hover:bg-[#5a7a1e] shadow-none rounded-xl"
+                        className="bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active shadow-none rounded-xl"
                       >
                         <Plus className="mr-2 h-4 w-4" />
                         Agregar propiedad
@@ -432,7 +432,7 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
                       {recentProperties.map(property => (
                         <Card
                           key={property.id_propiedad}
-                          className="overflow-hidden bg-white border border-[#6B8E23]/10 shadow-none rounded-2xl"
+                          className="overflow-hidden bg-white border border-border shadow-none rounded-2xl"
                         >
                           {property.imagen_principal ? (
                             <img
@@ -441,7 +441,7 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
                               className="h-32 w-full object-cover"
                             />
                           ) : (
-                            <div className="flex h-32 w-full items-center justify-center bg-[#FAFAFA] text-[#6B8E23]">
+                            <div className="flex h-32 w-full items-center justify-center bg-background text-primary-ink">
                               <Building2 className="h-8 w-8" />
                             </div>
                           )}
@@ -449,10 +449,10 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
                           <div className="p-4">
                             <div className="mb-3 flex items-start justify-between gap-2">
                               <div className="min-w-0">
-                                <h3 className="truncate font-poppins font-semibold text-[#5F5F5F]">
+                                <h3 className="truncate text-foreground">
                                   {property.titulo}
                                 </h3>
-                                <p className="mt-1 truncate text-xs text-[#5F5F5F]/75">
+                                <p className="mt-1 truncate text-xs text-muted-foreground">
                                   {[property.ciudad, property.pais].filter(Boolean).join(', ')}
                                 </p>
                               </div>
@@ -462,7 +462,7 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
                                 {property.estado}
                               </span>
                             </div>
-                            <p className="font-poppins text-sm font-semibold text-[#6B8E23]">
+                            <p className="font-poppins text-sm font-semibold text-primary-ink">
                               {formatPrice(property)}
                             </p>
                           </div>
@@ -476,41 +476,41 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
 
             <TabsContent value="activity" className="space-y-6">
               <div className="mb-6">
-                <h2 className="font-poppins font-semibold text-2xl text-[#5F5F5F] flex items-center gap-2">
-                  <CalendarCheck className="h-6 w-6 text-[#6B8E23]" />
+                <h2 className="text-foreground flex items-center gap-2">
+                  <CalendarCheck className="h-6 w-6 text-primary-ink" />
                   Actividad de arrendatario
                 </h2>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="p-6 bg-white border border-[#6B8E23]/10 shadow-sm rounded-2xl">
+                <Card className="p-6 bg-white border border-border shadow-sm rounded-2xl">
                   <div className="flex justify-between items-start mb-4">
-                    <h3 className="font-poppins font-semibold text-[#5F5F5F]">
+                    <h3 className="text-foreground">
                       Reservas recibidas
                     </h3>
-                    <CalendarCheck className="h-5 w-5 text-[#6B8E23]" />
+                    <CalendarCheck className="h-5 w-5 text-primary-ink" />
                   </div>
-                  <p className="text-sm text-[#5F5F5F] mb-5">
+                  <p className="text-sm text-foreground mb-5">
                     Aqui podras revisar solicitudes y reservas asociadas a tus alojamientos.
                   </p>
                   <Button
                     onClick={() => navigate('/arrendatario/reservas')}
                     variant="outline"
-                    className="border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#6B8E23] hover:text-white shadow-none rounded-xl transition-all"
+                    className="border-2 border-primary-ink text-primary-ink hover:bg-primary hover:text-primary-foreground shadow-none rounded-xl transition-all"
                   >
                     Ver reservas
                   </Button>
                 </Card>
 
-                <Card className="p-6 bg-white border border-[#6B8E23]/10 shadow-sm rounded-2xl">
+                <Card className="p-6 bg-white border border-border shadow-sm rounded-2xl">
                   <div className="flex justify-between items-start mb-4">
-                    <h3 className="font-poppins font-semibold text-[#5F5F5F]">
+                    <h3 className="text-foreground">
                       Ingresos / transacciones
                     </h3>
-                    <BadgeDollarSign className="h-5 w-5 text-[#6B8E23]" />
+                    <BadgeDollarSign className="h-5 w-5 text-primary-ink" />
                   </div>
                   {isLoadingStats && (
-                    <p className="text-sm text-[#5F5F5F] mb-5">Calculando ingresos estimados...</p>
+                    <p className="text-sm text-foreground mb-5">Calculando ingresos estimados...</p>
                   )}
 
                   {!isLoadingStats && statsError && (
@@ -520,39 +520,39 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
                   {!isLoadingStats && !statsError && (
                     <div className="space-y-3 text-sm">
                       <div className="flex items-center justify-between rounded-xl bg-green-50 px-3 py-2">
-                        <span className="text-[#5F5F5F]">Total estimado confirmado</span>
+                        <span className="text-foreground">Total estimado confirmado</span>
                         <span className="font-semibold text-green-700">
                           {formatCurrency(reservationStats.totalConfirmado)}
                         </span>
                       </div>
 
                       <div className="flex items-center justify-between rounded-xl bg-amber-50 px-3 py-2">
-                        <span className="text-[#5F5F5F]">Total pendiente</span>
+                        <span className="text-foreground">Total pendiente</span>
                         <span className="font-semibold text-amber-700">
                           {formatCurrency(reservationStats.totalPendiente)}
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-between rounded-xl bg-[#FAFAFA] px-3 py-2">
-                        <span className="text-[#5F5F5F]">Total cancelado/rechazado</span>
-                        <span className="font-semibold text-[#5F5F5F]">
+                      <div className="flex items-center justify-between rounded-xl bg-background px-3 py-2">
+                        <span className="text-foreground">Total cancelado/rechazado</span>
+                        <span className="font-semibold text-foreground">
                           {formatCurrency(reservationStats.totalNoActivo)}
                         </span>
                       </div>
 
                       <div className="grid grid-cols-3 gap-2 pt-1 text-xs">
-                        <div className="rounded-lg bg-[#F2E8CF] px-2 py-2 text-center text-[#5F5F5F]">
+                        <div className="rounded-lg bg-secondary px-2 py-2 text-center text-foreground">
                           {reservationStats.countConfirmada} confirmadas
                         </div>
-                        <div className="rounded-lg bg-[#F2E8CF] px-2 py-2 text-center text-[#5F5F5F]">
+                        <div className="rounded-lg bg-secondary px-2 py-2 text-center text-foreground">
                           {reservationStats.countPendiente} pendientes
                         </div>
-                        <div className="rounded-lg bg-[#F2E8CF] px-2 py-2 text-center text-[#5F5F5F]">
+                        <div className="rounded-lg bg-secondary px-2 py-2 text-center text-foreground">
                           {reservationStats.countNoActiva} cancel/rechaz.
                         </div>
                       </div>
 
-                      <p className="pt-1 text-xs text-[#5F5F5F]/75">
+                      <p className="pt-1 text-xs text-muted-foreground">
                         Estos montos son estimados y se calculan con base en las reservas
                         registradas. Los pagos reales se habilitarán más adelante.
                       </p>
@@ -564,78 +564,78 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
 
             <TabsContent value="settings" className="space-y-6">
               <div className="mb-6">
-                <h2 className="font-poppins font-semibold text-2xl text-[#5F5F5F] flex items-center gap-2">
-                  <Settings className="h-6 w-6 text-[#6B8E23]" />
+                <h2 className="text-foreground flex items-center gap-2">
+                  <Settings className="h-6 w-6 text-primary-ink" />
                   Configuracion de Cuenta
                 </h2>
               </div>
 
-              <Card className="p-6 md:p-8 bg-[#F2E8CF] border-none shadow-none rounded-2xl">
+              <Card className="p-6 md:p-8 bg-secondary border-none shadow-none rounded-2xl">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div>
-                    <h3 className="font-poppins font-semibold text-lg text-[#5F5F5F] mb-2">
+                    <h3 className="text-lg text-foreground mb-2">
                       Rol actual
                     </h3>
                     <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center px-3 py-1 rounded-lg bg-white text-[#6B8E23] font-medium text-sm">
+                      <span className="inline-flex items-center px-3 py-1 rounded-lg bg-white text-primary-ink font-medium text-sm">
                         Arrendatario
                       </span>
-                      <span className="text-sm text-[#5F5F5F]/70">
+                      <span className="text-sm text-muted-foreground">
                         Publicar y gestionar alojamientos
                       </span>
                     </div>
                   </div>
                   <Button
                     variant="outline"
-                    className="border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#6B8E23] hover:text-white shadow-none rounded-xl transition-all whitespace-nowrap"
+                    className="border-2 border-primary-ink text-primary-ink hover:bg-primary hover:text-primary-foreground shadow-none rounded-xl transition-all whitespace-nowrap"
                   >
                     Convertirme en huésped
                   </Button>
                 </div>
               </Card>
 
-              <Card className="p-6 md:p-8 bg-white border border-[#6B8E23]/10 shadow-sm rounded-2xl">
+              <Card className="p-6 md:p-8 bg-white border border-border shadow-sm rounded-2xl">
                 <div className="space-y-8">
                   <div>
-                    <h3 className="font-poppins font-semibold text-lg text-[#5F5F5F] mb-5">
+                    <h3 className="text-lg text-foreground mb-5">
                       Preferencias de Notificaciones
                     </h3>
                     <div className="space-y-4">
-                      <label className="flex items-center justify-between cursor-pointer p-3 hover:bg-[#F2E8CF]/30 rounded-lg transition-colors">
-                        <span className="text-[#5F5F5F]">Ofertas especiales</span>
+                      <label className="flex items-center justify-between cursor-pointer p-3 hover:bg-secondary/30 rounded-lg transition-colors">
+                        <span className="text-foreground">Ofertas especiales</span>
                         <input
                           type="checkbox"
-                          className="rounded border-[#6B8E23]/30 text-[#6B8E23] focus:ring-[#6B8E23] focus:ring-offset-0"
+                          className="rounded border-control-border text-primary-ink focus:ring-ring focus:ring-offset-0"
                           defaultChecked
                         />
                       </label>
-                      <label className="flex items-center justify-between cursor-pointer p-3 hover:bg-[#F2E8CF]/30 rounded-lg transition-colors">
-                        <span className="text-[#5F5F5F]">Recordatorios de reserva</span>
+                      <label className="flex items-center justify-between cursor-pointer p-3 hover:bg-secondary/30 rounded-lg transition-colors">
+                        <span className="text-foreground">Recordatorios de reserva</span>
                         <input
                           type="checkbox"
-                          className="rounded border-[#6B8E23]/30 text-[#6B8E23] focus:ring-[#6B8E23] focus:ring-offset-0"
+                          className="rounded border-control-border text-primary-ink focus:ring-ring focus:ring-offset-0"
                           defaultChecked
                         />
                       </label>
-                      <label className="flex items-center justify-between cursor-pointer p-3 hover:bg-[#F2E8CF]/30 rounded-lg transition-colors">
-                        <span className="text-[#5F5F5F]">Newsletter</span>
+                      <label className="flex items-center justify-between cursor-pointer p-3 hover:bg-secondary/30 rounded-lg transition-colors">
+                        <span className="text-foreground">Newsletter</span>
                         <input
                           type="checkbox"
-                          className="rounded border-[#6B8E23]/30 text-[#6B8E23] focus:ring-[#6B8E23] focus:ring-offset-0"
+                          className="rounded border-control-border text-primary-ink focus:ring-ring focus:ring-offset-0"
                         />
                       </label>
                     </div>
                   </div>
 
-                  <div className="pt-8 border-t border-[#6B8E23]/10">
-                    <h3 className="font-poppins font-semibold text-lg text-[#5F5F5F] mb-5">
+                  <div className="pt-8 border-t border-border">
+                    <h3 className="text-lg text-foreground mb-5">
                       Seguridad
                     </h3>
                     <div className="space-y-3">
                       <Button
                         onClick={() => setIsChangePasswordOpen(true)}
                         variant="outline"
-                        className="w-full justify-start border-2 border-[#6B8E23]/20 text-[#5F5F5F] hover:border-[#6B8E23] hover:bg-[#6B8E23] hover:text-white shadow-none rounded-xl h-12 transition-all"
+                        className="w-full justify-start border-2 border-border text-foreground hover:border-primary-ink hover:bg-primary hover:text-primary-foreground shadow-none rounded-xl h-12 transition-all"
                       >
                         <Lock className="h-4 w-4 mr-2" />
                         Cambiar contraseña
@@ -659,17 +659,17 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
             <div className="mb-5">
-              <h2 className="font-poppins text-xl font-semibold text-[#5F5F5F]">
+              <h2 className="text-foreground">
                 Editar informacion personal
               </h2>
-              <p className="mt-2 text-sm text-[#5F5F5F]/75">
+              <p className="mt-2 text-sm text-muted-foreground">
                 Actualiza los datos visibles en tu perfil de arrendatario.
               </p>
             </div>
 
             <form onSubmit={handleSaveProfile} className="space-y-4">
               <div>
-                <label htmlFor="profile-nombre" className="text-[#5F5F5F] font-medium">
+                <label htmlFor="profile-nombre" className="text-foreground font-medium">
                   Nombre
                 </label>
                 <Input
@@ -677,13 +677,13 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
                   name="nombre"
                   value={editForm.nombre}
                   onChange={handleEditFieldChange}
-                  className="mt-2 h-12 rounded-xl border-[#6B8E23]/20 text-[#5F5F5F] focus:border-[#6B8E23]"
+                  className="mt-2 h-12 rounded-xl border-control-border text-foreground focus:border-ring"
                 />
                 {renderEditError('nombre')}
               </div>
 
               <div>
-                <label htmlFor="profile-telefono" className="text-[#5F5F5F] font-medium">
+                <label htmlFor="profile-telefono" className="text-foreground font-medium">
                   Telefono
                 </label>
                 <Input
@@ -691,22 +691,22 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
                   name="telefono"
                   value={editForm.telefono}
                   onChange={handleEditFieldChange}
-                  className="mt-2 h-12 rounded-xl border-[#6B8E23]/20 text-[#5F5F5F] focus:border-[#6B8E23]"
+                  className="mt-2 h-12 rounded-xl border-control-border text-foreground focus:border-ring"
                 />
                 {renderEditError('telefono')}
               </div>
 
               <div>
-                <label htmlFor="profile-correo" className="text-[#5F5F5F] font-medium">
+                <label htmlFor="profile-correo" className="text-foreground font-medium">
                   Correo
                 </label>
                 <Input
                   id="profile-correo"
                   value={profile?.correo || ''}
                   disabled
-                  className="mt-2 h-12 rounded-xl border-[#6B8E23]/20 bg-[#FAFAFA] text-[#5F5F5F] disabled:opacity-80"
+                  className="mt-2 h-12 rounded-xl border-border bg-background text-foreground disabled:opacity-80"
                 />
-                <p className="mt-2 text-xs leading-5 text-[#5F5F5F]/70">
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
                   El correo se usa para iniciar sesion y no puede modificarse desde esta seccion.
                 </p>
               </div>
@@ -717,14 +717,14 @@ export function PerfilArrendatario({ userData, onUserUpdate }) {
                   variant="outline"
                   onClick={closeEditProfile}
                   disabled={isSavingProfile}
-                  className="border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#6B8E23] hover:text-white shadow-none rounded-xl"
+                  className="border-2 border-primary-ink text-primary-ink hover:bg-primary hover:text-primary-foreground shadow-none rounded-xl"
                 >
                   Cancelar
                 </Button>
                 <Button
                   type="submit"
                   disabled={isSavingProfile}
-                  className="bg-[#6B8E23] text-white hover:bg-[#5a7a1e] shadow-none rounded-xl disabled:opacity-60"
+                  className="bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active shadow-none rounded-xl disabled:bg-disabled disabled:text-muted-foreground disabled:opacity-100"
                 >
                   {isSavingProfile ? 'Guardando...' : 'Guardar cambios'}
                 </Button>

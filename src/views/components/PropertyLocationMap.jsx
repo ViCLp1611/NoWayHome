@@ -82,10 +82,10 @@ export function PropertyLocationMap({
   if (!editable && !hasCoordinates) {
     return (
       <div
-        className={`flex min-h-[260px] items-center justify-center rounded-xl border border-[#6B8E23]/15 bg-[#F2E8CF]/55 text-[#5F5F5F] ${className}`}
+        className={`flex min-h-[260px] items-center justify-center rounded-xl border border-border bg-secondary/55 text-foreground ${className}`}
       >
         <div className="flex flex-col items-center gap-2 text-center">
-          <MapPin className="h-6 w-6 text-[#A67C52]" />
+          <MapPin className="h-6 w-6 text-accent-ink" />
           <p className="font-medium">Ubicación no disponible</p>
         </div>
       </div>
@@ -94,7 +94,7 @@ export function PropertyLocationMap({
 
   return (
     <div
-      className={`min-h-[260px] overflow-hidden rounded-xl border border-[#6B8E23]/15 bg-white ${className}`}
+      className={`min-h-[260px] overflow-hidden rounded-xl border border-border bg-white ${className}`}
     >
       <MapContainer
         center={center}

@@ -244,7 +244,7 @@ export function UserManagement({ onNavigate }) {
 
   // Define el color del badge según el tipo de usuario.
   const getRoleBadgeColor = (role) =>
-    role === 'host' ? 'bg-[#6B8E23] text-white' : 'bg-[#A67C52] text-white';
+    role === 'host' ? 'bg-primary text-primary-foreground' : 'bg-accent text-accent-foreground';
 
   // Inicia modo edición precargando los datos del usuario seleccionado.
   const startEdit = (user) => {
@@ -664,8 +664,8 @@ export function UserManagement({ onNavigate }) {
     <div className="p-6 lg:p-8 space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         <div>
-          <h1 className="font-['Poppins'] font-semibold text-[#5F5F5F] mb-2">Gestión de Usuarios</h1>
-          <p className="text-[#5F5F5F]/70">Inquilinos y arrendatarios cargados desde la base de datos</p>
+          <h1 className="text-foreground mb-2">Gestión de Usuarios</h1>
+          <p className="text-muted-foreground">Inquilinos y arrendatarios cargados desde la base de datos</p>
         </div>
         <div className="flex gap-2">
           <Button onClick={() => setShowCreateModal(true)} variant="adminPrimary" size="admin">
@@ -682,58 +682,58 @@ export function UserManagement({ onNavigate }) {
       {/* Mensaje de éxito para acciones completadas. */}
       {/* Tarjetas de métricas principales. */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-[#F2E8CF] border-none">
+        <Card className="bg-secondary border-none">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-[#5F5F5F]/70">Total usuarios</p>
-                <p className="text-2xl font-['Poppins'] font-semibold text-[#5F5F5F]">
+                <p className="text-sm text-muted-foreground">Total usuarios</p>
+                <p className="text-2xl font-poppins font-semibold text-foreground">
                   {stats.totalUsuarios}
                 </p>
               </div>
-              <Users className="w-8 h-8 text-[#A67C52]" />
+              <Users className="w-8 h-8 text-accent-ink" />
             </div>
           </CardContent>
         </Card>
           {/* Métrica de arrendatarios. */}
-        <Card className="bg-[#F2E8CF] border-none">
+        <Card className="bg-secondary border-none">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-[#5F5F5F]/70">Arrendatarios</p>
-                <p className="text-2xl font-['Poppins'] font-semibold text-[#5F5F5F]">
+                <p className="text-sm text-muted-foreground">Arrendatarios</p>
+                <p className="text-2xl font-poppins font-semibold text-foreground">
                   {stats.totalArrendatarios}
                 </p>
               </div>
-              <Home className="w-8 h-8 text-[#6B8E23]" />
+              <Home className="w-8 h-8 text-primary-ink" />
             </div>
           </CardContent>
         </Card>
           {/* Métrica de inquilinos. */}
-        <Card className="bg-[#F2E8CF] border-none">
+        <Card className="bg-secondary border-none">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-[#5F5F5F]/70">Inquilinos</p>
-                <p className="text-2xl font-['Poppins'] font-semibold text-[#5F5F5F]">
+                <p className="text-sm text-muted-foreground">Inquilinos</p>
+                <p className="text-2xl font-poppins font-semibold text-foreground">
                   {stats.totalInquilinos}
                 </p>
               </div>
-              <Users className="w-8 h-8 text-[#5F5F5F]" />
+              <Users className="w-8 h-8 text-foreground" />
             </div>
           </CardContent>
         </Card>
           {/* Métrica de actividad total. */}
-        <Card className="bg-[#F2E8CF] border-none">
+        <Card className="bg-secondary border-none">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-[#5F5F5F]/70">Actividad total</p>
-                <p className="text-2xl font-['Poppins'] font-semibold text-[#5F5F5F]">
+                <p className="text-sm text-muted-foreground">Actividad total</p>
+                <p className="text-2xl font-poppins font-semibold text-foreground">
                   {stats.actividadTotal}
                 </p>
               </div>
-              <Calendar className="w-8 h-8 text-[#A67C52]" />
+              <Calendar className="w-8 h-8 text-accent-ink" />
             </div>
           </CardContent>
         </Card>
@@ -743,12 +743,12 @@ export function UserManagement({ onNavigate }) {
         <CardContent className="p-6">
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#5F5F5F]/40" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
                 placeholder="Buscar por nombre, correo o teléfono..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 bg-[#FAFAFA] border-gray-200"
+                className="pl-10 bg-background border-gray-200"
               />
             </div>
             <div className="flex gap-2">
@@ -780,37 +780,37 @@ export function UserManagement({ onNavigate }) {
         {/* Tabla de usuarios con edición y eliminación. */}
       <Card className="bg-white border-gray-200">
         <CardHeader>
-          <CardTitle className="font-['Poppins'] text-[#5F5F5F]">Lista de Usuarios ({filteredUsers.length})</CardTitle>
+          <CardTitle className="font-poppins text-foreground">Lista de Usuarios ({filteredUsers.length})</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-[#F2E8CF]/30">
-                  <TableHead className="text-[#5F5F5F]">Usuario</TableHead>
-                  <TableHead className="text-[#5F5F5F]">Rol</TableHead>
-                  <TableHead className="text-[#5F5F5F]">Teléfono</TableHead>
-                  <TableHead className="text-[#5F5F5F]">Actividad</TableHead>
-                  <TableHead className="text-[#5F5F5F]">Acciones</TableHead>
+                <TableRow className="bg-secondary/30">
+                  <TableHead className="text-foreground">Usuario</TableHead>
+                  <TableHead className="text-foreground">Rol</TableHead>
+                  <TableHead className="text-foreground">Teléfono</TableHead>
+                  <TableHead className="text-foreground">Actividad</TableHead>
+                  <TableHead className="text-foreground">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {/* Filas construidas desde usuarios filtrados. */}
                 {filteredUsers.map((user) => (
-                  <TableRow key={user.key} className="hover:bg-[#F2E8CF]/20">
+                  <TableRow key={user.key} className="hover:bg-secondary/20">
                     <TableCell>
                       <div>
-                        <p className="text-[#5F5F5F]">{user.nombre}</p>
-                        <p className="text-sm text-[#5F5F5F]/60">{user.correo}</p>
+                        <p className="text-foreground">{user.nombre}</p>
+                        <p className="text-sm text-muted-foreground">{user.correo}</p>
                       </div>
                     </TableCell>
                     <TableCell>
                       <Badge className={getRoleBadgeColor(user.rol)}>{getRoleLabel(user.rol)}</Badge>
                     </TableCell>
                     <TableCell>
-                      <span className="text-[#5F5F5F]">{user.telefono}</span>
+                      <span className="text-foreground">{user.telefono}</span>
                     </TableCell>
-                    <TableCell className="text-[#5F5F5F]">
+                    <TableCell className="text-foreground">
                       {user.rol === 'host'
                         ? `${user.actividad} propiedades`
                         : user.rol === 'guest'
@@ -845,19 +845,19 @@ export function UserManagement({ onNavigate }) {
       {editingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-semibold text-[#333]">Editar usuario</h2>
+            <h2 className="text-[#333]">Editar usuario</h2>
             <p className="mt-2 text-sm text-[#555]">
               Modifica los datos personales de {editingUser.nombre}.
             </p>
 
             <div className="mt-5 space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-[#5F5F5F]" htmlFor="edit-user-name">
+                <label className="text-sm font-medium text-foreground" htmlFor="edit-user-name">
                   Nombre
                 </label>
                 <Input
                   id="edit-user-name"
-                  className={editErrors.nombre ? 'border-red-400 focus-visible:ring-red-300' : 'bg-[#FAFAFA] border-gray-200'}
+                  className={editErrors.nombre ? 'border-red-400 focus-visible:ring-red-300' : 'bg-background border-gray-200'}
                   value={editForm.nombre}
                   onChange={(e) => {
                     setEditForm((prev) => ({ ...prev, nombre: e.target.value }));
@@ -871,13 +871,13 @@ export function UserManagement({ onNavigate }) {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-[#5F5F5F]" htmlFor="edit-user-email">
+                <label className="text-sm font-medium text-foreground" htmlFor="edit-user-email">
                   Correo
                 </label>
                 <Input
                   id="edit-user-email"
                   type="email"
-                  className={editErrors.correo ? 'border-red-400 focus-visible:ring-red-300' : 'bg-[#FAFAFA] border-gray-200'}
+                  className={editErrors.correo ? 'border-red-400 focus-visible:ring-red-300' : 'bg-background border-gray-200'}
                   value={editForm.correo}
                   onChange={(e) => {
                     setEditForm((prev) => ({ ...prev, correo: e.target.value }));
@@ -891,12 +891,12 @@ export function UserManagement({ onNavigate }) {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-[#5F5F5F]" htmlFor="edit-user-phone">
+                <label className="text-sm font-medium text-foreground" htmlFor="edit-user-phone">
                   Telefono
                 </label>
                 <Input
                   id="edit-user-phone"
-                  className={editErrors.telefono ? 'border-red-400 focus-visible:ring-red-300' : 'bg-[#FAFAFA] border-gray-200'}
+                  className={editErrors.telefono ? 'border-red-400 focus-visible:ring-red-300' : 'bg-background border-gray-200'}
                   value={editForm.telefono}
                   onChange={(e) => {
                     setEditForm((prev) => ({ ...prev, telefono: e.target.value }));
@@ -973,16 +973,16 @@ export function UserManagement({ onNavigate }) {
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-semibold text-[#333]">Agregar usuario</h2>
+            <h2 className="text-[#333]">Agregar usuario</h2>
             <p className="mt-2 text-sm text-[#555]">
               Crea un inquilino o arrendatario con datos personales (sin reservas ni propiedades).
             </p>
             {/* Formulario de alta con validaciones por campo. */}
             <div className="mt-4 space-y-3">
               <div>
-                <label className="mb-1 block text-sm text-[#5F5F5F]">Tipo de usuario</label>
+                <label className="mb-1 block text-sm text-foreground">Tipo de usuario</label>
                 <select
-                  className={`w-full rounded-md border bg-[#FAFAFA] px-3 py-2 text-sm text-[#5F5F5F] ${createErrors.tipo ? 'border-red-400' : 'border-gray-200'}`}
+                  className={`w-full rounded-md border bg-background px-3 py-2 text-sm text-foreground ${createErrors.tipo ? 'border-red-400' : 'border-gray-200'}`}
                   value={createForm.tipo}
                   onChange={(e) => handleCreateFieldChange('tipo', e.target.value)}
                 >
@@ -994,7 +994,7 @@ export function UserManagement({ onNavigate }) {
                 )}
               </div>
               <div>
-                <label className="mb-1 block text-sm text-[#5F5F5F]">Nombre</label>
+                <label className="mb-1 block text-sm text-foreground">Nombre</label>
                 <Input
                   className={createErrors.nombre ? 'border-red-400 focus-visible:ring-red-300' : ''}
                   value={createForm.nombre}
@@ -1006,7 +1006,7 @@ export function UserManagement({ onNavigate }) {
                 )}
               </div>
               <div>
-                <label className="mb-1 block text-sm text-[#5F5F5F]">Correo</label>
+                <label className="mb-1 block text-sm text-foreground">Correo</label>
                 <Input
                   type="email"
                   className={createErrors.correo ? 'border-red-400 focus-visible:ring-red-300' : ''}
@@ -1019,7 +1019,7 @@ export function UserManagement({ onNavigate }) {
                 )}
               </div>
               <div>
-                <label className="mb-1 block text-sm text-[#5F5F5F]">Telefono</label>
+                <label className="mb-1 block text-sm text-foreground">Telefono</label>
                 <Input
                   className={createErrors.telefono ? 'border-red-400 focus-visible:ring-red-300' : ''}
                   value={createForm.telefono}
@@ -1031,7 +1031,7 @@ export function UserManagement({ onNavigate }) {
                 )}
               </div>
               <div>
-                <label className="mb-1 block text-sm text-[#5F5F5F]">Contrasena</label>
+                <label className="mb-1 block text-sm text-foreground">Contrasena</label>
                 <Input
                   type="password"
                   className={createErrors.contrasena ? 'border-red-400 focus-visible:ring-red-300' : ''}
@@ -1044,7 +1044,7 @@ export function UserManagement({ onNavigate }) {
                 )}
               </div>
               <div>
-                <label className="mb-1 block text-sm text-[#5F5F5F]">Confirmar contrasena</label>
+                <label className="mb-1 block text-sm text-foreground">Confirmar contrasena</label>
                 <Input
                   type="password"
                   className={createErrors.confirmarContrasena ? 'border-red-400 focus-visible:ring-red-300' : ''}
@@ -1094,21 +1094,21 @@ export function UserManagement({ onNavigate }) {
           className="p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow cursor-pointer text-center"
         >
           <div className="text-xl mb-2">📊</div>
-          <h3 className="font-['Poppins'] font-semibold text-[#5F5F5F] text-sm">Dashboard</h3>
+          <h3 className="text-foreground text-sm">Dashboard</h3>
         </button>
         <button
           onClick={() => onNavigate('properties')}
           className="p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow cursor-pointer text-center"
         >
           <div className="text-xl mb-2">🏠</div>
-          <h3 className="font-['Poppins'] font-semibold text-[#5F5F5F] text-sm">Propiedades</h3>
+          <h3 className="text-foreground text-sm">Propiedades</h3>
         </button>
         <button
           onClick={() => onNavigate('bookings')}
           className="p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow cursor-pointer text-center"
         >
           <div className="text-xl mb-2">📅</div>
-          <h3 className="font-['Poppins'] font-semibold text-[#5F5F5F] text-sm">Reservas</h3>
+          <h3 className="text-foreground text-sm">Reservas</h3>
         </button>
       </div>
     </div>

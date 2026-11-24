@@ -84,15 +84,15 @@ export function EditInquilinoModal({ isOpen, onClose, userData, onUpdateSuccess 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="w-full max-w-md bg-white border border-[#6B8E23]/10 shadow-lg rounded-2xl overflow-hidden transform transition-all p-6 md:p-8">
+      <div className="w-full max-w-md bg-white border border-border shadow-lg rounded-2xl overflow-hidden transform transition-all p-6 md:p-8">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="font-poppins font-semibold text-xl text-[#5F5F5F]">
+          <h2 className="text-foreground">
             Editar Perfil de Huésped
           </h2>
           <button
             onClick={onClose}
             disabled={isLoading || !!success}
-            className="text-[#5F5F5F] hover:text-[#6B8E23] transition-colors rounded-full p-1.5 hover:bg-[#F2E8CF]/50 disabled:opacity-50"
+            className="text-foreground hover:text-primary-ink transition-colors rounded-full p-1.5 hover:bg-secondary/50 disabled:opacity-50"
           >
             <X className="h-5 w-5" />
           </button>
@@ -105,7 +105,7 @@ export function EditInquilinoModal({ isOpen, onClose, userData, onUpdateSuccess 
           {success && <AlertMessage type="success" title="Éxito" message={success} />}
 
           <div className="space-y-1.5">
-            <label htmlFor="nombre" className="text-sm font-medium text-[#5F5F5F] block">
+            <label htmlFor="nombre" className="text-sm font-medium text-foreground block">
               Nombre Completo
             </label>
             <input
@@ -116,13 +116,13 @@ export function EditInquilinoModal({ isOpen, onClose, userData, onUpdateSuccess 
               value={formData.nombre}
               onChange={handleChange}
               disabled={isLoading || !!success}
-              className="w-full px-4 py-2.5 border border-[#6B8E23]/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6B8E23] focus:border-transparent text-[#5F5F5F] transition-all disabled:opacity-50 disabled:bg-gray-50"
+              className="w-full px-4 py-2.5 border border-control-border rounded-xl focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent text-foreground transition-all disabled:opacity-50 disabled:bg-gray-50"
               placeholder="Tu nombre completo"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="telefono" className="text-sm font-medium text-[#5F5F5F] block">
+            <label htmlFor="telefono" className="text-sm font-medium text-foreground block">
               Teléfono Celular
             </label>
             <input
@@ -132,13 +132,13 @@ export function EditInquilinoModal({ isOpen, onClose, userData, onUpdateSuccess 
               value={formData.telefono}
               onChange={handleChange}
               disabled={isLoading || !!success}
-              className="w-full px-4 py-2.5 border border-[#6B8E23]/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6B8E23] focus:border-transparent text-[#5F5F5F] transition-all disabled:opacity-50 disabled:bg-gray-50"
+              className="w-full px-4 py-2.5 border border-control-border rounded-xl focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent text-foreground transition-all disabled:opacity-50 disabled:bg-gray-50"
               placeholder="Ej. 5512345678"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-[#5F5F5F]/60 flex justify-between items-center">
+            <label className="text-sm font-medium text-muted-foreground flex justify-between items-center">
               <span>Correo Electrónico</span>
               <span className="text-xs font-normal text-gray-400 italic">(No editable)</span>
             </label>
@@ -146,7 +146,7 @@ export function EditInquilinoModal({ isOpen, onClose, userData, onUpdateSuccess 
               type="email"
               disabled
               value={userData?.correo || ''}
-              className="w-full px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-xl text-[#5F5F5F]/60 cursor-not-allowed select-none"
+              className="w-full px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-xl text-muted-foreground cursor-not-allowed select-none"
             />
           </div>
 
@@ -156,7 +156,7 @@ export function EditInquilinoModal({ isOpen, onClose, userData, onUpdateSuccess 
               variant="outline"
               onClick={onClose}
               disabled={isLoading || !!success}
-              className="border-2 border-[#5F5F5F]/20 text-[#5F5F5F] shadow-none rounded-xl hover:bg-gray-50 hover:text-[#5F5F5F] transition-all disabled:opacity-50"
+              className="border-2 border-foreground/20 text-foreground shadow-none rounded-xl hover:bg-gray-50 hover:text-foreground transition-all disabled:opacity-50"
             >
               Cancelar
             </Button>
@@ -164,7 +164,7 @@ export function EditInquilinoModal({ isOpen, onClose, userData, onUpdateSuccess 
             <Button
               type="submit"
               disabled={isLoading || !!success}
-              className="bg-[#6B8E23] text-white hover:bg-[#5a7a1e] shadow-none rounded-xl min-w-[140px] transition-all disabled:opacity-70"
+              className="bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active shadow-none rounded-xl min-w-[140px] transition-all disabled:bg-disabled disabled:text-muted-foreground disabled:opacity-100"
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">

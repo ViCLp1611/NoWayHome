@@ -28,12 +28,12 @@ const formatPrice = value =>
 
 function Section({ icon: Icon, title, children }) {
   return (
-    <section className="rounded-xl border border-[#6B8E23]/15 bg-[#FAFAFA] p-4">
-      <h3 className="mb-3 flex items-center font-semibold text-[#6B8E23]">
+    <section className="rounded-xl border border-border bg-background p-4">
+      <h3 className="mb-3 flex items-center text-primary-ink">
         <Icon className="mr-2 h-5 w-5" />
         {title}
       </h3>
-      <div className="space-y-2 text-sm text-[#5F5F5F]">{children}</div>
+      <div className="space-y-2 text-sm text-foreground">{children}</div>
     </section>
   )
 }
@@ -55,7 +55,7 @@ export function BookingContract({ reserva }) {
   if (!canShowReceipt) {
     return (
       <div className="rounded-2xl bg-white p-6 text-center shadow-lg sm:p-8">
-        <p className="text-[#5F5F5F]">
+        <p className="text-foreground">
           El contrato estará disponible cuando la reserva y el pago estén confirmados.
         </p>
       </div>
@@ -78,14 +78,14 @@ export function BookingContract({ reserva }) {
 
   return (
     <article className="printable-area rounded-2xl bg-white p-6 shadow-lg sm:p-8">
-      <header className="mb-8 border-b border-[#A67C52]/25 pb-5">
-        <p className="mb-2 text-sm font-semibold uppercase tracking-[0.18em] text-[#A67C52]">
+      <header className="mb-8 border-b border-border pb-5">
+        <p className="mb-2 text-sm font-semibold uppercase tracking-[0.18em] text-accent-ink">
           Evidencia de reservación
         </p>
-        <h2 className="font-poppins text-2xl font-bold text-[#5F5F5F]">
+        <h2 className="text-foreground">
           Constancia de reserva NoWayHome
         </h2>
-        <p className="mt-2 text-sm text-[#5F5F5F]/70">
+        <p className="mt-2 text-sm text-muted-foreground">
           Folio: {reserva?.id_reserva || reserva?.id || 'No disponible'}
         </p>
       </header>
@@ -123,11 +123,11 @@ export function BookingContract({ reserva }) {
         </Section>
       </div>
 
-      <div className="mt-6 rounded-xl border-l-4 border-[#A67C52] bg-[#F2E8CF]/60 p-4 text-sm leading-6 text-[#5F5F5F]">
+      <div className="mt-6 rounded-xl border-l-4 border-accent-ink bg-secondary/60 p-4 text-sm leading-6 text-foreground">
         Este documento fue generado automáticamente por NoWayHome como evidencia de una reserva
         confirmada y pagada.
       </div>
-      <p className="mt-4 text-center text-sm text-[#5F5F5F]/70">
+      <p className="mt-4 text-center text-sm text-muted-foreground">
         Se enviará una copia por correo al inquilino y al arrendatario.
       </p>
     </article>

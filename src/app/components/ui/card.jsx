@@ -32,7 +32,7 @@ function CardTitle({ className, ...props }) {
   return (
     <h4
       data-slot="card-title"
-      className={cn("leading-none", className)}
+      className={cn("font-poppins font-semibold leading-none", className)}
       {...props}
     />
   );

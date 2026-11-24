@@ -23,11 +23,11 @@ export function UserNavbar() {
   }
 
   return (
-    <header className="bg-white border-b border-[#6B8E23]/10 sticky top-0 z-50">
+    <header className="bg-white border-b border-border sticky top-0 z-50">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <button className="font-poppins font-semibold text-xl md:text-2xl text-[#6B8E23] hover:text-[#5a7a1e] transition-colors">
+          <button className="text-primary-ink hover:text-primary-ink transition-colors">
             NoWayHome
           </button>
 
@@ -35,7 +35,7 @@ export function UserNavbar() {
           <nav className="hidden md:flex items-center gap-6">
             <Button
               onClick={handleLogout}
-              className="bg-[#6B8E23] text-white hover:bg-[#5a7a1e] shadow-none rounded-xl"
+              className="bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active shadow-none rounded-xl"
             >
               <LogOut className="h-4 w-4 mr-2" />
               Cerrar Sesión
@@ -45,7 +45,7 @@ export function UserNavbar() {
           {/* Mobile Menu Button */}
           <button
             onClick={toggleMobileMenu}
-            className="md:hidden text-[#5F5F5F] hover:text-[#6B8E23] transition-colors"
+            className="md:hidden text-foreground hover:text-primary-ink transition-colors"
             aria-label="Toggle menu"
           >
             {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -54,11 +54,11 @@ export function UserNavbar() {
 
         {/* Mobile Navigation */}
         {isMobileMenuOpen && (
-          <nav className="md:hidden py-4 border-t border-[#6B8E23]/10">
+          <nav className="md:hidden py-4 border-t border-border">
             <div className="flex flex-col gap-4">
               <Button
                 onClick={handleLogout}
-                className="bg-[#6B8E23] text-white hover:bg-[#5a7a1e] shadow-none rounded-xl w-full justify-center"
+                className="bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active shadow-none rounded-xl w-full justify-center"
               >
                 <LogOut className="h-4 w-4 mr-2" />
                 Cerrar Sesión

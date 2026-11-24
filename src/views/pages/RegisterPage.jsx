@@ -130,15 +130,15 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FAFAFA]">
+    <div className="min-h-screen flex flex-col bg-background">
       {/* Contenedor principal flex-grow para centrar el formulario */}
       <main className="flex-grow flex items-center justify-center px-4 py-12">
-        <Card className="w-full max-w-md p-8 md:p-10 bg-white border border-[#6B8E23]/10 shadow-sm rounded-2xl">
+        <Card className="w-full max-w-md p-8 md:p-10 bg-white border border-border shadow-sm rounded-2xl">
           <div className="text-center mb-10">
-            <h1 className="font-poppins font-semibold text-3xl md:text-4xl text-[#5F5F5F] mb-3">
+            <h1 className="text-foreground mb-3">
               Crear Cuenta
             </h1>
-            <p className="text-[#5F5F5F]/70 text-lg">Únete a nuestra comunidad</p>
+            <p className="text-muted-foreground text-lg">Únete a nuestra comunidad</p>
           </div>
 
           {/* Mostrar alerta de error si falla la validación o el registro en BD */}
@@ -151,11 +151,11 @@ export function RegisterPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <label htmlFor="name" className="text-[#5F5F5F] font-medium">
+              <label htmlFor="name" className="text-foreground font-medium">
                 Nombre Completo
               </label>
               <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-accent-ink" />
                 <Input
                   id="name"
                   name="name"
@@ -163,18 +163,18 @@ export function RegisterPage() {
                   placeholder="Juan Pérez"
                   value={formData.name}
                   onChange={handleInputChange}
-                  className="pl-12 h-12 bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] rounded-xl transition-colors"
+                  className="pl-12 h-12 bg-background border-control-border focus:border-ring focus:bg-white text-foreground rounded-xl transition-colors"
                   required
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="email" className="text-[#5F5F5F] font-medium">
+              <label htmlFor="email" className="text-foreground font-medium">
                 Correo Electrónico
               </label>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-accent-ink" />
                 <Input
                   id="email"
                   name="email"
@@ -182,18 +182,18 @@ export function RegisterPage() {
                   placeholder="correo@ejemplo.com"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="pl-12 h-12 bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] rounded-xl transition-colors"
+                  className="pl-12 h-12 bg-background border-control-border focus:border-ring focus:bg-white text-foreground rounded-xl transition-colors"
                   required
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="phone" className="text-[#5F5F5F] font-medium">
+              <label htmlFor="phone" className="text-foreground font-medium">
                 Teléfono
               </label>
               <div className="relative">
-                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
+                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-accent-ink" />
                 <Input
                   id="phone"
                   name="phone"
@@ -201,18 +201,18 @@ export function RegisterPage() {
                   placeholder="+52 0000 0000 0000"
                   value={formData.phone}
                   onChange={handleInputChange}
-                  className="pl-12 h-12 bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] rounded-xl transition-colors"
+                  className="pl-12 h-12 bg-background border-control-border focus:border-ring focus:bg-white text-foreground rounded-xl transition-colors"
                   required
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="password" className="text-[#5F5F5F] font-medium">
+              <label htmlFor="password" className="text-foreground font-medium">
                 Contraseña
               </label>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-accent-ink" />
                 <Input
                   id="password"
                   name="password"
@@ -220,13 +220,13 @@ export function RegisterPage() {
                   placeholder="Ingresa tu contraseña"
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="pl-12 pr-10 h-12 bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] rounded-xl transition-colors"
+                  className="pl-12 pr-10 h-12 bg-background border-control-border focus:border-ring focus:bg-white text-foreground rounded-xl transition-colors"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#5F5F5F]/50 hover:text-[#5F5F5F] transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -235,11 +235,11 @@ export function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="confirm-password" className="text-[#5F5F5F] font-medium">
+              <label htmlFor="confirm-password" className="text-foreground font-medium">
                 Confirmar Contraseña
               </label>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A67C52]" />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-accent-ink" />
                 <Input
                   id="confirm-password"
                   name="confirmPassword"
@@ -247,13 +247,13 @@ export function RegisterPage() {
                   placeholder="Confirma tu contraseña"
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
-                  className="pl-12 pr-10 h-12 bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23] focus:bg-white text-[#5F5F5F] rounded-xl transition-colors"
+                  className="pl-12 pr-10 h-12 bg-background border-control-border focus:border-ring focus:bg-white text-foreground rounded-xl transition-colors"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#5F5F5F]/50 hover:text-[#5F5F5F] transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                 >
                   {showConfirmPassword ? (
@@ -273,16 +273,16 @@ export function RegisterPage() {
                 name="acceptTerms"
                 checked={formData.acceptTerms}
                 onChange={handleInputChange}
-                className="mt-1 rounded border-[#6B8E23]/30 text-[#6B8E23] focus:ring-[#6B8E23] focus:ring-offset-0"
+                className="mt-1 rounded border-control-border text-primary-ink focus:ring-ring focus:ring-offset-0"
                 required
               />
-              <label htmlFor="terms" className="text-sm text-[#5F5F5F] leading-relaxed">
+              <label htmlFor="terms" className="text-sm text-foreground leading-relaxed">
                 Acepto los{' '}
                 <a
                   href={terminosPdf}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[#6B8E23] hover:text-[#5a7a1e] hover:underline transition-colors font-medium"
+                  className="text-primary-ink hover:text-primary-ink hover:underline transition-colors font-medium"
                 >
                   términos y condiciones
                 </a>{' '}
@@ -291,7 +291,7 @@ export function RegisterPage() {
                   href={politicaPdf}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[#6B8E23] hover:text-[#5a7a1e] hover:underline transition-colors font-medium"
+                  className="text-primary-ink hover:text-primary-ink hover:underline transition-colors font-medium"
                 >
                   política de privacidad
                 </a>
@@ -299,39 +299,39 @@ export function RegisterPage() {
             </div>
 
             {/* Selector de rol */}
-            <div className="space-y-3 pt-4 border-t border-[#6B8E23]/10">
-              <label className="text-[#5F5F5F] font-medium block">¿Cómo usarás NoWayHome?</label>
+            <div className="space-y-3 pt-4 border-t border-border">
+              <label className="text-foreground font-medium block">¿Cómo usarás NoWayHome?</label>
               <div className="space-y-3">
-                <label className="flex items-start gap-3 p-4 border-2 border-[#6B8E23]/20 rounded-xl cursor-pointer hover:border-[#6B8E23] hover:bg-[#F2E8CF]/20 transition-all has-[:checked]:border-[#6B8E23] has-[:checked]:bg-[#F2E8CF]/30">
+                <label className="flex items-start gap-3 p-4 border-2 border-control-border rounded-xl cursor-pointer hover:border-primary-ink hover:bg-secondary/20 transition-all has-[:checked]:border-primary-ink has-[:checked]:bg-secondary/30">
                   <input
                     type="radio"
                     name="role"
                     value="guest"
                     checked={formData.role === 'guest'}
                     onChange={handleInputChange}
-                    className="mt-0.5 text-[#6B8E23] focus:ring-[#6B8E23] focus:ring-offset-0"
+                    className="mt-0.5 text-primary-ink focus:ring-ring focus:ring-offset-0"
                   />
                   <div>
-                    <span className="text-[#5F5F5F] font-medium block">Huésped</span>
-                    <span className="text-sm text-[#5F5F5F]/70">Reservar alojamiento</span>
+                    <span className="text-foreground font-medium block">Huésped</span>
+                    <span className="text-sm text-muted-foreground">Reservar alojamiento</span>
                   </div>
                 </label>
-                <label className="flex items-start gap-3 p-4 border-2 border-[#6B8E23]/20 rounded-xl cursor-pointer hover:border-[#6B8E23] hover:bg-[#F2E8CF]/20 transition-all has-[:checked]:border-[#6B8E23] has-[:checked]:bg-[#F2E8CF]/30">
+                <label className="flex items-start gap-3 p-4 border-2 border-control-border rounded-xl cursor-pointer hover:border-primary-ink hover:bg-secondary/20 transition-all has-[:checked]:border-primary-ink has-[:checked]:bg-secondary/30">
                   <input
                     type="radio"
                     name="role"
                     value="host"
                     checked={formData.role === 'host'}
                     onChange={handleInputChange}
-                    className="mt-0.5 text-[#6B8E23] focus:ring-[#6B8E23] focus:ring-offset-0"
+                    className="mt-0.5 text-primary-ink focus:ring-ring focus:ring-offset-0"
                   />
                   <div>
-                    <span className="text-[#5F5F5F] font-medium block">Anfitrión</span>
-                    <span className="text-sm text-[#5F5F5F]/70">Publicar alojamiento</span>
+                    <span className="text-foreground font-medium block">Anfitrión</span>
+                    <span className="text-sm text-muted-foreground">Publicar alojamiento</span>
                   </div>
                 </label>
               </div>
-              <p className="text-xs text-[#5F5F5F]/70 italic">
+              <p className="text-xs text-muted-foreground italic">
                 El rol podrá modificarse posteriormente desde el perfil
               </p>
             </div>
@@ -339,7 +339,7 @@ export function RegisterPage() {
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-[#6B8E23] text-white hover:bg-[#5a7a1e] h-12 shadow-none rounded-xl mt-6 disabled:opacity-50"
+              className="w-full bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active h-12 shadow-none rounded-xl mt-6 disabled:bg-disabled disabled:text-muted-foreground disabled:opacity-100"
             >
               {isLoading ? 'Creando cuenta...' : 'Crear Cuenta'}
               <ArrowRight className="ml-2 h-5 w-5" />
@@ -347,11 +347,11 @@ export function RegisterPage() {
           </form>
 
           <div className="mt-8 text-center">
-            <p className="text-[#5F5F5F]">
+            <p className="text-foreground">
               ¿Ya tienes cuenta?{' '}
               <button
                 onClick={() => navigate('/login')}
-                className="text-[#6B8E23] font-medium hover:text-[#5a7a1e] transition-colors"
+                className="text-primary-ink hover:text-primary-ink transition-colors"
               >
                 Inicia sesión
               </button>
@@ -361,24 +361,24 @@ export function RegisterPage() {
       </main>
 
       {/* Footer Profesional */}
-      <footer className="bg-white border-t border-[#6B8E23]/10 pt-16 pb-8">
+      <footer className="bg-white border-t border-border pt-16 pb-8">
         <div className="container mx-auto px-4 max-w-7xl">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
             {/* Branding & Descripción */}
             <div className="md:col-span-1 space-y-4">
-              <h3 className="font-poppins text-2xl font-bold text-[#6B8E23]">No Way Home</h3>
-              <p className="text-[#5F5F5F]/70 text-sm leading-relaxed">
+              <h3 className="text-2xl text-primary-ink">No Way Home</h3>
+              <p className="text-muted-foreground text-sm leading-relaxed">
                 Tu plataforma de confianza para encontrar los mejores alojamientos temporales.
                 Siéntete en casa, sin importar a dónde vayas.
               </p>
               <div className="flex space-x-4 pt-2">
-                <a href="#" className="text-[#A67C52] hover:text-[#6B8E23] transition-colors">
+                <a href="#" className="text-accent-ink hover:text-primary-ink transition-colors">
                   <Facebook className="h-5 w-5" />
                 </a>
-                <a href="#" className="text-[#A67C52] hover:text-[#6B8E23] transition-colors">
+                <a href="#" className="text-accent-ink hover:text-primary-ink transition-colors">
                   <Instagram className="h-5 w-5" />
                 </a>
-                <a href="#" className="text-[#A67C52] hover:text-[#6B8E23] transition-colors">
+                <a href="#" className="text-accent-ink hover:text-primary-ink transition-colors">
                   <Twitter className="h-5 w-5" />
                 </a>
               </div>
@@ -386,28 +386,28 @@ export function RegisterPage() {
 
             {/* Enlaces Rápidos */}
             <div>
-              <h4 className="font-poppins font-semibold text-[#5F5F5F] mb-4">Descubre</h4>
+              <h4 className="text-foreground mb-4">Descubre</h4>
               <ul className="space-y-3">
                 <li>
                   <button
                     onClick={() => navigate('/')}
-                    className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left"
+                    className="text-muted-foreground hover:text-primary-ink transition-colors text-left"
                   >
                     Inicio
                   </button>
                 </li>
                 <li>
-                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                  <button className="text-muted-foreground hover:text-primary-ink transition-colors text-left">
                     Alojamientos destacados
                   </button>
                 </li>
                 <li>
-                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                  <button className="text-muted-foreground hover:text-primary-ink transition-colors text-left">
                     Ofertas especiales
                   </button>
                 </li>
                 <li>
-                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                  <button className="text-muted-foreground hover:text-primary-ink transition-colors text-left">
                     Cómo funciona
                   </button>
                 </li>
@@ -416,20 +416,20 @@ export function RegisterPage() {
 
             {/* Anfitriones */}
             <div>
-              <h4 className="font-poppins font-semibold text-[#5F5F5F] mb-4">Anfitriones</h4>
+              <h4 className="text-foreground mb-4">Anfitriones</h4>
               <ul className="space-y-3">
                 <li>
-                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                  <button className="text-muted-foreground hover:text-primary-ink transition-colors text-left">
                     Recursos para anfitriones
                   </button>
                 </li>
                 <li>
-                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                  <button className="text-muted-foreground hover:text-primary-ink transition-colors text-left">
                     Foro de la comunidad
                   </button>
                 </li>
                 <li>
-                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                  <button className="text-muted-foreground hover:text-primary-ink transition-colors text-left">
                     Protección para anfitriones
                   </button>
                 </li>
@@ -438,28 +438,28 @@ export function RegisterPage() {
 
             {/* Soporte */}
             <div>
-              <h4 className="font-poppins font-semibold text-[#5F5F5F] mb-4">Soporte</h4>
+              <h4 className="text-foreground mb-4">Soporte</h4>
               <ul className="space-y-3">
                 <li>
-                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                  <button className="text-muted-foreground hover:text-primary-ink transition-colors text-left">
                     Centro de ayuda
                   </button>
                 </li>
                 <li>
-                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                  <button className="text-muted-foreground hover:text-primary-ink transition-colors text-left">
                     Opciones de cancelación
                   </button>
                 </li>
                 <li>
-                  <button className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors text-left">
+                  <button className="text-muted-foreground hover:text-primary-ink transition-colors text-left">
                     Medidas de seguridad
                   </button>
                 </li>
                 <li className="flex items-center gap-2 mt-4">
-                  <Mail className="h-4 w-4 text-[#A67C52]" />
+                  <Mail className="h-4 w-4 text-accent-ink" />
                   <a
                     href="mailto:nowayhomeadmin@gmail.com"
-                    className="text-[#5F5F5F]/70 hover:text-[#6B8E23] text-sm transition-colors"
+                    className="text-muted-foreground hover:text-primary-ink text-sm transition-colors"
                   >
                     nowayhomeadmin@gmail.com
                   </a>
@@ -469,8 +469,8 @@ export function RegisterPage() {
           </div>
 
           {/* Copyright y Políticas usando Etiquetas <a> con importación */}
-          <div className="border-t border-[#6B8E23]/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-[#5F5F5F]/60 text-sm">
+          <div className="border-t border-border pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-muted-foreground text-sm">
               © {new Date().getFullYear()} No Way Home. Todos los derechos reservados.
             </p>
             <div className="flex gap-6">
@@ -478,7 +478,7 @@ export function RegisterPage() {
                 href={politicaPdf}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[#5F5F5F]/60 hover:text-[#6B8E23] text-sm transition-colors font-medium"
+                className="text-muted-foreground hover:text-primary-ink text-sm transition-colors font-medium"
               >
                 Privacidad
               </a>
@@ -486,7 +486,7 @@ export function RegisterPage() {
                 href={terminosPdf}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[#5F5F5F]/60 hover:text-[#6B8E23] text-sm transition-colors font-medium"
+                className="text-muted-foreground hover:text-primary-ink text-sm transition-colors font-medium"
               >
                 Términos
               </a>

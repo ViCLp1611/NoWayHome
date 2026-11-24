@@ -78,7 +78,7 @@ export function BookingManagement({ onNavigate }) {
         pago: Number(item.pago || 0),
 
         // Datos derivados para mostrar en la tabla, con mensaje de error por si no hay datos relacionados (aunque deberían existir por las relaciones definidas)
-        propiedad: item.propiedad?.descripcion || `Propiedad #${item.id_propiedad}`,
+        propiedad: item.propiedad?.titulo?.trim() ? item.propiedad.titulo : `Propiedad #${item.id_propiedad}`,
         inquilino: item.inquilino?.nombre || `Inquilino #${item.id_inquilino}`,
         arrendatario:
           item.propiedad?.arrendatario?.nombre ||
@@ -128,7 +128,7 @@ export function BookingManagement({ onNavigate }) {
   // Determina colores de estado según el valor (cancelada, confirmada, pendiente, rechazada, finalizada).
   const getStatusBadgeColor = status => {
     const normStatus = normalizeStatus(status)
-    if (normStatus === 'CONFIRMADA') return 'bg-[#6B8E23] text-white'
+    if (normStatus === 'CONFIRMADA') return 'bg-green-700 text-white'
     if (normStatus === 'PENDIENTE') return 'bg-yellow-100 text-yellow-700'
     if (normStatus === 'RECHAZADA') return 'bg-red-100 text-red-700'
     if (normStatus === 'FINALIZADA') return 'bg-blue-100 text-blue-700'
@@ -375,8 +375,8 @@ export function BookingManagement({ onNavigate }) {
   return (
     <div className="p-6 lg:p-8 space-y-6">
       <div>
-        <h1 className="font-['Poppins'] font-semibold text-[#5F5F5F] mb-2">Gestión de Reservas</h1>
-        <p className="text-[#5F5F5F]/70">Administra la tabla reserva con datos reales</p>
+        <h1 className="text-foreground mb-2">Gestión de Reservas</h1>
+        <p className="text-muted-foreground">Administra la tabla reserva con datos reales</p>
       </div>
 
       <div className="flex justify-end">
@@ -389,40 +389,40 @@ export function BookingManagement({ onNavigate }) {
       {/* Stats Cards */}
       {/* Tarjetas con resumen de reservas e ingresos. */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-[#F2E8CF] border-none">
+        <Card className="bg-secondary border-none">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-[#5F5F5F]/70">Total</p>
-                <p className="text-2xl font-['Poppins'] font-semibold text-[#5F5F5F]">
+                <p className="text-sm text-muted-foreground">Total</p>
+                <p className="text-2xl font-poppins font-semibold text-foreground">
                   {bookings.length}
                 </p>
               </div>
-              <Calendar className="w-8 h-8 text-[#A67C52]" />
+              <Calendar className="w-8 h-8 text-accent-ink" />
             </div>
           </CardContent>
         </Card>
         {/* Tarjeta de reservas confirmadas. */}
-        <Card className="bg-[#F2E8CF] border-none">
+        <Card className="bg-secondary border-none">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-[#5F5F5F]/70">Confirmadas</p>
-                <p className="text-2xl font-['Poppins'] font-semibold text-[#5F5F5F]">
+                <p className="text-sm text-muted-foreground">Confirmadas</p>
+                <p className="text-2xl font-poppins font-semibold text-foreground">
                   {bookings.filter(b => normalizeStatus(b.estado) === 'CONFIRMADA').length}
                 </p>
               </div>
-              <CheckCircle className="w-8 h-8 text-[#6B8E23]" />
+              <CheckCircle className="w-8 h-8 text-primary-ink" />
             </div>
           </CardContent>
         </Card>
         {/* Tarjeta de reservas pendientes. */}
-        <Card className="bg-[#F2E8CF] border-none">
+        <Card className="bg-secondary border-none">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-[#5F5F5F]/70">Pendientes</p>
-                <p className="text-2xl font-['Poppins'] font-semibold text-[#5F5F5F]">
+                <p className="text-sm text-muted-foreground">Pendientes</p>
+                <p className="text-2xl font-poppins font-semibold text-foreground">
                   {bookings.filter(b => normalizeStatus(b.estado) === 'PENDIENTE').length}
                 </p>
               </div>
@@ -431,16 +431,16 @@ export function BookingManagement({ onNavigate }) {
           </CardContent>
         </Card>
         {/* Tarjeta de ingresos totales. */}
-        <Card className="bg-[#F2E8CF] border-none">
+        <Card className="bg-secondary border-none">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-[#5F5F5F]/70">Ingresos</p>
-                <p className="text-2xl font-['Poppins'] font-semibold text-[#5F5F5F]">
+                <p className="text-sm text-muted-foreground">Ingresos</p>
+                <p className="text-2xl font-poppins font-semibold text-foreground">
                   ${bookings.reduce((sum, b) => sum + b.pago, 0).toLocaleString('es-MX')}
                 </p>
               </div>
-              <DollarSign className="w-8 h-8 text-[#A67C52]" />
+              <DollarSign className="w-8 h-8 text-accent-ink" />
             </div>
           </CardContent>
         </Card>
@@ -452,12 +452,12 @@ export function BookingManagement({ onNavigate }) {
         <CardContent className="p-6">
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#5F5F5F]/40" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
                 placeholder="Buscar por número, propiedad, huésped o anfitrión..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="pl-10 bg-[#FAFAFA] border-gray-200"
+                className="pl-10 bg-background border-gray-200"
               />
             </div>
             <div className="flex gap-2">
@@ -492,89 +492,87 @@ export function BookingManagement({ onNavigate }) {
       {/* Tabla detallada de reservas y acciones disponibles. */}
       <Card className="bg-white border-gray-200">
         <CardHeader>
-          <CardTitle className="font-['Poppins'] text-[#5F5F5F]">
+          <CardTitle className="font-poppins text-foreground">
             Lista de Reservas ({filteredBookings.length})
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-[#F2E8CF]/30">
-                  <TableHead className="text-[#5F5F5F]">Número</TableHead>
-                  <TableHead className="text-[#5F5F5F]">Propiedad</TableHead>
-                  <TableHead className="text-[#5F5F5F]">Huésped</TableHead>
-                  <TableHead className="text-[#5F5F5F]">Fechas</TableHead>
-                  <TableHead className="text-[#5F5F5F]">Noches</TableHead>
-                  <TableHead className="text-[#5F5F5F]">Estado</TableHead>
-                  <TableHead className="text-[#5F5F5F]">Total</TableHead>
-                  <TableHead className="text-[#5F5F5F]">Acciones</TableHead>
+          <Table className="lg:table-fixed">
+            <TableHeader>
+              <TableRow className="bg-secondary/30">
+                <TableHead className="text-foreground lg:w-[15%]">Número</TableHead>
+                <TableHead className="text-foreground lg:w-[24%]">Propiedad</TableHead>
+                <TableHead className="text-foreground lg:w-[14%]">Huésped</TableHead>
+                <TableHead className="text-foreground lg:w-[10%]">Fechas</TableHead>
+                <TableHead className="text-foreground lg:w-[8%]">Noches</TableHead>
+                <TableHead className="text-foreground lg:w-[11%]">Estado</TableHead>
+                <TableHead className="text-foreground lg:w-[10%]">Total</TableHead>
+                <TableHead className="text-foreground lg:w-[8%]">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            {/* Filas generadas desde las reservas filtradas. */}
+            <TableBody>
+              {filteredBookings.map(booking => (
+                <TableRow key={booking.key} className="hover:bg-secondary/20">
+                  <TableCell>
+                    <p className="lg:whitespace-normal lg:break-all text-foreground font-medium">
+                      RSV-{booking.id_propiedad}-{booking.id_inquilino}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Inicio: {booking.fecha_inicio}</p>
+                  </TableCell>
+                  <TableCell>
+                    <p className="lg:truncate text-foreground" title={booking.propiedad}>{booking.propiedad}</p>
+                    <p className="lg:truncate text-sm text-muted-foreground" title={booking.arrendatario}>
+                      Arrendatario: {booking.arrendatario}
+                    </p>
+                  </TableCell>
+                  <TableCell className="lg:whitespace-normal lg:break-words text-foreground">{booking.inquilino}</TableCell>
+                  <TableCell>
+                    <p className="text-foreground text-sm">
+                      {new Date(booking.fecha_inicio).toLocaleDateString('es-ES', {
+                        day: '2-digit',
+                        month: 'short',
+                      })}
+                    </p>
+                    <p className="text-foreground text-sm">
+                      {new Date(booking.fecha_fin).toLocaleDateString('es-ES', {
+                        day: '2-digit',
+                        month: 'short',
+                      })}
+                    </p>
+                  </TableCell>
+                  <TableCell className="text-foreground">
+                    {calculateNights(booking.fecha_inicio, booking.fecha_fin)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={getStatusBadgeColor(booking.estado)}>
+                      {getStatusLabel(booking.estado)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-foreground font-medium">
+                    ${booking.pago.toLocaleString('es-MX')}
+                  </TableCell>
+                  <TableCell>
+                    <ActionMenu
+                      label={`Acciones de la reserva RSV-${booking.id_propiedad}-${booking.id_inquilino}`}
+                      actions={[
+                        ...getAccionesPorEstado(booking.estado).map(action => ({
+                          label: action.label,
+                          variant: getActionMenuVariant(action.variant),
+                          onClick: () => openActionConfirmation(booking.key, action.id),
+                        })),
+                        {
+                          label: 'Eliminar',
+                          variant: 'danger',
+                          onClick: () => openActionConfirmation(booking.key, 'eliminar'),
+                        },
+                      ]}
+                    />
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              {/* Filas generadas desde las reservas filtradas. */}
-              <TableBody>
-                {filteredBookings.map(booking => (
-                  <TableRow key={booking.key} className="hover:bg-[#F2E8CF]/20">
-                    <TableCell>
-                      <p className="text-[#5F5F5F] font-medium">
-                        RSV-{booking.id_propiedad}-{booking.id_inquilino}
-                      </p>
-                      <p className="text-xs text-[#5F5F5F]/60">Inicio: {booking.fecha_inicio}</p>
-                    </TableCell>
-                    <TableCell>
-                      <p className="text-[#5F5F5F]">{booking.propiedad}</p>
-                      <p className="text-sm text-[#5F5F5F]/60">
-                        Arrendatario: {booking.arrendatario}
-                      </p>
-                    </TableCell>
-                    <TableCell className="text-[#5F5F5F]">{booking.inquilino}</TableCell>
-                    <TableCell>
-                      <p className="text-[#5F5F5F] text-sm">
-                        {new Date(booking.fecha_inicio).toLocaleDateString('es-ES', {
-                          day: '2-digit',
-                          month: 'short',
-                        })}
-                      </p>
-                      <p className="text-[#5F5F5F] text-sm">
-                        {new Date(booking.fecha_fin).toLocaleDateString('es-ES', {
-                          day: '2-digit',
-                          month: 'short',
-                        })}
-                      </p>
-                    </TableCell>
-                    <TableCell className="text-[#5F5F5F]">
-                      {calculateNights(booking.fecha_inicio, booking.fecha_fin)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getStatusBadgeColor(booking.estado)}>
-                        {getStatusLabel(booking.estado)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-[#5F5F5F] font-medium">
-                      ${booking.pago.toLocaleString('es-MX')}
-                    </TableCell>
-                    <TableCell>
-                      <ActionMenu
-                        label={`Acciones de la reserva RSV-${booking.id_propiedad}-${booking.id_inquilino}`}
-                        actions={[
-                          ...getAccionesPorEstado(booking.estado).map(action => ({
-                            label: action.label,
-                            variant: getActionMenuVariant(action.variant),
-                            onClick: () => openActionConfirmation(booking.key, action.id),
-                          })),
-                          {
-                            label: 'Eliminar',
-                            variant: 'danger',
-                            onClick: () => openActionConfirmation(booking.key, 'eliminar'),
-                          },
-                        ]}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
       {/* Modal de confirmación para ejecutar acciones sobre una reserva. */}
@@ -617,21 +615,21 @@ export function BookingManagement({ onNavigate }) {
           className="p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow cursor-pointer text-center"
         >
           <div className="text-xl mb-2">📊</div>
-          <h3 className="font-['Poppins'] font-semibold text-[#5F5F5F] text-sm">Dashboard</h3>
+          <h3 className="text-foreground text-sm">Dashboard</h3>
         </button>
         <button
           onClick={() => onNavigate('users')}
           className="p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow cursor-pointer text-center"
         >
           <div className="text-xl mb-2">👥</div>
-          <h3 className="font-['Poppins'] font-semibold text-[#5F5F5F] text-sm">Usuarios</h3>
+          <h3 className="text-foreground text-sm">Usuarios</h3>
         </button>
         <button
           onClick={() => onNavigate('properties')}
           className="p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow cursor-pointer text-center"
         >
           <div className="text-xl mb-2">🏠</div>
-          <h3 className="font-['Poppins'] font-semibold text-[#5F5F5F] text-sm">Propiedades</h3>
+          <h3 className="text-foreground text-sm">Propiedades</h3>
         </button>
       </div>
     </div>

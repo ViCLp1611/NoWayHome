@@ -66,13 +66,13 @@ export function ChangePasswordModal({ isOpen, onClose, userData }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="w-full max-w-md bg-white border border-[#6B8E23]/10 shadow-lg rounded-2xl overflow-hidden transform transition-all p-6 md:p-8">
+      <div className="w-full max-w-md bg-white border border-border shadow-lg rounded-2xl overflow-hidden transform transition-all p-6 md:p-8">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="font-poppins font-semibold text-xl text-[#5F5F5F]">Cambiar Contraseña</h2>
+          <h2 className="text-foreground">Cambiar Contraseña</h2>
           <button
             onClick={handleClose}
             disabled={isLoading}
-            className="text-[#5F5F5F] hover:text-[#6B8E23] transition-colors rounded-full p-1.5 hover:bg-[#F2E8CF]/50 disabled:opacity-50"
+            className="text-foreground hover:text-primary-ink transition-colors rounded-full p-1.5 hover:bg-secondary/50 disabled:opacity-50"
           >
             <X className="h-5 w-5" />
           </button>
@@ -83,7 +83,7 @@ export function ChangePasswordModal({ isOpen, onClose, userData }) {
           {success && <AlertMessage type="success" title="Éxito" message={success} />}
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-[#5F5F5F] block">Nueva Contraseña</label>
+            <label className="text-sm font-medium text-foreground block">Nueva Contraseña</label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
               <input
@@ -92,13 +92,13 @@ export function ChangePasswordModal({ isOpen, onClose, userData }) {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 disabled={isLoading}
-                className="w-full pl-10 pr-10 py-2.5 border border-[#6B8E23]/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6B8E23] focus:border-transparent text-[#5F5F5F] transition-all disabled:opacity-50 disabled:bg-gray-50"
+                className="w-full pl-10 pr-10 py-2.5 border border-control-border rounded-xl focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent text-foreground transition-all disabled:opacity-50 disabled:bg-gray-50"
                 placeholder="Mínimo 6 caracteres"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#6B8E23]"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-primary-ink"
               >
                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
@@ -106,7 +106,7 @@ export function ChangePasswordModal({ isOpen, onClose, userData }) {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-[#5F5F5F] block">
+            <label className="text-sm font-medium text-foreground block">
               Confirmar Nueva Contraseña
             </label>
             <div className="relative">
@@ -117,13 +117,13 @@ export function ChangePasswordModal({ isOpen, onClose, userData }) {
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
                 disabled={isLoading}
-                className="w-full pl-10 pr-10 py-2.5 border border-[#6B8E23]/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6B8E23] focus:border-transparent text-[#5F5F5F] transition-all disabled:opacity-50 disabled:bg-gray-50"
+                className="w-full pl-10 pr-10 py-2.5 border border-control-border rounded-xl focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent text-foreground transition-all disabled:opacity-50 disabled:bg-gray-50"
                 placeholder="Repite la contraseña"
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#6B8E23]"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-primary-ink"
               >
                 {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>

@@ -250,12 +250,12 @@ export function DetalleReservaPage() {
       case 'CONFIRMADA':
         return {
           label: 'Confirmada',
-          className: 'bg-[#6B8E23]/10 text-[#6B8E23] border-[#6B8E23]/20',
+          className: 'bg-primary/10 text-primary-ink border-border',
         }
       case 'PENDIENTE':
         return {
           label: 'Pendiente de Aprobación',
-          className: 'bg-[#A67C52]/10 text-[#A67C52] border-[#A67C52]/20',
+          className: 'bg-accent/10 text-accent-ink border-border',
         }
       case 'CANCELADA':
         return {
@@ -362,10 +362,10 @@ export function DetalleReservaPage() {
   return (
     <>
       <InquilinoNavbar />
-      <div className="min-h-screen bg-[#FAFAFA] px-4 py-6 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-background px-4 py-6 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-5xl">
-          <Card className="overflow-hidden rounded-[28px] border border-[#6B8E23]/10 bg-white shadow-[0_10px_30px_rgba(95,95,95,0.08)]">
-            <div className="flex items-center justify-between gap-3 border-b border-[#F2E8CF] px-5 py-4 sm:px-6">
+          <Card className="overflow-hidden rounded-[28px] border border-border bg-white shadow-[0_10px_30px_color-mix(in_srgb,var(--foreground)_8%,transparent)]">
+            <div className="flex items-center justify-between gap-3 border-b border-secondary px-5 py-4 sm:px-6">
               <Button
                 type="button"
                 variant="ghost"
@@ -373,16 +373,16 @@ export function DetalleReservaPage() {
                   if (view === 'contract') setView('details')
                   else navigate('/inquilino/perfil')
                 }}
-                className="flex h-10 w-10 items-center justify-center rounded-full text-[#5F5F5F] hover:bg-[#F2E8CF] hover:text-[#6B8E23]"
+                className="flex h-10 w-10 items-center justify-center rounded-full text-foreground hover:bg-secondary hover:text-primary-ink"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
 
               <div className="text-center">
-                <p className="font-poppins text-sm font-semibold uppercase tracking-[0.2em] text-[#A67C52]">
+                <p className="font-poppins text-sm font-semibold uppercase tracking-[0.2em] text-accent-ink">
                   Tu estadía
                 </p>
-                <h2 className="font-poppins text-lg font-semibold text-[#5F5F5F] sm:text-xl">
+                <h2 className="text-foreground">
                   {view === 'contract' ? 'Constancia de Reserva' : 'Detalles de tu Solicitud'}
                 </h2>
               </div>
@@ -411,7 +411,7 @@ export function DetalleReservaPage() {
               ) : (
                 <>
                   <div className="space-y-4">
-                    <div className="relative overflow-hidden rounded-[24px] bg-[#F2E8CF]">
+                    <div className="relative overflow-hidden rounded-[24px] bg-secondary">
                       <img
                         src={
                           (imagenes.length > 0
@@ -427,7 +427,7 @@ export function DetalleReservaPage() {
                             variant="ghost"
                             size="icon"
                             onClick={handlePrevImage}
-                            className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/70 text-[#5F5F5F] shadow-md transition hover:bg-white"
+                            className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/70 text-foreground shadow-md transition hover:bg-white"
                           >
                             <ChevronLeft className="h-6 w-6" />
                           </Button>
@@ -435,7 +435,7 @@ export function DetalleReservaPage() {
                             variant="ghost"
                             size="icon"
                             onClick={handleNextImage}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/70 text-[#5F5F5F] shadow-md transition hover:bg-white"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/70 text-foreground shadow-md transition hover:bg-white"
                           >
                             <ChevronRight className="h-6 w-6" />
                           </Button>
@@ -445,7 +445,7 @@ export function DetalleReservaPage() {
                                 key={idx}
                                 onClick={() => setImagenActual(idx)}
                                 className={`h-2 rounded-full transition-all duration-300 ${
-                                  idx === imagenActual ? 'w-5 bg-[#6B8E23]' : 'w-2 bg-white/70'
+                                  idx === imagenActual ? 'w-5 bg-primary' : 'w-2 bg-white/70'
                                 }`}
                                 aria-label={`Ver imagen ${idx + 1}`}
                               />
@@ -455,14 +455,14 @@ export function DetalleReservaPage() {
                       )}
                     </div>
 
-                    <div className="rounded-[24px] border border-[#F2E8CF] bg-[#FAFAFA] p-5">
+                    <div className="rounded-[24px] border border-secondary bg-background p-5">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <h3 className="font-poppins text-xl font-semibold text-[#5F5F5F]">
+                          <h3 className="text-xl text-foreground">
                             {propertyTitle}
                           </h3>
-                          <p className="mt-2 flex items-center gap-2 text-sm text-[#5F5F5F]/80">
-                            <MapPin className="h-4 w-4 text-[#A67C52]" />
+                          <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                            <MapPin className="h-4 w-4 text-accent-ink" />
                             {propertyLocation || 'Ubicación no disponible'}
                           </p>
                         </div>
@@ -474,11 +474,11 @@ export function DetalleReservaPage() {
                           const Icon = item.icon
                           return (
                             <div key={item.label} className="rounded-2xl bg-white p-3 shadow-sm">
-                              <div className="flex items-center gap-2 text-[#A67C52]">
+                              <div className="flex items-center gap-2 text-accent-ink">
                                 <Icon className="h-4 w-4" />
                                 <span className="text-sm font-medium">{item.label}</span>
                               </div>
-                              <p className="mt-2 text-sm text-[#5F5F5F]">{item.value}</p>
+                              <p className="mt-2 text-sm text-foreground">{item.value}</p>
                             </div>
                           )
                         })}
@@ -487,32 +487,32 @@ export function DetalleReservaPage() {
                   </div>
 
                   <div className="space-y-4">
-                    <div className="rounded-[24px] bg-[#F2E8CF] p-5">
-                      <div className="flex items-center gap-2 text-[#A67C52]">
+                    <div className="rounded-[24px] bg-secondary p-5">
+                      <div className="flex items-center gap-2 text-accent-ink">
                         <ReceiptText className="h-5 w-5" />
-                        <h3 className="font-poppins text-lg font-semibold text-[#5F5F5F]">
+                        <h3 className="text-lg text-foreground">
                           Resumen de pago
                         </h3>
                       </div>
 
-                      <div className="mt-4 space-y-3 text-sm text-[#5F5F5F]">
+                      <div className="mt-4 space-y-3 text-sm text-foreground">
                         <div className="flex justify-between items-center">
-                          <span className="text-[#5F5F5F]/80">
+                          <span className="text-muted-foreground">
                             {formatPrice(precioPorNoche)} x {noches}{' '}
                             {noches === 1 ? 'noche' : 'noches'}
                           </span>
                           <span className="font-medium">{formatPrice(precioBaseTotal)}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-[#5F5F5F]/80">Comisión y otros</span>
+                          <span className="text-muted-foreground">Comisión y otros</span>
                           <span className="font-medium">{formatPrice(comisionYOtros)}</span>
                         </div>
 
-                        <div className="border-t border-[#A67C52]/20 my-2"></div>
+                        <div className="border-t border-border my-2"></div>
 
                         <div className="flex justify-between items-center text-base">
                           <span className="font-semibold">Total pagado</span>
-                          <span className="font-semibold text-[#6B8E23]">
+                          <span className="font-semibold text-primary-ink">
                             {formatPrice(totalFinal)}
                           </span>
                         </div>
@@ -523,7 +523,7 @@ export function DetalleReservaPage() {
                     {estado === 'PENDIENTE' && (
                       <div className="rounded-[24px] border border-yellow-500/20 bg-yellow-50/50 p-5 text-center">
                         <Clock className="mx-auto h-12 w-12 text-yellow-500" />
-                        <h3 className="mt-4 font-poppins text-lg font-semibold text-yellow-800">
+                        <h3 className="mt-4 text-lg text-yellow-800">
                           Pendiente de Aprobación
                         </h3>
                         <p className="mt-2 text-sm text-yellow-700/80">
@@ -536,7 +536,7 @@ export function DetalleReservaPage() {
                     {estado === 'CONFIRMADA' && !isPaid && (
                       <div className="rounded-[24px] border border-green-500/20 bg-green-50/50 p-5 text-center">
                         <CheckCircle className="mx-auto h-12 w-12 text-green-500" />
-                        <h3 className="mt-4 font-poppins text-lg font-semibold text-green-800">
+                        <h3 className="mt-4 text-lg text-green-800">
                           ¡Tu reserva fue aprobada!
                         </h3>
                         <p className="mt-2 text-sm text-green-700/80">
@@ -544,7 +544,7 @@ export function DetalleReservaPage() {
                           tu reserva.
                         </p>
                         <Button
-                          className="mt-4 w-full bg-[#6B8E23] hover:bg-[#5a7a1e] text-white"
+                          className="mt-4 w-full bg-primary hover:bg-primary-hover active:bg-primary-active text-primary-foreground"
                           onClick={() => setShowPaymentModal(true)}
                         >
                           <CreditCard className="mr-2 h-4 w-4" />
@@ -556,7 +556,7 @@ export function DetalleReservaPage() {
                     {estado === 'RECHAZADA' && (
                       <div className="rounded-[24px] border border-red-500/20 bg-red-50/50 p-5">
                         <XCircle className="mx-auto h-12 w-12 text-red-500" />
-                        <h3 className="mt-4 font-poppins text-lg font-semibold text-red-800">
+                        <h3 className="mt-4 text-lg text-red-800">
                           Solicitud Rechazada
                         </h3>
                         <p className="mt-2 text-sm text-red-700/80">
@@ -568,7 +568,7 @@ export function DetalleReservaPage() {
 
                     {estado === 'CONFIRMADA' && isPaid && (
                       <div className="rounded-[24px] border border-green-500/20 bg-green-50/50 p-5">
-                        <h3 className="font-poppins text-lg font-semibold text-green-800">
+                        <h3 className="text-lg text-green-800">
                           ¡Todo listo para tu viaje!
                         </h3>
                         <p className="mt-2 text-sm text-green-700/80">
@@ -587,7 +587,7 @@ export function DetalleReservaPage() {
 
                     {canCancel && (
                       <div className="rounded-[24px] border border-red-500/20 bg-red-50/50 p-5">
-                        <h3 className="font-poppins text-lg font-semibold text-red-800">
+                        <h3 className="text-lg text-red-800">
                           ¿Necesitas cancelar?
                         </h3>
                         <p className="mt-2 text-sm text-red-700/80">
@@ -624,10 +624,10 @@ export function DetalleReservaPage() {
           {showDeleteConfirm && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
               <Card className="w-full max-w-md p-6">
-                <h3 className="font-poppins text-lg font-semibold text-[#5F5F5F]">
+                <h3 className="text-lg text-foreground">
                   Eliminar del Historial
                 </h3>
-                <p className="mt-2 text-sm text-[#5F5F5F]/80">
+                <p className="mt-2 text-sm text-muted-foreground">
                   ¿Estás seguro de que quieres eliminar esta reserva de tu historial? Esta acción no
                   se puede deshacer.
                 </p>
@@ -666,7 +666,7 @@ export function DetalleReservaPage() {
                 >
                   <XCircle />
                 </Button>
-                <h3 className="font-poppins text-xl font-semibold text-[#5F5F5F] mb-4">
+                <h3 className="text-xl text-foreground mb-4">
                   Completa tu pago
                 </h3>
                 <PayPalScriptProvider options={{ 'client-id': PAYPAL_CLIENT_ID, currency: 'MXN' }}>

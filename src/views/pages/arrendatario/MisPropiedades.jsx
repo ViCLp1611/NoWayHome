@@ -20,8 +20,8 @@ import { PropertyLocationMap } from '@/views/components/PropertyLocationMap'
 import { UserNavbar } from '@/views/user/components/UserNavbar.jsx'
 
 const statusStyles = {
-  activa: 'bg-[#6B8E23] text-white',
-  inactiva: 'bg-[#A67C52]/20 text-[#5F5F5F]',
+  activa: 'bg-green-700 text-white',
+  inactiva: 'bg-accent/20 text-foreground',
   suspendida: 'bg-amber-100 text-amber-800',
 }
 
@@ -125,34 +125,34 @@ export function MisPropiedades() {
   return (
     <>
       <UserNavbar />
-      <main className="min-h-screen bg-[#FAFAFA] px-4 py-8">
+      <main className="min-h-screen bg-background px-4 py-8">
         <div className="container mx-auto max-w-5xl">
           <Button
             type="button"
             variant="outline"
             onClick={() => navigate('/arrendatario/perfil')}
-            className="mb-5 border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#6B8E23] hover:text-white shadow-none rounded-xl"
+            className="mb-5 border-2 border-primary-ink text-primary-ink hover:bg-primary hover:text-primary-foreground shadow-none rounded-xl"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Volver al perfil
           </Button>
 
-          <Card className="bg-[#F2E8CF] border-none shadow-none rounded-2xl p-6 md:p-8">
+          <Card className="bg-secondary border-none shadow-none rounded-2xl p-6 md:p-8">
             <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
               <div>
-                <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-white text-[#6B8E23]">
+                <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-white text-primary-ink">
                   <Building2 className="h-6 w-6" />
                 </div>
-                <h1 className="font-poppins text-2xl font-semibold text-[#5F5F5F] md:text-3xl">
+                <h1 className="text-foreground">
                   Mis propiedades
                 </h1>
-                <p className="mt-3 max-w-2xl text-[#5F5F5F]/80">
+                <p className="mt-3 max-w-2xl text-muted-foreground">
                   Administra los alojamientos que tienes publicados en NoWayHome.
                 </p>
               </div>
               <Button
                 onClick={() => navigate('/arrendatario/propiedades/nueva')}
-                className="bg-[#6B8E23] text-white hover:bg-[#5a7a1e] shadow-none rounded-xl"
+                className="bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active shadow-none rounded-xl"
               >
                 <Plus className="mr-2 h-4 w-4" />
                 Agregar propiedad
@@ -162,7 +162,7 @@ export function MisPropiedades() {
 
           <section className="mt-8">
             {isLoading && (
-              <Card className="p-6 bg-white border border-[#6B8E23]/10 shadow-sm rounded-2xl text-[#5F5F5F]">
+              <Card className="p-6 bg-white border border-border shadow-sm rounded-2xl text-foreground">
                 Cargando propiedades...
               </Card>
             )}
@@ -174,12 +174,12 @@ export function MisPropiedades() {
             )}
 
             {!isLoading && !error && properties.length === 0 && (
-              <Card className="p-6 bg-white border border-[#6B8E23]/10 shadow-sm rounded-2xl">
+              <Card className="p-6 bg-white border border-border shadow-sm rounded-2xl">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-[#5F5F5F]">Aún no tienes propiedades registradas.</p>
+                  <p className="text-foreground">Aún no tienes propiedades registradas.</p>
                   <Button
                     onClick={() => navigate('/arrendatario/propiedades/nueva')}
-                    className="bg-[#6B8E23] text-white hover:bg-[#5a7a1e] shadow-none rounded-xl"
+                    className="bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active shadow-none rounded-xl"
                   >
                     <Plus className="mr-2 h-4 w-4" />
                     Agregar propiedad
@@ -193,7 +193,7 @@ export function MisPropiedades() {
                 {properties.map(property => (
                   <Card
                     key={property.id_propiedad}
-                    className="overflow-hidden bg-white border border-[#6B8E23]/10 shadow-sm rounded-2xl"
+                    className="overflow-hidden bg-white border border-border shadow-sm rounded-2xl"
                   >
                     {property.imagen_principal ? (
                       <img
@@ -202,7 +202,7 @@ export function MisPropiedades() {
                         className="h-52 w-full object-cover"
                       />
                     ) : (
-                      <div className="flex h-52 w-full items-center justify-center bg-[#F2E8CF] text-[#6B8E23]">
+                      <div className="flex h-52 w-full items-center justify-center bg-secondary text-primary-ink">
                         <Building2 className="h-10 w-10" />
                       </div>
                     )}
@@ -210,10 +210,10 @@ export function MisPropiedades() {
                     <div className="p-6">
                       <div className="mb-4 flex items-start justify-between gap-4">
                         <div>
-                          <h2 className="font-poppins text-xl font-semibold text-[#5F5F5F]">
+                          <h2 className="text-foreground">
                             {property.titulo}
                           </h2>
-                          <p className="mt-1 text-sm text-[#5F5F5F]/75">
+                          <p className="mt-1 text-sm text-muted-foreground">
                             {[property.ciudad, property.pais].filter(Boolean).join(', ')}
                           </p>
                         </div>
@@ -224,21 +224,21 @@ export function MisPropiedades() {
                         </span>
                       </div>
 
-                      <p className="font-poppins text-lg font-semibold text-[#6B8E23]">
+                      <p className="font-poppins text-lg font-semibold text-primary-ink">
                         {formatPrice(property)}
                       </p>
 
-                      <div className="mt-4 grid grid-cols-3 gap-3 text-sm text-[#5F5F5F]">
+                      <div className="mt-4 grid grid-cols-3 gap-3 text-sm text-foreground">
                         <span className="flex items-center gap-2">
-                          <Users className="h-4 w-4 text-[#A67C52]" />
+                          <Users className="h-4 w-4 text-accent-ink" />
                           {property.capacidad}
                         </span>
                         <span className="flex items-center gap-2">
-                          <BedDouble className="h-4 w-4 text-[#A67C52]" />
+                          <BedDouble className="h-4 w-4 text-accent-ink" />
                           {property.numero_habitaciones}
                         </span>
                         <span className="flex items-center gap-2">
-                          <Bath className="h-4 w-4 text-[#A67C52]" />
+                          <Bath className="h-4 w-4 text-accent-ink" />
                           {property.numero_banos}
                         </span>
                       </div>
@@ -248,7 +248,7 @@ export function MisPropiedades() {
                           type="button"
                           onClick={() => setSelectedProperty(property)}
                           variant="outline"
-                          className="border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#6B8E23] hover:text-white shadow-none rounded-xl"
+                          className="border-2 border-primary-ink text-primary-ink hover:bg-primary hover:text-primary-foreground shadow-none rounded-xl"
                         >
                           <Eye className="mr-2 h-4 w-4" />
                           Ver detalles
@@ -259,7 +259,7 @@ export function MisPropiedades() {
                             navigate(`/arrendatario/propiedades/${property.id_propiedad}/editar`)
                           }
                           variant="outline"
-                          className="border-2 border-[#6B8E23]/20 text-[#5F5F5F] hover:border-[#6B8E23] hover:bg-[#F2E8CF]/30 shadow-none rounded-xl"
+                          className="border-2 border-border text-foreground hover:border-primary-ink hover:bg-secondary/30 shadow-none rounded-xl"
                         >
                           <Pencil className="mr-2 h-4 w-4" />
                           Editar
@@ -279,15 +279,15 @@ export function MisPropiedades() {
               aria-modal="true"
               aria-labelledby="property-preview-title"
             >
-              <Card className="w-full max-w-5xl overflow-hidden bg-[#F2E8CF] border-none shadow-xl rounded-2xl">
-                <div className="flex flex-col gap-3 border-b border-[#6B8E23]/15 p-5 sm:flex-row sm:items-center sm:justify-between">
+              <Card className="w-full max-w-5xl overflow-hidden bg-secondary border-none shadow-xl rounded-2xl">
+                <div className="flex flex-col gap-3 border-b border-border p-5 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-sm font-semibold uppercase tracking-wide text-[#6B8E23]">
+                    <p className="text-sm font-semibold uppercase tracking-wide text-primary-ink">
                       Vista previa de publicación
                     </p>
                     <h2
                       id="property-preview-title"
-                      className="mt-1 font-poppins text-2xl font-semibold text-[#5F5F5F]"
+                      className="mt-1 text-foreground"
                     >
                       {selectedProperty.titulo || 'Propiedad sin título'}
                     </h2>
@@ -299,7 +299,7 @@ export function MisPropiedades() {
                         navigate(`/arrendatario/propiedades/${selectedProperty.id_propiedad}/editar`)
                       }
                       variant="outline"
-                      className="border-2 border-[#6B8E23]/20 text-[#5F5F5F] hover:border-[#6B8E23] hover:bg-white/60 shadow-none rounded-xl"
+                      className="border-2 border-border text-foreground hover:border-primary-ink hover:bg-white/60 shadow-none rounded-xl"
                     >
                       <Pencil className="mr-2 h-4 w-4" />
                       Editar propiedad
@@ -307,7 +307,7 @@ export function MisPropiedades() {
                     <Button
                       type="button"
                       onClick={() => setSelectedProperty(null)}
-                      className="bg-[#6B8E23] text-white hover:bg-[#5a7a1e] shadow-none rounded-xl"
+                      className="bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active shadow-none rounded-xl"
                     >
                       <X className="mr-2 h-4 w-4" />
                       Cerrar previsualización
@@ -324,10 +324,10 @@ export function MisPropiedades() {
                         className="h-80 w-full rounded-xl object-cover"
                       />
                     ) : (
-                      <div className="flex h-80 w-full items-center justify-center rounded-xl bg-white text-[#6B8E23]">
+                      <div className="flex h-80 w-full items-center justify-center rounded-xl bg-white text-primary-ink">
                         <div className="flex flex-col items-center gap-2 text-center">
                           <ImageIcon className="h-10 w-10" />
-                          <p className="font-medium text-[#5F5F5F]">Imagen no disponible</p>
+                          <p className="font-medium text-foreground">Imagen no disponible</p>
                         </div>
                       </div>
                     )}
@@ -345,15 +345,15 @@ export function MisPropiedades() {
                       </div>
                     )}
 
-                    <div className="rounded-xl bg-white p-5 text-[#5F5F5F]">
-                      <h3 className="font-poppins text-xl font-semibold">
+                    <div className="rounded-xl bg-white p-5 text-foreground">
+                      <h3 className="text-xl">
                         {selectedProperty.titulo || 'Propiedad sin título'}
                       </h3>
-                      <p className="mt-3 leading-7 text-[#5F5F5F]/85">
+                      <p className="mt-3 leading-7 text-muted-foreground">
                         {selectedProperty.descripcion || 'Sin descripción disponible.'}
                       </p>
-                      <p className="mt-4 flex items-start gap-2 text-sm text-[#5F5F5F]/80">
-                        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#A67C52]" />
+                      <p className="mt-4 flex items-start gap-2 text-sm text-muted-foreground">
+                        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-accent-ink" />
                         {selectedLocation || 'Dirección no disponible'}
                       </p>
                     </div>
@@ -361,10 +361,10 @@ export function MisPropiedades() {
 
                   <aside className="space-y-5">
                     <div className="rounded-xl bg-white p-5">
-                      <p className="font-poppins text-2xl font-semibold text-[#6B8E23]">
+                      <p className="font-poppins text-2xl font-semibold text-primary-ink">
                         {formatPrice(selectedProperty)}
                       </p>
-                      <p className="mt-1 text-sm text-[#5F5F5F]/75">
+                      <p className="mt-1 text-sm text-muted-foreground">
                         {selectedProperty.tipo_precio === 'mensual' ? 'Precio mensual' : 'Precio por noche'}
                       </p>
                       <span
@@ -374,28 +374,28 @@ export function MisPropiedades() {
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-3 rounded-xl bg-white p-5 text-center text-[#5F5F5F]">
+                    <div className="grid grid-cols-3 gap-3 rounded-xl bg-white p-5 text-center text-foreground">
                       <div>
-                        <Users className="mx-auto h-5 w-5 text-[#A67C52]" />
+                        <Users className="mx-auto h-5 w-5 text-accent-ink" />
                         <p className="mt-2 font-semibold">{selectedProperty.capacidad ?? '-'}</p>
-                        <p className="text-xs text-[#5F5F5F]/70">Capacidad</p>
+                        <p className="text-xs text-muted-foreground">Capacidad</p>
                       </div>
                       <div>
-                        <BedDouble className="mx-auto h-5 w-5 text-[#A67C52]" />
+                        <BedDouble className="mx-auto h-5 w-5 text-accent-ink" />
                         <p className="mt-2 font-semibold">
                           {selectedProperty.numero_habitaciones ?? '-'}
                         </p>
-                        <p className="text-xs text-[#5F5F5F]/70">Habitaciones</p>
+                        <p className="text-xs text-muted-foreground">Habitaciones</p>
                       </div>
                       <div>
-                        <Bath className="mx-auto h-5 w-5 text-[#A67C52]" />
+                        <Bath className="mx-auto h-5 w-5 text-accent-ink" />
                         <p className="mt-2 font-semibold">{selectedProperty.numero_banos ?? '-'}</p>
-                        <p className="text-xs text-[#5F5F5F]/70">Baños</p>
+                        <p className="text-xs text-muted-foreground">Baños</p>
                       </div>
                     </div>
 
                     <div className="rounded-xl bg-white p-5">
-                      <h3 className="font-poppins text-lg font-semibold text-[#5F5F5F]">
+                      <h3 className="text-lg text-foreground">
                         Ubicación
                       </h3>
                       {hasCoordinates(selectedProperty) ? (
@@ -405,9 +405,9 @@ export function MisPropiedades() {
                           className="mt-3"
                         />
                       ) : (
-                        <div className="mt-3 flex min-h-56 items-center justify-center rounded-xl border border-[#6B8E23]/15 bg-[#F2E8CF]/55 text-[#5F5F5F]">
+                        <div className="mt-3 flex min-h-56 items-center justify-center rounded-xl border border-border bg-secondary/55 text-foreground">
                           <div className="flex flex-col items-center gap-2 text-center">
-                            <MapPin className="h-6 w-6 text-[#A67C52]" />
+                            <MapPin className="h-6 w-6 text-accent-ink" />
                             <p className="font-medium">Ubicación no disponible</p>
                           </div>
                         </div>

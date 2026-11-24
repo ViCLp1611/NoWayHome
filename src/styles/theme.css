@@ -2,55 +2,62 @@
 
 :root {
   /* Typography */
-  --font-inter: 'Inter', sans-serif;
-  --font-poppins: 'Poppins', sans-serif;
-  --font-size: 16px;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-heading: 'Poppins', system-ui, sans-serif;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-size-body: 1rem;
+  --font-size-secondary: 0.875rem;
+  --font-size-h1: 1.75rem;
+  --font-size-h2: 1.25rem;
   
-  /* Custom Color Palette */
-  --olive-green: #6B8E23;
-  --sand-beige: #F2E8CF;
-  --soft-brown: #A67C52;
-  --off-white: #FAFAFA;
-  --warm-gray: #5F5F5F;
-  
-  /* Theme colors mapped to custom palette */
   --background: #FAFAFA;
-  --foreground: #5F5F5F;
-  --card: #F2E8CF;
-  --card-foreground: #5F5F5F;
-  --popover: #FAFAFA;
-  --popover-foreground: #5F5F5F;
-  --primary: #6B8E23;
-  --primary-foreground: #FAFAFA;
-  --secondary: #F2E8CF;
-  --secondary-foreground: #5F5F5F;
-  --muted: #F2E8CF;
-  --muted-foreground: #5F5F5F;
-  --accent: #A67C52;
-  --accent-foreground: #FAFAFA;
+  --foreground: #1C1C1C;
+  --primary: #B8860B;
+  --secondary: #DCDCDC;
+  --accent: #B87333;
+
+  /* Dark text on brand fills and darker inks for text on light surfaces. */
+  --primary-foreground: var(--foreground);
+  --accent-foreground: #111111;
+  --primary-ink: #694B08;
+  --accent-ink: #733F20;
+  --primary-hover: color-mix(in srgb, var(--primary) 85%, var(--background));
+  --primary-active: color-mix(in srgb, var(--primary) 94%, var(--foreground));
+  --accent-hover: color-mix(in srgb, var(--accent) 85%, var(--background));
+  --accent-active: color-mix(in srgb, var(--accent) 94%, var(--foreground));
+  --secondary-hover: color-mix(in srgb, var(--secondary) 92%, var(--foreground));
+  --disabled: var(--secondary);
+  --control-border: #77736D;
+  --card: var(--secondary);
+  --card-foreground: var(--foreground);
+  --popover: var(--background);
+  --popover-foreground: var(--foreground);
+  --secondary-foreground: var(--foreground);
+  --muted: var(--secondary);
+  --muted-foreground: #555555;
   --destructive: #d4183d;
   --destructive-foreground: #ffffff;
-  --border: rgba(107, 142, 35, 0.2);
-  --input: transparent;
-  --input-background: #FAFAFA;
-  --switch-background: #cbced4;
-  --font-weight-medium: 500;
-  --font-weight-normal: 400;
-  --ring: #6B8E23;
+  --border: var(--secondary);
+  --input: var(--control-border);
+  --input-background: var(--background);
+  --switch-background: var(--control-border);
+  --ring: #302100;
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: #030213;
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: var(--background);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--secondary);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
 }
 
 .dark {
@@ -73,8 +80,6 @@
   --border: oklch(0.269 0 0);
   --input: oklch(0.269 0 0);
   --ring: oklch(0.439 0 0);
-  --font-weight-medium: 500;
-  --font-weight-normal: 400;
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -83,14 +88,34 @@
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-primary-foreground: var(--primary-foreground);
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
 }
 
+@media (width >= 64rem) {
+  :root {
+    --font-size-h1: 2.25rem;
+    --font-size-h2: 1.5rem;
+  }
+}
+
 @theme inline {
+  --font-inter: var(--font-body);
+  --font-poppins: var(--font-heading);
+  --text-base: var(--font-size-body);
+  --text-sm: var(--font-size-secondary);
+  --color-primary-ink: var(--primary-ink);
+  --color-accent-ink: var(--accent-ink);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-active: var(--accent-active);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-disabled: var(--disabled);
+  --color-control-border: var(--control-border);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -138,60 +163,47 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-inter);
+    font-family: var(--font-body);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-normal);
   }
 
-  /**
-  * Default typography styles for HTML elements (h1-h4, p, label, button, input).
-  * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.
-  */
-
-  html {
-    font-size: var(--font-size);
-  }
-
-  h1, h2, h3, h4 {
-    font-family: var(--font-poppins);
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    font-weight: var(--font-weight-semibold);
   }
 
   h1 {
-    font-size: var(--text-2xl);
-    font-weight: 600;
-    line-height: 1.5;
+    font-size: var(--font-size-h1);
+    line-height: 1.25;
   }
 
   h2 {
-    font-size: var(--text-xl);
-    font-weight: 600;
-    line-height: 1.5;
+    font-size: var(--font-size-h2);
+    line-height: 1.3;
   }
 
   h3 {
     font-size: var(--text-lg);
-    font-weight: 600;
     line-height: 1.5;
   }
 
   h4 {
-    font-size: var(--text-base);
-    font-weight: 600;
+    font-size: var(--font-size-body);
     line-height: 1.5;
   }
 
-  label {
-    font-size: var(--text-base);
+  label, button, select, nav a {
     font-weight: var(--font-weight-medium);
-    line-height: 1.5;
   }
 
   button {
-    font-size: var(--text-base);
-    font-weight: var(--font-weight-medium);
+    font-size: var(--font-size-body);
     line-height: 1.5;
   }
 
-  input {
-    font-size: var(--text-base);
+  input, textarea {
+    font-size: var(--font-size-body);
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
   }

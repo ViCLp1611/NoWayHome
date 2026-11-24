@@ -132,7 +132,7 @@ export function ReservationRequests() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center">
-          <Inbox className="mr-2 h-6 w-6 text-[#A67C52]" />
+          <Inbox className="mr-2 h-6 w-6 text-accent-ink" />
           Solicitudes de Reserva Pendientes
         </CardTitle>
         <CardDescription>
@@ -152,7 +152,7 @@ export function ReservationRequests() {
                 className="border p-4 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
               >
                 <div className="flex-grow space-y-2">
-                  <h4 className="font-semibold">
+                  <h4>
                     {req.propiedad?.titulo || `Propiedad #${req.id_propiedad}`}
                   </h4>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
@@ -181,7 +181,7 @@ export function ReservationRequests() {
                   </Button>
                   <Button
                     size="sm"
-                    className="bg-[#6B8E23] hover:bg-[#5a7a1e] text-white w-1/2 md:w-auto"
+                    className="bg-primary hover:bg-primary-hover active:bg-primary-active text-primary-foreground w-1/2 md:w-auto"
                     onClick={() => handleApproveClick(req.id_reserva)}
                   >
                     <Check className="h-4 w-4 mr-1" /> Aceptar

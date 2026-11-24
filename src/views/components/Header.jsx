@@ -18,13 +18,13 @@ export function Header() {
   }
 
   return (
-    <header className="bg-white border-b border-[#6B8E23]/10 sticky top-0 z-50">
+    <header className="bg-white border-b border-border sticky top-0 z-50">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <button
             onClick={() => handleNavigation('/')}
-            className="font-poppins font-semibold text-xl md:text-2xl text-[#6B8E23] hover:text-[#5a7a1e] transition-colors"
+            className="text-primary-ink hover:text-primary-ink transition-colors"
           >
             NoWayHome
           </button>
@@ -33,8 +33,8 @@ export function Header() {
           <nav className="hidden md:flex items-center gap-6">
             {/* <button
               onClick={() => handleNavigation('/')}
-              className={`flex items-center gap-2 text-[#5F5F5F] hover:text-[#6B8E23] transition-colors ${
-                location.pathname === '/' ? 'text-[#6B8E23] font-medium' : ''
+              className={`flex items-center gap-2 text-foreground hover:text-primary-ink transition-colors ${
+                location.pathname === '/' ? 'text-primary-ink font-medium' : ''
               }`}
             >
               <Home className="h-5 w-5" />
@@ -44,8 +44,8 @@ export function Header() {
             {false ? (
               <button
                 onClick={() => handleNavigation('/profile')}
-                className={`flex items-center gap-2 text-[#5F5F5F] hover:text-[#6B8E23] transition-colors ${
-                  location.pathname === '/profile' ? 'text-[#6B8E23] font-medium' : ''
+                className={`flex items-center gap-2 text-foreground hover:text-primary-ink transition-colors ${
+                  location.pathname === '/profile' ? 'text-primary-ink font-medium' : ''
                 }`}
               >
                 <User className="h-5 w-5" />
@@ -55,8 +55,8 @@ export function Header() {
               <>
                 <button
                   onClick={() => handleNavigation('/login')}
-                  className={`flex items-center gap-2 text-[#5F5F5F] hover:text-[#6B8E23] transition-colors ${
-                    location.pathname === '/login' ? 'text-[#6B8E23] font-medium' : ''
+                  className={`flex items-center gap-2 text-foreground hover:text-primary-ink transition-colors ${
+                    location.pathname === '/login' ? 'text-primary-ink font-medium' : ''
                   }`}
                 >
                   <LogIn className="h-5 w-5" />
@@ -65,7 +65,7 @@ export function Header() {
 
                 <Button
                   onClick={() => handleNavigation('/register')}
-                  className="bg-[#6B8E23] text-white hover:bg-[#5a7a1e] shadow-none rounded-xl"
+                  className="bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active shadow-none rounded-xl"
                 >
                   Registrarse
                 </Button>
@@ -76,7 +76,7 @@ export function Header() {
           {/* Mobile Menu Button */}
           <button
             onClick={toggleMobileMenu}
-            className="md:hidden text-[#5F5F5F] hover:text-[#6B8E23] transition-colors"
+            className="md:hidden text-foreground hover:text-primary-ink transition-colors"
             aria-label="Toggle menu"
           >
             {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -85,12 +85,12 @@ export function Header() {
 
         {/* Mobile Navigation */}
         {isMobileMenuOpen && (
-          <nav className="md:hidden py-4 border-t border-[#6B8E23]/10">
+          <nav className="md:hidden py-4 border-t border-border">
             <div className="flex flex-col gap-4">
               <button
                 onClick={() => handleNavigation('/')}
-                className={`flex items-center gap-2 text-[#5F5F5F] hover:text-[#6B8E23] transition-colors py-2 ${
-                  location.pathname === '/' ? 'text-[#6B8E23] font-medium' : ''
+                className={`flex items-center gap-2 text-foreground hover:text-primary-ink transition-colors py-2 ${
+                  location.pathname === '/' ? 'text-primary-ink font-medium' : ''
                 }`}
               >
                 <Home className="h-5 w-5" />
@@ -100,8 +100,8 @@ export function Header() {
               {false ? (
                 <button
                   onClick={() => handleNavigation('/profile')}
-                  className={`flex items-center gap-2 text-[#5F5F5F] hover:text-[#6B8E23] transition-colors py-2 ${
-                    location.pathname === '/profile' ? 'text-[#6B8E23] font-medium' : ''
+                  className={`flex items-center gap-2 text-foreground hover:text-primary-ink transition-colors py-2 ${
+                    location.pathname === '/profile' ? 'text-primary-ink font-medium' : ''
                   }`}
                 >
                   <User className="h-5 w-5" />
@@ -111,8 +111,8 @@ export function Header() {
                 <>
                   <button
                     onClick={() => handleNavigation('/login')}
-                    className={`flex items-center gap-2 text-[#5F5F5F] hover:text-[#6B8E23] transition-colors py-2 ${
-                      location.pathname === '/login' ? 'text-[#6B8E23] font-medium' : ''
+                    className={`flex items-center gap-2 text-foreground hover:text-primary-ink transition-colors py-2 ${
+                      location.pathname === '/login' ? 'text-primary-ink font-medium' : ''
                     }`}
                   >
                     <LogIn className="h-5 w-5" />
@@ -121,7 +121,7 @@ export function Header() {
 
                   <Button
                     onClick={() => handleNavigation('/register')}
-                    className="bg-[#6B8E23] text-white hover:bg-[#5a7a1e] shadow-none rounded-xl w-full"
+                    className="bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active shadow-none rounded-xl w-full"
                   >
                     Registrarse
                   </Button>

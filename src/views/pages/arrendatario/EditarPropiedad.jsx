@@ -460,40 +460,40 @@ export function EditarPropiedad() {
   return (
     <>
       <UserNavbar />
-      <main className="min-h-screen bg-[#FAFAFA] px-4 py-8">
+      <main className="min-h-screen bg-background px-4 py-8">
         <div className="container mx-auto max-w-5xl">
           <Button
             type="button"
             variant="ghost"
             onClick={() => navigate('/arrendatario/propiedades')}
-            className="mb-5 text-[#6B8E23] hover:bg-[#6B8E23]/10 hover:text-[#5a7a1e] shadow-none rounded-xl"
+            className="mb-5 text-primary-ink hover:bg-primary/10 hover:text-primary-ink shadow-none rounded-xl"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Volver a mis propiedades
           </Button>
 
-          <Card className="bg-[#F2E8CF] border-none shadow-none rounded-2xl p-6 md:p-8">
-            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-white text-[#6B8E23]">
+          <Card className="bg-secondary border-none shadow-none rounded-2xl p-6 md:p-8">
+            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-white text-primary-ink">
               <Pencil className="h-6 w-6" />
             </div>
-            <h1 className="font-poppins text-2xl font-semibold text-[#5F5F5F] md:text-3xl">
+            <h1 className="text-foreground">
               Editar propiedad
             </h1>
-            <p className="mt-3 text-[#5F5F5F]/80">
+            <p className="mt-3 text-muted-foreground">
               Actualiza la informacion de tu alojamiento publicado en NoWayHome.
             </p>
 
             {isLoading ? (
-              <p className="mt-8 text-[#5F5F5F]">Cargando propiedad...</p>
+              <p className="mt-8 text-foreground">Cargando propiedad...</p>
             ) : (
               <form onSubmit={handleSubmit} className="mt-8 space-y-8">
                 <section className="space-y-4">
-                  <h2 className="font-poppins text-xl font-semibold text-[#5F5F5F]">
+                  <h2 className="text-foreground">
                     Información básica
                   </h2>
                   <div className="grid grid-cols-1 gap-4">
                     <div>
-                      <label htmlFor="titulo" className="text-[#5F5F5F] font-medium">
+                      <label htmlFor="titulo" className="text-foreground font-medium">
                         Título
                       </label>
                       <Input
@@ -501,13 +501,13 @@ export function EditarPropiedad() {
                         name="titulo"
                         value={form.titulo}
                         onChange={handleFieldChange}
-                        className="mt-2 h-12 bg-white border-[#6B8E23]/20 focus:border-[#6B8E23] text-[#5F5F5F] rounded-xl"
+                        className="mt-2 h-12 bg-white border-control-border focus:border-ring text-foreground rounded-xl"
                       />
                       {renderError('titulo')}
                     </div>
 
                     <div>
-                      <label htmlFor="descripcion" className="text-[#5F5F5F] font-medium">
+                      <label htmlFor="descripcion" className="text-foreground font-medium">
                         Descripción
                       </label>
                       <Textarea
@@ -515,7 +515,7 @@ export function EditarPropiedad() {
                         name="descripcion"
                         value={form.descripcion}
                         onChange={handleFieldChange}
-                        className="mt-2 min-h-32 bg-white border-[#6B8E23]/20 focus:border-[#6B8E23] text-[#5F5F5F] rounded-xl"
+                        className="mt-2 min-h-32 bg-white border-control-border focus:border-ring text-foreground rounded-xl"
                       />
                       {renderError('descripcion')}
                     </div>
@@ -523,12 +523,12 @@ export function EditarPropiedad() {
                 </section>
 
                 <section className="space-y-4">
-                  <h2 className="font-poppins text-xl font-semibold text-[#5F5F5F]">
+                  <h2 className="text-foreground">
                     Ubicación
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="md:col-span-3">
-                      <label htmlFor="direccion" className="text-[#5F5F5F] font-medium">
+                      <label htmlFor="direccion" className="text-foreground font-medium">
                         Dirección
                       </label>
                       <Input
@@ -536,12 +536,12 @@ export function EditarPropiedad() {
                         name="direccion"
                         value={form.direccion}
                         onChange={handleFieldChange}
-                        className="mt-2 h-12 bg-white border-[#6B8E23]/20 focus:border-[#6B8E23] text-[#5F5F5F] rounded-xl"
+                        className="mt-2 h-12 bg-white border-control-border focus:border-ring text-foreground rounded-xl"
                       />
                       {renderError('direccion')}
                     </div>
                     <div>
-                      <label htmlFor="ciudad" className="text-[#5F5F5F] font-medium">
+                      <label htmlFor="ciudad" className="text-foreground font-medium">
                         Ciudad
                       </label>
                       <Input
@@ -549,12 +549,12 @@ export function EditarPropiedad() {
                         name="ciudad"
                         value={form.ciudad}
                         onChange={handleFieldChange}
-                        className="mt-2 h-12 bg-white border-[#6B8E23]/20 focus:border-[#6B8E23] text-[#5F5F5F] rounded-xl"
+                        className="mt-2 h-12 bg-white border-control-border focus:border-ring text-foreground rounded-xl"
                       />
                       {renderError('ciudad')}
                     </div>
                     <div>
-                      <label htmlFor="pais" className="text-[#5F5F5F] font-medium">
+                      <label htmlFor="pais" className="text-foreground font-medium">
                         País
                       </label>
                       <Input
@@ -562,7 +562,7 @@ export function EditarPropiedad() {
                         name="pais"
                         value={form.pais}
                         onChange={handleFieldChange}
-                        className="mt-2 h-12 bg-white border-[#6B8E23]/20 focus:border-[#6B8E23] text-[#5F5F5F] rounded-xl"
+                        className="mt-2 h-12 bg-white border-control-border focus:border-ring text-foreground rounded-xl"
                       />
                       {renderError('pais')}
                     </div>
@@ -571,7 +571,7 @@ export function EditarPropiedad() {
                         type="button"
                         onClick={handleSearchLocation}
                         disabled={geocodeState.isLoading}
-                        className="rounded-xl bg-[#6B8E23] text-white shadow-none hover:bg-[#5a7a1e] disabled:opacity-60"
+                        className="rounded-xl bg-primary text-primary-foreground shadow-none hover:bg-primary-hover active:bg-primary-active disabled:bg-disabled disabled:text-muted-foreground disabled:opacity-100"
                       >
                         <Search className="mr-2 h-4 w-4" />
                         {geocodeState.isLoading ? 'Buscando ubicación...' : 'Buscar ubicación'}
@@ -585,7 +585,7 @@ export function EditarPropiedad() {
                       )}
                     </div>
                     <div className="md:col-span-3">
-                      <label className="text-[#5F5F5F] font-medium">Mapa de ubicación</label>
+                      <label className="text-foreground font-medium">Mapa de ubicación</label>
                       <PropertyLocationMap
                         editable
                         latitud={form.latitud}
@@ -595,7 +595,7 @@ export function EditarPropiedad() {
                       />
                     </div>
                     <div>
-                      <label htmlFor="latitud" className="text-[#5F5F5F] font-medium">
+                      <label htmlFor="latitud" className="text-foreground font-medium">
                         Latitud
                       </label>
                       <Input
@@ -603,12 +603,12 @@ export function EditarPropiedad() {
                         name="latitud"
                         value={form.latitud}
                         onChange={handleFieldChange}
-                        className="mt-2 h-12 bg-white border-[#6B8E23]/20 focus:border-[#6B8E23] text-[#5F5F5F] rounded-xl"
+                        className="mt-2 h-12 bg-white border-control-border focus:border-ring text-foreground rounded-xl"
                       />
                       {renderError('latitud')}
                     </div>
                     <div>
-                      <label htmlFor="longitud" className="text-[#5F5F5F] font-medium">
+                      <label htmlFor="longitud" className="text-foreground font-medium">
                         Longitud
                       </label>
                       <Input
@@ -616,7 +616,7 @@ export function EditarPropiedad() {
                         name="longitud"
                         value={form.longitud}
                         onChange={handleFieldChange}
-                        className="mt-2 h-12 bg-white border-[#6B8E23]/20 focus:border-[#6B8E23] text-[#5F5F5F] rounded-xl"
+                        className="mt-2 h-12 bg-white border-control-border focus:border-ring text-foreground rounded-xl"
                       />
                       {renderError('longitud')}
                     </div>
@@ -624,12 +624,12 @@ export function EditarPropiedad() {
                 </section>
 
                 <section className="space-y-4">
-                  <h2 className="font-poppins text-xl font-semibold text-[#5F5F5F]">
+                  <h2 className="text-foreground">
                     Capacidad y precio
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                     <div>
-                      <label htmlFor="tipo_precio" className="text-[#5F5F5F] font-medium">
+                      <label htmlFor="tipo_precio" className="text-foreground font-medium">
                         Tipo de precio
                       </label>
                       <select
@@ -637,7 +637,7 @@ export function EditarPropiedad() {
                         name="tipo_precio"
                         value={form.tipo_precio}
                         onChange={handleFieldChange}
-                        className="mt-2 h-12 w-full rounded-xl border border-[#6B8E23]/20 bg-white px-3 text-[#5F5F5F] outline-none transition-colors focus:border-[#6B8E23]"
+                        className="mt-2 h-12 w-full rounded-xl border border-control-border bg-white px-3 text-foreground outline-none transition-colors focus:border-ring"
                       >
                         <option value="noche">Por noche</option>
                         <option value="mensual">Mensual</option>
@@ -645,7 +645,7 @@ export function EditarPropiedad() {
                       {renderError('tipo_precio')}
                     </div>
                     <div>
-                      <label htmlFor="precio_por_noche" className="text-[#5F5F5F] font-medium">
+                      <label htmlFor="precio_por_noche" className="text-foreground font-medium">
                         {priceLabel}
                       </label>
                       <Input
@@ -656,12 +656,12 @@ export function EditarPropiedad() {
                         step="0.01"
                         value={form.precio_por_noche}
                         onChange={handleFieldChange}
-                        className="mt-2 h-12 bg-white border-[#6B8E23]/20 focus:border-[#6B8E23] text-[#5F5F5F] rounded-xl"
+                        className="mt-2 h-12 bg-white border-control-border focus:border-ring text-foreground rounded-xl"
                       />
                       {renderError('precio_por_noche')}
                     </div>
                     <div>
-                      <label htmlFor="capacidad" className="text-[#5F5F5F] font-medium">
+                      <label htmlFor="capacidad" className="text-foreground font-medium">
                         Capacidad
                       </label>
                       <Input
@@ -672,12 +672,12 @@ export function EditarPropiedad() {
                         step="1"
                         value={form.capacidad}
                         onChange={handleFieldChange}
-                        className="mt-2 h-12 bg-white border-[#6B8E23]/20 focus:border-[#6B8E23] text-[#5F5F5F] rounded-xl"
+                        className="mt-2 h-12 bg-white border-control-border focus:border-ring text-foreground rounded-xl"
                       />
                       {renderError('capacidad')}
                     </div>
                     <div>
-                      <label htmlFor="numero_habitaciones" className="text-[#5F5F5F] font-medium">
+                      <label htmlFor="numero_habitaciones" className="text-foreground font-medium">
                         Habitaciones
                       </label>
                       <Input
@@ -688,12 +688,12 @@ export function EditarPropiedad() {
                         step="1"
                         value={form.numero_habitaciones}
                         onChange={handleFieldChange}
-                        className="mt-2 h-12 bg-white border-[#6B8E23]/20 focus:border-[#6B8E23] text-[#5F5F5F] rounded-xl"
+                        className="mt-2 h-12 bg-white border-control-border focus:border-ring text-foreground rounded-xl"
                       />
                       {renderError('numero_habitaciones')}
                     </div>
                     <div>
-                      <label htmlFor="numero_banos" className="text-[#5F5F5F] font-medium">
+                      <label htmlFor="numero_banos" className="text-foreground font-medium">
                         BaÃ±os
                       </label>
                       <Input
@@ -704,7 +704,7 @@ export function EditarPropiedad() {
                         step="1"
                         value={form.numero_banos}
                         onChange={handleFieldChange}
-                        className="mt-2 h-12 bg-white border-[#6B8E23]/20 focus:border-[#6B8E23] text-[#5F5F5F] rounded-xl"
+                        className="mt-2 h-12 bg-white border-control-border focus:border-ring text-foreground rounded-xl"
                       />
                       {renderError('numero_banos')}
                     </div>
@@ -712,9 +712,9 @@ export function EditarPropiedad() {
                 </section>
 
                 <section className="space-y-4">
-                  <h2 className="font-poppins text-xl font-semibold text-[#5F5F5F]">Estado</h2>
+                  <h2 className="text-foreground">Estado</h2>
                   <div>
-                    <label htmlFor="estado" className="text-[#5F5F5F] font-medium">
+                    <label htmlFor="estado" className="text-foreground font-medium">
                       Estado de publicacion
                     </label>
                     <select
@@ -723,7 +723,7 @@ export function EditarPropiedad() {
                       value={form.estado}
                       onChange={handleFieldChange}
                       disabled={form.estado === 'suspendida'}
-                      className="mt-2 h-12 w-full rounded-xl border border-[#6B8E23]/20 bg-white px-3 text-[#5F5F5F] outline-none transition-colors focus:border-[#6B8E23] disabled:opacity-70"
+                      className="mt-2 h-12 w-full rounded-xl border border-control-border bg-white px-3 text-foreground outline-none transition-colors focus:border-ring disabled:opacity-70"
                     >
                       <option value="activa">Activa</option>
                       <option value="inactiva">Inactiva</option>
@@ -734,7 +734,7 @@ export function EditarPropiedad() {
                 </section>
 
                 <section className="space-y-4">
-                  <h2 className="font-poppins text-xl font-semibold text-[#5F5F5F]">
+                  <h2 className="text-foreground">
                     Imágenes actuales
                   </h2>
                   {currentImages.length > 0 ? (
@@ -742,7 +742,7 @@ export function EditarPropiedad() {
                       {currentImages.map(image => (
                         <div
                           key={image.id_imagen || image.url}
-                          className="relative overflow-hidden rounded-xl bg-white border border-[#6B8E23]/10"
+                          className="relative overflow-hidden rounded-xl bg-white border border-border"
                         >
                           <img
                             src={image.url}
@@ -750,12 +750,12 @@ export function EditarPropiedad() {
                             className="h-32 w-full object-cover"
                           />
                           {image.es_principal && (
-                            <span className="absolute left-2 top-2 rounded-lg bg-[#6B8E23] px-2 py-1 text-xs font-medium text-white">
+                            <span className="absolute left-2 top-2 rounded-lg bg-primary px-2 py-1 text-xs font-medium text-primary-foreground">
                               Principal
                             </span>
                           )}
                           <div className="absolute inset-x-2 bottom-2 flex flex-wrap justify-end gap-2">
-                            <label className="inline-flex cursor-pointer items-center rounded-lg bg-white px-3 py-2 text-xs font-medium text-[#6B8E23] shadow-sm hover:bg-[#F2E8CF]">
+                            <label className="inline-flex cursor-pointer items-center rounded-lg bg-white px-3 py-2 text-xs font-medium text-primary-ink shadow-sm hover:bg-secondary">
                               {replacingImageId === image.id_imagen ? 'Reemplazando...' : 'Reemplazar'}
                               <input
                                 type="file"
@@ -769,7 +769,7 @@ export function EditarPropiedad() {
                               type="button"
                               onClick={() => handleDeleteCurrentImage(image)}
                               disabled={deletingImageId === image.id_imagen}
-                              className="inline-flex items-center rounded-lg bg-white px-3 py-2 text-xs font-medium text-[#A67C52] shadow-sm hover:bg-[#F2E8CF] disabled:cursor-not-allowed disabled:opacity-60"
+                              className="inline-flex items-center rounded-lg bg-white px-3 py-2 text-accent-ink shadow-sm hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               <Trash2 className="mr-1 h-3.5 w-3.5" />
                               {deletingImageId === image.id_imagen ? 'Eliminando...' : 'Eliminar'}
@@ -779,21 +779,21 @@ export function EditarPropiedad() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-[#5F5F5F]/75">Esta propiedad no tiene imÃ¡genes.</p>
+                    <p className="text-sm text-muted-foreground">Esta propiedad no tiene imÃ¡genes.</p>
                   )}
                 </section>
 
                 <section className="space-y-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                     <div>
-                      <h2 className="font-poppins text-xl font-semibold text-[#5F5F5F]">
+                      <h2 className="text-foreground">
                         Agregar nuevas imagenes
                       </h2>
-                      <p className="mt-1 text-sm text-[#5F5F5F]/75">
+                      <p className="mt-1 text-sm text-muted-foreground">
                         Puedes tener entre 5 y 20 fotografias por propiedad.
                       </p>
                     </div>
-                    <label className="inline-flex cursor-pointer items-center justify-center rounded-xl bg-white px-4 py-3 font-medium text-[#6B8E23] border-2 border-[#6B8E23] hover:bg-[#6B8E23] hover:text-white transition-all">
+                    <label className="inline-flex cursor-pointer items-center justify-center rounded-xl bg-white px-4 py-3 font-medium text-primary-ink border-2 border-primary-ink hover:bg-primary hover:text-primary-foreground transition-all">
                       <ImagePlus className="mr-2 h-4 w-4" />
                       Seleccionar fotos
                       <input
@@ -814,7 +814,7 @@ export function EditarPropiedad() {
                       {newImages.map(image => (
                         <div
                           key={image.id}
-                          className="relative overflow-hidden rounded-xl bg-white border border-[#6B8E23]/10"
+                          className="relative overflow-hidden rounded-xl bg-white border border-border"
                         >
                           <img
                             src={image.previewUrl}
@@ -824,7 +824,7 @@ export function EditarPropiedad() {
                           <button
                             type="button"
                             onClick={() => removeNewImage(image.id)}
-                            className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white text-[#A67C52] shadow-sm hover:bg-[#F2E8CF]"
+                            className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white text-accent-ink shadow-sm hover:bg-secondary"
                             aria-label="Quitar imagen"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -847,7 +847,7 @@ export function EditarPropiedad() {
                       type="button"
                       variant="outline"
                       onClick={() => navigate('/arrendatario/propiedades')}
-                      className="border-2 border-[#6B8E23] text-[#6B8E23] hover:bg-[#6B8E23] hover:text-white shadow-none rounded-xl"
+                      className="border-2 border-primary-ink text-primary-ink hover:bg-primary hover:text-primary-foreground shadow-none rounded-xl"
                     >
                       Volver a mis propiedades
                     </Button>
@@ -855,7 +855,7 @@ export function EditarPropiedad() {
                   <Button
                     type="submit"
                     disabled={isSubmitting}
-                    className="sm:ml-auto bg-[#6B8E23] text-white hover:bg-[#5a7a1e] shadow-none rounded-xl disabled:opacity-60"
+                    className="sm:ml-auto bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active shadow-none rounded-xl disabled:bg-disabled disabled:text-muted-foreground disabled:opacity-100"
                   >
                     {isSubmitting ? 'Guardando...' : 'Guardar cambios'}
                   </Button>

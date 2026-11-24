@@ -53,7 +53,7 @@ export function PropertyDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#FAFAFA]">
+      <div className="min-h-screen bg-background">
         <LoadingState message="Cargando propiedad..." className="min-h-screen" />
       </div>
     )
@@ -61,7 +61,7 @@ export function PropertyDetailPage() {
 
   if (!propiedad) {
     return (
-      <div className="min-h-screen bg-[#FAFAFA] px-4 py-8">
+      <div className="min-h-screen bg-background px-4 py-8">
         <div className="container mx-auto max-w-3xl">
           {error && (
             <AlertMessage
@@ -77,7 +77,7 @@ export function PropertyDetailPage() {
             action={
               <Button
                 onClick={() => navigate('/inquilino/explorar')}
-                className="h-auto min-h-[44px] w-full rounded-lg bg-[#6B8E23] px-4 py-3 text-base font-medium text-white transition hover:bg-[#5a7a1e] sm:w-auto"
+                className="h-auto min-h-[44px] w-full rounded-lg bg-primary px-4 py-3 text-primary-foreground transition hover:bg-primary-hover active:bg-primary-active sm:w-auto"
               >
                 Explorar otras propiedades
               </Button>
@@ -99,13 +99,13 @@ export function PropertyDetailPage() {
   return (
     <>
       <InquilinoNavbar />
-      <main className="min-h-screen bg-[#FAFAFA] py-8 sm:py-12">
+      <main className="min-h-screen bg-background py-8 sm:py-12">
         <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <button
             onClick={() => navigate('/inquilino/explorar')}
-            className="mb-8 flex items-center gap-2 text-sm font-medium text-[#5F5F5F] transition-colors hover:text-[#6B8E23]"
+            className="mb-8 flex items-center gap-2 text-foreground transition-colors hover:text-primary-ink"
           >
-            <ArrowLeft className="h-4 w-4 text-[#A67C52]" />
+            <ArrowLeft className="h-4 w-4 text-accent-ink" />
             <span>Volver al catálogo</span>
           </button>
 
@@ -122,16 +122,16 @@ export function PropertyDetailPage() {
             {/* Columna de Contenido Principal */}
             <div className="space-y-6 lg:col-span-7">
               <header>
-                <h1 className="font-poppins text-[28px] font-semibold text-[#5F5F5F] lg:text-[36px]">
+                <h1 className="text-foreground">
                   {title}
                 </h1>
-                <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-[#5F5F5F]">
+                <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-foreground">
                   <div className="flex items-center gap-1.5">
-                    <MapPin className="h-4 w-4 text-[#A67C52]" />
+                    <MapPin className="h-4 w-4 text-accent-ink" />
                     <span className="font-medium">{location}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <Star className="h-4 w-4 text-[#A67C52]" />
+                    <Star className="h-4 w-4 text-accent-ink" />
                     <span className="font-medium">4.9</span>
                   </div>
                 </div>
@@ -148,14 +148,14 @@ export function PropertyDetailPage() {
                   <>
                     <button
                       onClick={handlePrevImage}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 text-[#5F5F5F] shadow-md transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#6B8E23]"
+                      className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 text-foreground shadow-md transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-ring"
                       aria-label="Imagen anterior"
                     >
                       <ChevronLeft className="h-6 w-6" />
                     </button>
                     <button
                       onClick={handleNextImage}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 text-[#5F5F5F] shadow-md transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#6B8E23]"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 text-foreground shadow-md transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-ring"
                       aria-label="Imagen siguiente"
                     >
                       <ChevronRight className="h-6 w-6" />
@@ -166,7 +166,7 @@ export function PropertyDetailPage() {
                           key={idx}
                           onClick={() => setImagenActual(idx)}
                           className={`h-2 rounded-full transition-all duration-300 ${
-                            idx === imagenActual ? 'w-6 bg-[#6B8E23]' : 'w-2 bg-white/70'
+                            idx === imagenActual ? 'w-6 bg-primary' : 'w-2 bg-white/70'
                           }`}
                           aria-label={`Ver imagen ${idx + 1}`}
                         />
@@ -176,54 +176,54 @@ export function PropertyDetailPage() {
                 )}
               </div>
 
-              <Card className="rounded-2xl border border-[#6B8E23]/10 bg-white p-6 shadow-sm sm:p-8">
+              <Card className="rounded-2xl border border-border bg-white p-6 shadow-sm sm:p-8">
                 <div className="space-y-6">
                   <section>
-                    <p className="text-sm text-[#5F5F5F]/70">Reserva esta propiedad</p>
-                    <h2 className="text-2xl font-semibold text-[#5F5F5F]">
+                    <p className="text-sm text-muted-foreground">Reserva esta propiedad</p>
+                    <h2 className="text-foreground">
                       Preparate para tu estancia
                     </h2>
                   </section>
 
-                  <section className="space-y-3 border-t border-[#6B8E23]/10 pt-5">
-                    <h3 className="text-sm font-semibold text-[#5F5F5F]/70">Características</h3>
+                  <section className="space-y-3 border-t border-border pt-5">
+                    <h3 className="text-sm text-muted-foreground">Características</h3>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {hasValue(propiedad.capacidad) && (
-                        <div className="flex items-center gap-2 rounded-lg bg-[#F2E8CF] p-3">
-                          <Users className="h-4 w-4 text-[#6B8E23]" />
+                        <div className="flex items-center gap-2 rounded-lg bg-secondary p-3">
+                          <Users className="h-4 w-4 text-primary-ink" />
                           <div>
-                            <p className="text-xs text-[#5F5F5F]/70">Capacidad</p>
-                            <p className="font-semibold text-[#5F5F5F]">{propiedad.capacidad}</p>
+                            <p className="text-xs text-muted-foreground">Capacidad</p>
+                            <p className="font-semibold text-foreground">{propiedad.capacidad}</p>
                           </div>
                         </div>
                       )}
                       {hasValue(propiedad.numero_habitaciones) && (
-                        <div className="flex items-center gap-2 rounded-lg bg-[#F2E8CF] p-3">
-                          <Bed className="h-4 w-4 text-[#6B8E23]" />
+                        <div className="flex items-center gap-2 rounded-lg bg-secondary p-3">
+                          <Bed className="h-4 w-4 text-primary-ink" />
                           <div>
-                            <p className="text-xs text-[#5F5F5F]/70">Habitaciones</p>
-                            <p className="font-semibold text-[#5F5F5F]">
+                            <p className="text-xs text-muted-foreground">Habitaciones</p>
+                            <p className="font-semibold text-foreground">
                               {propiedad.numero_habitaciones}
                             </p>
                           </div>
                         </div>
                       )}
                       {hasValue(propiedad.numero_banos) && (
-                        <div className="flex items-center gap-2 rounded-lg bg-[#F2E8CF] p-3">
-                          <Bath className="h-4 w-4 text-[#6B8E23]" />
+                        <div className="flex items-center gap-2 rounded-lg bg-secondary p-3">
+                          <Bath className="h-4 w-4 text-primary-ink" />
                           <div>
-                            <p className="text-xs text-[#5F5F5F]/70">Baños</p>
-                            <p className="font-semibold text-[#5F5F5F]">{propiedad.numero_banos}</p>
+                            <p className="text-xs text-muted-foreground">Baños</p>
+                            <p className="font-semibold text-foreground">{propiedad.numero_banos}</p>
                           </div>
                         </div>
                       )}
                     </div>
                   </section>
 
-                  <section className="space-y-4 border-t border-[#6B8E23]/10 pt-5">
+                  <section className="space-y-4 border-t border-border pt-5">
                     <div>
-                      <p className="text-sm text-[#5F5F5F]/70">Ubicacion</p>
-                      <p className="text-base font-medium text-[#5F5F5F]">{location}</p>
+                      <p className="text-sm text-muted-foreground">Ubicacion</p>
+                      <p className="text-base font-medium text-foreground">{location}</p>
                     </div>
                     <PropertyLocationMap
                       latitud={propiedad.latitud}
@@ -232,9 +232,9 @@ export function PropertyDetailPage() {
                     />
                   </section>
 
-                  <section className="border-t border-[#6B8E23]/10 pt-5">
-                    <p className="text-sm text-[#5F5F5F]/70">Precio por noche</p>
-                    <p className="text-xl font-semibold text-[#6B8E23]">{formatPrice(price)}</p>
+                  <section className="border-t border-border pt-5">
+                    <p className="text-sm text-muted-foreground">Precio por noche</p>
+                    <p className="text-xl font-semibold text-primary-ink">{formatPrice(price)}</p>
                   </section>
                 </div>
               </Card>
@@ -243,42 +243,42 @@ export function PropertyDetailPage() {
             {/* Columna de Reserva (Sticky) */}
             <div className="lg:col-span-5">
               <div className="lg:sticky lg:top-28">
-                <Card className="rounded-xl border-0 bg-[#F2E8CF] p-6 shadow-none">
+                <Card className="rounded-xl border-0 bg-secondary p-6 shadow-none">
                   <div className="flex items-baseline justify-between">
                     <div className="flex items-baseline gap-2">
-                      <span className="font-poppins text-2xl font-semibold text-[#5F5F5F]">
+                      <span className="font-poppins text-2xl font-semibold text-foreground">
                         {formatPrice(price)}
                       </span>
-                      <span className="text-sm text-[#5F5F5F]/80">/ noche</span>
+                      <span className="text-sm text-muted-foreground">/ noche</span>
                     </div>
-                    <span className="rounded-full bg-white/60 px-3 py-1 text-sm font-medium capitalize text-[#5F5F5F]">
+                    <span className="rounded-full bg-white/60 px-3 py-1 text-sm font-medium capitalize text-foreground">
                       {propiedad.estado || 'Disponible'}
                     </span>
                   </div>
 
                   {/* Detalles de la Propiedad */}
-                  <div className="mt-6 border-t border-[#A67C52]/20 pt-6">
-                    <h3 className="font-poppins text-base font-semibold text-[#5F5F5F]">
+                  <div className="mt-6 border-t border-border pt-6">
+                    <h3 className="text-base text-foreground">
                       Características
                     </h3>
-                    <p className="mt-4 text-base leading-relaxed text-[#5F5F5F]">
+                    <p className="mt-4 text-base leading-relaxed text-foreground">
                       {propiedad.descripcion ||
                         propiedad.resena ||
                         'Descripción no disponible para esta propiedad.'}
                     </p>
                   </div>
 
-                  <div className="mt-6 space-y-4 border-t border-[#A67C52]/20 pt-6">
+                  <div className="mt-6 space-y-4 border-t border-border pt-6">
                     <Button
                       onClick={() => navigate(`/inquilino/reserva/${id}`)}
-                      className="h-auto min-h-[44px] w-full rounded-lg bg-[#6B8E23] px-4 py-3 text-base font-medium text-white transition hover:bg-[#5a7a1e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6B8E23] focus-visible:ring-offset-2"
+                      className="h-auto min-h-[44px] w-full rounded-lg bg-primary px-4 py-3 text-primary-foreground transition hover:bg-primary-hover active:bg-primary-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
                       Reservar ahora
                     </Button>
                   </div>
 
-                  <div className="mt-6 rounded-lg bg-white/50 p-4 text-sm text-[#5F5F5F]/90">
-                    <p className="font-medium text-[#5F5F5F]">Información importante</p>
+                  <div className="mt-6 rounded-lg bg-white/50 p-4 text-sm text-muted-foreground">
+                    <p className="font-medium text-foreground">Información importante</p>
                     <p className="mt-1">
                       Tu reserva será registrada y podrás consultarla desde tu perfil. Se confirmará
                       conforme a disponibilidad.

@@ -8,8 +8,8 @@ const variants = {
   },
   success: {
     icon: CheckCircle2,
-    className: 'border-[#6B8E23]/30 bg-[#F2E8CF] text-[#5F5F5F]',
-    iconClassName: 'text-[#6B8E23]',
+    className: 'border-green-200 bg-green-50 text-green-800',
+    iconClassName: 'text-green-700',
   },
   warning: {
     icon: TriangleAlert,
@@ -18,8 +18,8 @@ const variants = {
   },
   info: {
     icon: Info,
-    className: 'border-[#6B8E23]/20 bg-white text-[#5F5F5F]',
-    iconClassName: 'text-[#6B8E23]',
+    className: 'border-border bg-white text-foreground',
+    iconClassName: 'text-primary-ink',
   },
 }
 
